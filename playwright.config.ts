@@ -10,7 +10,7 @@ export default defineConfig({
   use: { baseURL: `http://127.0.0.1:${porta}`, trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `pnpm start --port ${porta}`,
+    command: `node_modules/.bin/next start --port ${porta}`, // direto: o pnpm 12 deixaria o next vivo e o teste nunca terminaria
     url: `http://127.0.0.1:${porta}/api/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

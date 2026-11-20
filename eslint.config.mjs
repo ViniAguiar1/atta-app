@@ -8,7 +8,8 @@ import { fronteiras } from "./eslint-rules/fronteiras.mjs";
 const SO_SERVIDOR = {
   patterns: [
     {
-      group: ["@/lib/supabase/admin", "@/lib/env.server", "**/lib/supabase/admin", "**/lib/env.server"],
+      // por alias e por caminho relativo (./env.server dentro de src/lib, ./admin dentro de src/lib/supabase)
+      group: ["@/lib/supabase/admin", "@/lib/env.server", "**/env.server", "**/supabase/admin", "./admin", "../supabase/admin"],
       message: "Secret key só em src/server/**, **/actions.ts e app/**/route.ts, conferindo o papel antes (ADR 0001 §4).",
     },
   ],
