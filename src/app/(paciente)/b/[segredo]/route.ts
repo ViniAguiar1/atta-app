@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { COOKIE_LINK, opcoesDoCookieDoLink } from "@/server/boarding/cookies";
+import { boardingNoAr } from "@/server/boarding/disponivel";
 import { hashDoSegredo } from "@/server/grant/politica";
 
 // Link do WhatsApp do Boarding Check (PDD §10.2.3; ADR 0004 §3, trava 1). Não renderiza nada nem consome o segredo:
@@ -8,6 +9,7 @@ import { hashDoSegredo } from "@/server/grant/politica";
 // mostra o link sem validade, igual a um link vencido; sem oráculo).
 // Location relativa: fica no mesmo host em que o cookie foi gravado (o request.url do Next pode trocar o host).
 export async function GET(request: Request, { params }: RouteContext<"/b/[segredo]">) {
+  if (!boardingNoAr()) return new NextResponse(null, { status: 404 }); // porta simulada: fora da produção
   const { segredo } = await params;
   const resposta = new NextResponse(null, { status: 303, headers: { Location: "/boarding" } });
   const https = request.headers.get("x-forwarded-proto") === "https";

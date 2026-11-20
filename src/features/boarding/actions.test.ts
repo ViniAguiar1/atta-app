@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lerHashDoLink: vi.fn(),
@@ -17,6 +17,7 @@ const HASH_LINK = Buffer.alloc(32, 1);
 const HASH_SESSAO = Buffer.alloc(32, 2);
 
 describe("confirmarPin (action)", () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.lerHashDoLink.mockResolvedValue(HASH_LINK);
@@ -64,5 +65,13 @@ describe("confirmarPin (action)", () => {
     expect(await confirmarPin({ pin: "2468" })).toEqual({ ok: true, data: { status: "indisponivel" } });
     expect(mocks.apagarGrant).toHaveBeenCalled();
     expect(mocks.apagarLink).toHaveBeenCalled();
+  });
+
+  it("na produção, com a porta simulada, recusa sem ler cookie nem chamar a porta", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect(await confirmarPin({ pin: "2468" })).toMatchObject({ ok: false, error: { code: "NAO_ENCONTRADO" } });
+    expect(mocks.lerHashDoLink).not.toHaveBeenCalled();
+    expect(mocks.confirmarPin).not.toHaveBeenCalled();
+    expect(mocks.gravarGrant).not.toHaveBeenCalled();
   });
 });

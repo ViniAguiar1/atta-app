@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Cabecalho } from "@/features/boarding/components/Cabecalho";
 import { TelaPin } from "@/features/boarding/components/TelaPin";
 import { TEXTOS } from "@/features/boarding/textos";
 import { lerHashDoLink } from "@/server/boarding/cookies";
+import { boardingNoAr } from "@/server/boarding/disponivel";
 import { portaBoarding } from "@/server/boarding/porta";
 import { lerHash } from "@/server/grant/cookie";
 
@@ -13,6 +15,9 @@ import { lerHash } from "@/server/grant/cookie";
 export const metadata: Metadata = { title: "Boarding Check · ATTA-in", robots: { index: false, follow: false } };
 
 export default function Pagina() {
+  // porta simulada: 404 na produção, fora do Suspense, antes de qualquer esqueleto (o ambiente é o do build; como na
+  // Agenda e em Pacientes)
+  if (!boardingNoAr()) notFound();
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-8 px-5 py-6 text-lg">
       <header>
