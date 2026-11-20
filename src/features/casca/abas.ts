@@ -20,7 +20,7 @@ export const ABAS: Aba[] = [
  * Módulos com tela pronta, numa lista só (decisão do CTO, regra do stage): aba de módulo que ainda não existe não
  * aparece. Cada item (MIG-41 a MIG-48, e o sino no MIG-45) acrescenta a sua rota aqui quando a tela entra.
  */
-export const MODULOS_PRONTOS: readonly string[] = ["/painel/configuracoes"];
+export const MODULOS_PRONTOS: readonly string[] = ["/painel/pacientes", "/painel/configuracoes"]; // MIG-43 e MIG-42: porta real
 
 /**
  * Se a tela de um módulo (ou seção) pode abrir: na produção, só com a porta real (está em MODULOS_PRONTOS); fora da

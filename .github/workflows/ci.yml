@@ -139,6 +139,13 @@ jobs:
     if: needs.mudancas.outputs.web == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # Chave mestra da rede e peppers de TESTE, fictícios e públicos (tests/fixtures/cofre-ci.ts), os mesmos com que o
+    # seed de pacientes foi gerado (MIG-43): a porta real abre o contato e calcula o HMAC do CPF como na produção, que
+    # usa as chaves da Vercel. Não são segredo; produção recusa esta KEK (CI_TEST_KEK_FINGERPRINT).
+    env:
+      ATTA_REDE_CHAVE_MESTRA: k1:617474612d6170702d63692d6b656b2d64652d74657374652d66696374696369
+      ATTA_CPF_PEPPER: 617474612d6170702d63692d7065707065722d646f2d6370662d666963746963
+      ATTA_RNE_PEPPER: 617474612d6170702d63692d7065707065722d646f2d726e652d666963746963
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
