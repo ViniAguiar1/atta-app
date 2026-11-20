@@ -1,10 +1,13 @@
 # CI do atta-app (MIG-01; ADR 0001). A cota do Actions é da conta pessoal do dono: um run por ref (o novo cancela o
 # anterior) e os jobs pesados (banco e e2e) só rodam quando o PR mexe no que eles testam. Na main, roda tudo.
 # Segurança: só leitura, actions por SHA, nada de ${{ }} dentro de `run`, nenhum segredo (o e2e usa valores fictícios).
+# PR em rascunho não roda (cota): o CI começa quando o PR fica pronto para revisão. Passo de rede tem tempo-limite,
+# para um espelho lento virar falha rápida e visível, nunca 13 min de espera (medição do DevEx em 20/11).
 name: ci
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -17,6 +20,7 @@ concurrency:
 
 jobs:
   mudancas:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -46,7 +50,7 @@ jobs:
     name: vetores do ATTA Sign imutáveis
     # Cópia congelada dos vetores do atta-core (MIG-21): vetor existente não muda nem sai; o SHA256SUMS só ganha linha.
     # Mudança de cálculo nasce como atta_sign_v2 ao lado (README de tests/vectors/atta_sign_v1).
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -66,6 +70,7 @@ jobs:
 
   app:
     name: lint + typecheck + testes
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -96,6 +101,7 @@ jobs:
         with:
           version: 3.2.0
       - name: Supabase local (as migrations entram na subida)
+        timeout-minutes: 5
         run: sh scripts/supabase-local.sh start
       - name: pgTAP (portões de RLS e do public, schemas)
         run: sh scripts/supabase-local.sh test
@@ -115,20 +121,43 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # o painel exige login (MIG-03): o e2e entra nas pessoas fictícias do supabase/seed.sql, no Supabase local do runner
+      # o painel exige login (MIG-03): o e2e entra nas pessoas fictícias do supabase/seed.sql, no Supabase local do runner.
+      # O Supabase sobe em segundo plano enquanto o install e o navegador rodam; o build espera por ele (as variáveis
+      # NEXT_PUBLIC_* entram no build).
       - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
           version: 3.2.0
-      - name: Supabase local (migrations e seed) e as chaves locais no ambiente
+      - name: Supabase local em segundo plano (migrations e seed)
         run: |
-          sh scripts/supabase-local.sh start
-          sh scripts/supabase-local.sh env >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/supabase.rc"
+          ( sh scripts/supabase-local.sh start; echo $? > "$RUNNER_TEMP/supabase.rc" ) > "$RUNNER_TEMP/supabase.log" 2>&1 &
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: versão do Playwright (chave do cache do navegador)
+        id: playwright
+        run: echo "versao=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: cache do navegador do Playwright
+        id: cache-navegador
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.versao }}
+      # Sem --with-deps: a imagem ubuntu-24.04 já tem as bibliotecas do Chromium (traz o Google Chrome). O --with-deps só
+      # acrescentava fontes CJK/tailandesas/xfonts pelo apt, e o espelho chegou a levar 10 min para 32 MB.
+      - name: navegador do Playwright (só sem cache)
+        if: steps.cache-navegador.outputs.cache-hit != 'true'
+        timeout-minutes: 3
+        run: pnpm exec playwright install chromium
+      - name: esperar o Supabase local e pôr as chaves locais no ambiente
+        timeout-minutes: 5
+        run: |
+          while [ ! -f "$RUNNER_TEMP/supabase.rc" ]; do sleep 2; done
+          cat "$RUNNER_TEMP/supabase.log"
+          [ "$(cat "$RUNNER_TEMP/supabase.rc")" = 0 ] || { echo "::error::o Supabase local não subiu"; exit 1; }
+          sh scripts/supabase-local.sh env >> "$GITHUB_ENV"
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
