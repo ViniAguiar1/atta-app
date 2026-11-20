@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 grant execute on all functions in schema extensions to service_role, authenticated;
-select plan(15);
+select plan(16);
 
 insert into auth.users (id, email, aud, role) values
   ('a1a1a1a1-0000-4000-8000-0000000000a1', 'trilha.login@exemplo.test', 'authenticated', 'authenticated'),
@@ -40,6 +40,9 @@ select throws_ok($$ select api.audit_auth_event('auth.login', null) $$, 'P0001',
 select throws_ok($$ select api.audit_auth_event('auth.login', gen_random_uuid(), '{"method":"password"}') $$, 'P0001', 'ATTA-IN-0001', 'usuário que não existe não vira autor');
 reset role;
 
+set local role service_role;
+select lives_ok($$ select api.audit_auth_event('auth.password_reset', 'a1a1a1a1-0000-4000-8000-0000000000a1', '{"reason":"recuperacao"}') $$, 'senha nova pelo link do e-mail grava');
+reset role;
 select is(audit.verify_chain(), null, 'a cadeia segue íntegra');
 select * from finish();
 rollback;
