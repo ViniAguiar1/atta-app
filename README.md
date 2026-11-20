@@ -95,7 +95,9 @@ Saúde: `GET /api/health` (status, serviço, commit; sem banco).
 - A versão (o número antes do `_`) é única e maior que a última da `main`: o CI reprova repetida ou menor. Antes do
   push, rode `git fetch origin main && ATTA_PR=<n> sh scripts/checa-migrations.sh origin/main`. Versão nova (ADR 0001 §3):
   o maior entre a hora UTC exata e a última da `main` + o número do PR em segundos, recalculada no rebase; nunca número
-  redondo (ex.: main em 20261120174500 e PR #65 → 20261120174605). A mensagem do CI já diz o valor.
+  redondo (ex.: main em 20261120174500 e PR #65 → 20261120174605). A mensagem do CI já diz o valor. A versão tem de
+  ser uma hora UTC válida: 20261120174560 (60 s, soma em decimal) é recusada, com a sugestão 20261120174600 para o
+  PR #60. Casos em `scripts/checa-migrations.test.sh`, que roda no CI.
 - Toda tabela com RLS ligada **e forçada**, e grants explícitos; o `public` fica vazio. Os portões pgTAP do CI
   conferem (ADR 0001 §2 e §3).
 - Aplicar na nuvem (projeto dos EUA, só dados fictícios): só o Backend 1, depois do merge na `main`.
