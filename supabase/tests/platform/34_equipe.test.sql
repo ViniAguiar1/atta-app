@@ -90,7 +90,7 @@ select throws_ok($$ select api.team_invite('09090909-0000-4000-8000-000000000009
 select lives_ok($$ select api.team_invite('03030303-0000-4000-8000-000000000003', 'ADMIN') $$, 'ADMIN convida o gestor adicional');
 select is(pg_temp.status(pg_temp.vinculo('03030303-0000-4000-8000-000000000003')), 'pending_verification',
   'gestor adicional fica Pendente até a conferência pela ATTA');
-select throws_ok($$ select api.team_invite('04040404-0000-4000-8000-000000000004', 'ADMIN') $$, '55000', 'ATTA-IN-0003',
+select throws_ok($$ select api.team_invite('04040404-0000-4000-8000-000000000004', 'ADMIN') $$, 'P0001', 'ATTA-IN-0003',
   'terceiro ADMIN é recusado: no máximo 2 gestores');
 select is(pg_temp.eventos('team.invite'), 3, 'cada convite fica na trilha');
 
@@ -103,7 +103,7 @@ select throws_ok(format('select api.team_accept_invite(%L)', pg_temp.vinculo('02
   'P0002', 'ATTA-CORE-0005', 'ninguém aceita o convite de outra pessoa');
 select pg_temp.como('03030303-0000-4000-8000-000000000003', null, 'aal1', null);
 select throws_ok(format('select api.team_accept_invite(%L)', pg_temp.vinculo('03030303-0000-4000-8000-000000000003')),
-  '55000', 'ATTA-IN-0003', 'o gestor adicional não se ativa sozinho: só a ATTA aprova');
+  'P0001', 'ATTA-IN-0003', 'o gestor adicional não se ativa sozinho: só a ATTA aprova');
 
 -- 4. Editar acesso
 select pg_temp.como('a1a1a1a1-0000-4000-8000-0000000000a1', 'ADMIN');
@@ -119,7 +119,7 @@ select throws_ok($$ select api.team_set_permissions('11111111-0000-4000-8000-000
 select throws_ok($$ select api.team_set_permissions('11111111-0000-4000-8000-0000000000c1', '["view"]') $$,
   'P0001', 'ATTA-IN-0001', 'matriz fora do formato é recusada');
 select throws_ok($$ select api.team_set_permissions('11111111-0000-4000-8000-0000000000a1', '{}') $$,
-  '55000', 'ATTA-IN-0003', 'ADMIN não tem matriz para editar');
+  'P0001', 'ATTA-IN-0003', 'ADMIN não tem matriz para editar');
 select throws_ok($$ select api.team_set_permissions('11111111-0000-4000-8000-0000000000b2', '{}') $$,
   'P0002', 'ATTA-CORE-0005', 'vínculo de outra clínica: não encontrado');
 select pg_temp.como('c1c1c1c1-0000-4000-8000-0000000000c1', 'COLABORADOR', 'aal1');
@@ -129,9 +129,9 @@ select throws_ok($$ select api.team_set_permissions('11111111-0000-4000-8000-000
 -- 5. Suspender e reativar
 select pg_temp.como('a1a1a1a1-0000-4000-8000-0000000000a1', 'ADMIN');
 select lives_ok($$ select api.team_suspend('11111111-0000-4000-8000-0000000000c2') $$, 'ADMIN suspende COLABORADOR');
-select throws_ok($$ select api.team_suspend('11111111-0000-4000-8000-0000000000c2') $$, '55000', 'ATTA-IN-0003',
+select throws_ok($$ select api.team_suspend('11111111-0000-4000-8000-0000000000c2') $$, 'P0001', 'ATTA-IN-0003',
   'suspender quem já está suspenso é recusado');
-select throws_ok($$ select api.team_suspend('11111111-0000-4000-8000-0000000000a1') $$, '55000', 'ATTA-IN-0003',
+select throws_ok($$ select api.team_suspend('11111111-0000-4000-8000-0000000000a1') $$, 'P0001', 'ATTA-IN-0003',
   'ninguém suspende a si mesmo');
 select lives_ok($$ select api.team_reactivate('11111111-0000-4000-8000-0000000000c2') $$, 'ADMIN reativa');
 select is(pg_temp.status('11111111-0000-4000-8000-0000000000c2'), 'active', 'reativado volta a Ativo');
@@ -145,13 +145,13 @@ reset role;
 update platform.membership set status = 'active' where user_id = '04040404-0000-4000-8000-000000000004'; -- aprovado pela ATTA (PR C)
 set local role authenticated;
 select pg_temp.como('04040404-0000-4000-8000-000000000004', 'ADMIN');
-select throws_ok($$ select api.team_suspend('11111111-0000-4000-8000-0000000000a1') $$, '55000', 'ATTA-IN-0003',
+select throws_ok($$ select api.team_suspend('11111111-0000-4000-8000-0000000000a1') $$, 'P0001', 'ATTA-IN-0003',
   'o gestor adicional não suspende o titular');
-select throws_ok($$ select api.team_remove('11111111-0000-4000-8000-0000000000a1') $$, '55000', 'ATTA-IN-0003',
+select throws_ok($$ select api.team_remove('11111111-0000-4000-8000-0000000000a1') $$, 'P0001', 'ATTA-IN-0003',
   'Excluir é bloqueado para o titular');
 select pg_temp.como('a1a1a1a1-0000-4000-8000-0000000000a1', 'ADMIN');
 select throws_ok(format('select api.team_remove(%L)', pg_temp.vinculo('04040404-0000-4000-8000-000000000004')),
-  '55000', 'ATTA-IN-0003', 'excluir outro gestor é ação protegida (só pela ATTA, com nova conferência)');
+  'P0001', 'ATTA-IN-0003', 'excluir outro gestor é ação protegida (só pela ATTA, com nova conferência)');
 select lives_ok($$ select api.team_remove('11111111-0000-4000-8000-0000000000c2') $$, 'ADMIN exclui COLABORADOR');
 select is(pg_temp.status('11111111-0000-4000-8000-0000000000c2'), 'active:removido', 'exclusão é lógica (deleted_at)');
 reset role;
@@ -159,9 +159,9 @@ reset role;
 -- 7. A guarda vale fora das funções também
 select throws_ok($$ insert into platform.membership (tenant_id, user_id, app_role)
   values ('aaaaaaaa-0000-4000-8000-000000000001', '05050505-0000-4000-8000-000000000005', 'ADMIN') $$,
-  '55000', 'ATTA-IN-0003', 'nem direto no banco passa um terceiro ADMIN');
+  'P0001', 'ATTA-IN-0003', 'nem direto no banco passa um terceiro ADMIN');
 select throws_ok($$ update platform.membership set status = 'suspended' where id = '11111111-0000-4000-8000-0000000000a1' $$,
-  '55000', 'ATTA-IN-0003', 'nem direto no banco o titular é suspenso');
+  'P0001', 'ATTA-IN-0003', 'nem direto no banco o titular é suspenso');
 select throws_ok($$ update platform.membership set is_owner = true where user_id = '04040404-0000-4000-8000-000000000004' $$,
   '23505', null, 'uma clínica tem um titular só');
 select is(has_function_privilege('anon', 'api.team_invite(uuid, text, jsonb)', 'EXECUTE'), false, 'anon não executa as funções de equipe');
