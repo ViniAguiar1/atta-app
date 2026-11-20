@@ -41,6 +41,7 @@ create table documents.document (
   constraint document_replaced_by_fk foreign key (tenant_id, replaced_by_document_id)
     references documents.document (tenant_id, id),
   constraint document_replaced_check check ((status = 'substituido') = (replaced_by_document_id is not null)),
+  constraint document_replaced_self_check check (replaced_by_document_id is distinct from id),
   constraint document_owner_check check (num_nonnulls(person_id, professional_link_id) = 1),
   constraint document_folder_check check ((person_id is null) = (folder_section is null)),
   constraint document_template_check check (template_version_id is not null or folder_section = 'docs_clinicos'),
@@ -74,6 +75,10 @@ begin
     or (old.status = 'assinado_definitivo' and new.status = 'substituido')
   ) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'document_status';
+  end if;
+  -- o substituto só se define na passagem a substituído e depois não muda
+  if old.replaced_by_document_id is not null and new.replaced_by_document_id is distinct from old.replaced_by_document_id then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'document_identity';
   end if;
   if (new.tenant_id, new.person_id, new.professional_link_id, new.template_version_id, new.folder_section,
       new.appointment_id)
