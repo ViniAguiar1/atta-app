@@ -23,6 +23,28 @@ export default defineConfig([
   // as fixtures do Playwright chamam use(), que o rules-of-hooks confunde com hook do React
   { files: ["e2e/**/*.ts"], rules: { "react-hooks/rules-of-hooks": "off" } },
   { rules: { "no-restricted-imports": ["error", SO_SERVIDOR], "no-console": "error" } },
+  // HTML cru e código montado em texto: proibidos (ADR 0004 §3b, condição do Tech Lead para a CSP com 'unsafe-inline';
+  // auditoria de segurança S2-1). Texto de clínica, paciente ou profissional entra sempre como texto, pelo React.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "react/no-danger": "error",
+      "no-eval": "error",
+      "no-implied-eval": "error",
+      "no-new-func": "error",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML)$/]",
+          message: "HTML cru é proibido (ADR 0004 §3b): use texto pelo React.",
+        },
+        {
+          selector: "CallExpression[callee.property.name=/^(insertAdjacentHTML|write|writeln)$/]",
+          message: "HTML cru é proibido (ADR 0004 §3b): use texto pelo React.",
+        },
+      ],
+    },
+  },
   // o único lugar com console.*: o logger, que escreve JSON sem dado pessoal (ADR 0001 §5)
   { files: ["src/lib/logger.ts"], rules: { "no-console": "off" } },
   {
