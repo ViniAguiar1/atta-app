@@ -3,6 +3,7 @@ import Link from "next/link";
 // Subabas de um módulo (Simulador ATTA-in: "Pacientes · Pasta do Paciente", captura 09; as subabas do ATTA, capturas
 // 19 a 23). Dono: Frontend 3 (componente comum, ORDEM do Tech Lead Frontend). Links simples, sem estado: a página diz
 // qual está ativa. A ativa tem o sublinhado de 2 px no verde da marca, texto primário em 600 e aria-current="page".
+// Com muitas subabas no celular (as 5 do ATTA em 390 px), quem rola de lado é a lista, nunca a página.
 
 export type Subaba = { rotulo: string; href: string };
 
@@ -17,7 +18,7 @@ type Props = {
 export function Subabas({ rotulo, itens, ativa }: Props) {
   return (
     <nav aria-label={rotulo} className="border-b border-border">
-      <ul className="flex gap-2">
+      <ul className="flex gap-2 overflow-x-auto">
         {itens.map((item) => {
           const atual = item.href === ativa;
           return (
@@ -25,7 +26,7 @@ export function Subabas({ rotulo, itens, ativa }: Props) {
               <Link
                 href={item.href}
                 aria-current={atual ? "page" : undefined}
-                className={`-mb-px flex min-h-11 items-center border-b-2 px-4 ${
+                className={`-mb-px flex min-h-11 items-center border-b-2 px-4 whitespace-nowrap ${
                   atual ? "border-brand font-semibold text-text-primary" : "border-transparent text-text-secondary hover:text-text-primary"
                 }`}
               >
