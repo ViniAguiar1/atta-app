@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { ResumoDaAgenda, Status } from "../schema";
-import { textos } from "../textos";
+import { SEM_NUMERO, textos } from "../textos";
 
 // Cards do topo da Agenda (PDD v206 §10.2.2; simulador, captura 01): Agendamentos hoje, Agendamentos no mês, Check-in e
 // Sem documento vinculado. Os números vêm prontos do banco (agenda_summary), no fuso da clínica: a tela não conta nada.
@@ -40,7 +40,7 @@ export function CardsDoResumo({ resumo, filtro, aoFiltrar }: Props) {
         <Titulo numero={resumo.mesConcluidos} texto={c.mes.titulo} />
         <p className="text-sm text-text-secondary">{c.mes.concluidos}</p>
         <p className="text-sm text-text-secondary">
-          <span className="font-semibold text-text-primary">{resumo.mesHorariosLivres}</span> {c.mes.livres}
+          <span className="font-semibold text-text-primary">{resumo.mesHorariosLivres ?? SEM_NUMERO}</span> {c.mes.livres}
         </p>
       </Card>
 
@@ -63,7 +63,7 @@ export function CardsDoResumo({ resumo, filtro, aoFiltrar }: Props) {
                 }`}
               >
                 <span className="font-sub text-xl" aria-hidden="true">
-                  {n}
+                  {n ?? SEM_NUMERO}
                 </span>
                 <span className="text-xs" aria-hidden="true">
                   {textos.status[status]}
@@ -85,7 +85,7 @@ export function CardsDoResumo({ resumo, filtro, aoFiltrar }: Props) {
           }`}
         >
           <span aria-hidden="true" className="flex items-baseline gap-2">
-            <span className="font-sub text-3xl text-status-negative">{resumo.semDocumento}</span>
+            <span className="font-sub text-3xl text-status-negative">{resumo.semDocumento ?? SEM_NUMERO}</span>
             <span className="text-xs font-medium tracking-wide text-text-secondary uppercase">{c.semDocumento.titulo}</span>
           </span>
           <span aria-hidden="true" className="text-sm text-text-secondary">
@@ -114,10 +114,10 @@ function Card({ icone, children }: { icone: ReactNode; children: ReactNode }) {
   );
 }
 
-function Titulo({ numero, texto }: { numero: number; texto: string }) {
+function Titulo({ numero, texto }: { numero: number | null; texto: string }) {
   return (
     <h2 className="flex items-baseline gap-2 pr-10">
-      <span className="font-sub text-3xl text-text-primary">{numero}</span>
+      <span className="font-sub text-3xl text-text-primary">{numero ?? SEM_NUMERO}</span>
       <span className="text-xs font-medium tracking-wide text-text-secondary uppercase">{texto}</span>
     </h2>
   );

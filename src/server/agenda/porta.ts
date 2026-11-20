@@ -2,6 +2,7 @@ import "server-only";
 import type { Resultado } from "@/lib/errors";
 import type { AvisoDaAgenda, DiaDaAgenda, FiltroDoDia, ResumoDaAgenda } from "@/features/agenda/schema";
 import { portaAgendaSimulada } from "./simulado";
+import { portaAgendaVazia } from "./vazia";
 
 // Contrato entre a Agenda do painel (MIG-41, Frontend 4) e o domínio da agenda (MIG-14a e MIG-11, Backend 2; MIG-13
 // para o check-in). A forma foi aprovada pelo Tech Lead em 20/11 (ADR 0001 §4); os campos fecham com o Backend 2.
@@ -17,4 +18,13 @@ export type PortaAgenda = {
   avisos(): Promise<Resultado<AvisoDaAgenda[]>>;
 };
 
-export const portaAgenda: PortaAgenda = portaAgendaSimulada;
+/**
+ * Escolha da porta, só aqui e nunca na tela (regra de stage do Tech Lead Frontend): sem leitura real, a produção usa a
+ * vazia (estado vazio do design, sem dado de mentira) e a prévia, o local e o CI usam a simulada. A porta real (MIG-11c)
+ * entra no lugar das duas quando o api.agenda_day estiver na main.
+ */
+export function escolherPortaAgenda(ambiente = process.env.VERCEL_ENV): PortaAgenda {
+  return ambiente === "production" ? portaAgendaVazia : portaAgendaSimulada;
+}
+
+export const portaAgenda: PortaAgenda = escolherPortaAgenda();
