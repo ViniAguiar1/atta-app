@@ -21,8 +21,9 @@ describe("Subabas", () => {
     expect(outra.className).toContain("border-transparent");
   });
 
-  it("alvo de toque de 44 px", () => {
+  it("alvo de toque de 44 px, rótulo sem quebra e rolagem lateral só na lista (as 5 do ATTA em 390 px)", () => {
     render(<Subabas rotulo="Seções" itens={itens} ativa="/painel/pacientes" />);
-    for (const link of screen.getAllByRole("link")) expect(link.className).toContain("min-h-11");
+    expect(screen.getByRole("list").className).toContain("overflow-x-auto");
+    for (const link of screen.getAllByRole("link")) expect(link.className).toMatch(/\bmin-h-11\b.*\bwhitespace-nowrap\b/);
   });
 });
