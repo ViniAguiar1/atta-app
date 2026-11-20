@@ -7,10 +7,10 @@ import type { Situacao } from "../schema";
 import { TEXTOS } from "../textos";
 import { Titulo } from "./Titulo";
 
-// 30 s entre envios e até 3 reenvios (PDD §11.4). A tela só espelha: quem garante o limite é o servidor. A espera é
+// 30 s entre envios (PDD §11.4). O limite de 3 reenvios a cada 15 min é do servidor (janela que reabre sozinha):
+// a tela não conta reenvios e mostra o LIMITE que ele devolver (Considerações da PO v93, §25). A espera é
 // calculada pelo horário do último envio, não por decremento: com a aba em segundo plano o timer atrasa.
 const ESPERA_S = 30;
-const MAX_REENVIOS = 3;
 
 type Props = {
   desafio: string;
@@ -26,7 +26,6 @@ export function PassoCodigo({ desafio, finalCelular, aoConfirmar, aoCorrigirCpf 
   const [enviadoEm, setEnviadoEm] = useState(() => Date.now());
   const [agora, setAgora] = useState(enviadoEm);
   const campo = useRef<HTMLInputElement>(null);
-  const [reenvios, setReenvios] = useState(0);
   const [cancelado, setCancelado] = useState(false); // 5º erro: o código caiu e só um novo vale (PDD §11.4)
   const [ocupado, executar] = useTransition();
 
@@ -63,7 +62,6 @@ export function PassoCodigo({ desafio, finalCelular, aoConfirmar, aoCorrigirCpf 
       if (!r.ok) return setErro(r.error.code === "LIMITE" ? TEXTOS.naoRecebeu : TEXTOS.indisponivel);
       setErro(null);
       setCancelado(false);
-      setReenvios((n) => n + 1);
       const novo = Date.now();
       setEnviadoEm(novo);
       setAgora(novo);
@@ -71,7 +69,7 @@ export function PassoCodigo({ desafio, finalCelular, aoConfirmar, aoCorrigirCpf 
     });
   }
 
-  const podeReenviar = espera <= 0 && reenvios < MAX_REENVIOS && !ocupado;
+  const podeReenviar = espera <= 0 && !ocupado;
 
   return (
     <form onSubmit={confirmar} noValidate className="flex flex-col gap-6">
@@ -107,7 +105,7 @@ export function PassoCodigo({ desafio, finalCelular, aoConfirmar, aoCorrigirCpf 
         {ocupado ? "Confirmando…" : "Confirmar"}
       </Botao>
       <Botao variante="secundario" onClick={reenviar} disabled={!podeReenviar}>
-        {espera > 0 && reenvios < MAX_REENVIOS ? `Reenviar código em ${espera} s` : "Reenviar código"}
+        {espera > 0 ? `Reenviar código em ${espera} s` : "Reenviar código"}
       </Botao>
       <p>{TEXTOS.naoRecebeu}</p>
       <button type="button" onClick={aoCorrigirCpf} className="min-h-12 self-start text-lg font-medium underline">

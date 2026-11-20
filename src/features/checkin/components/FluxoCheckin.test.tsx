@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, configure, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FluxoCheckin } from "./FluxoCheckin";
@@ -6,11 +6,17 @@ import { FluxoCheckin } from "./FluxoCheckin";
 const acoes = vi.hoisted(() => ({ iniciarCheckin: vi.fn(), confirmarCodigo: vi.fn(), reenviarCodigo: vi.fn() }));
 vi.mock("../actions", () => acoes);
 
+// A suíte inteira roda em paralelo: 1 s (padrão do findBy) às vezes não basta para a transição terminar.
+configure({ asyncUtilTimeout: 4000 });
+
 const DESAFIO = "00000000-1111-4111-8111-111111111111";
 
 describe("FluxoCheckin", () => {
   beforeEach(() => vi.clearAllMocks());
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers(); // o relógio falso de um teste que falhou não vaza para o próximo
+  });
 
   it("não chama o servidor com CPF inválido", async () => {
     render(<FluxoCheckin portal="aurora" clinica="Clínica Aurora Estética" />);
@@ -90,5 +96,18 @@ describe("FluxoCheckin", () => {
     await userEvent.click(screen.getByRole("button", { name: "Confirmar" }));
     await screen.findByRole("alert");
     expect(screen.getByLabelText("Código")).toHaveFocus();
+  });
+
+  it("reenvio com LIMITE do servidor orienta a procurar a recepção", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    acoes.iniciarCheckin.mockResolvedValue({ ok: true, data: { desafio: DESAFIO, finalCelular: "4321" } });
+    acoes.reenviarCodigo.mockResolvedValue({ ok: false, error: { code: "LIMITE", message: "x" } });
+    render(<FluxoCheckin portal="aurora" clinica="Clínica Aurora Estética" />);
+    await userEvent.type(screen.getByLabelText("CPF"), "52998224725");
+    await userEvent.click(screen.getByRole("button", { name: "Enviar código" }));
+    await screen.findByLabelText("Código");
+    vi.advanceTimersByTime(31_000);
+    await userEvent.click(await screen.findByRole("button", { name: "Reenviar código" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não recebeu o código? Procure a recepção.");
   });
 });
