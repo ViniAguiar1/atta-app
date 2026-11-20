@@ -56,14 +56,19 @@ export const linhaSchema = z.object({
   tipo: z.enum(TIPOS),
   modalidade: z.enum(["presencial", "online"]),
   paciente: z.object({
-    pessoaId: z.uuid(),
+    /** pessoa da rede ou paciente provisório da importação (ADR 0005); a Pasta confere o vínculo no servidor */
+    tipo: z.enum(["pessoa", "provisorio"]),
+    id: z.uuid(),
+    /** em acesso pendente, o nome que a clínica digitou; no provisório, o da importação */
     nomeExibicao: z.string().min(1),
     /** já mascarado pelo servidor (`···.···.247-25`, ADR 0002 §6); null para estrangeiro ou sem CPF */
     cpfMascarado: z.string().nullable(),
     iniciais: z.string().max(2),
   }),
   servicos: z.array(z.object({ id: z.uuid(), nome: z.string().min(1) })),
+  /** pelo vínculo com a clínica (ADR 0005); só agenda quem concluiu o PROpass, então o nome sempre existe aqui */
   profissional: z.object({ vinculoId: z.uuid(), nomeExibicao: z.string().min(1) }),
+  /** vazio até o schema documents (Backend 3) entrar; o formato não muda */
   documentos: z.array(
     z.object({ id: z.uuid(), nome: z.string().min(1), opcional: z.boolean(), estado: z.enum(ESTADOS_DO_DOCUMENTO) }),
   ),
