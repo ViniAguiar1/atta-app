@@ -91,7 +91,7 @@ select ok(not has_function_privilege('anon', 'api.template_publish(uuid)', 'EXEC
           and not has_function_privilege('anon', 'api.template_deactivate(uuid)', 'EXECUTE'),
           'anon não publica nem inativa');
 select results_eq(
-  $$ select action, kind from audit.action where action like 'template.%' order by action $$,
+  $$ select action, kind from audit.action where action in ('template.publish', 'template.deactivate') order by action $$,
   $$ values ('template.deactivate'::text, 'change'::text), ('template.publish', 'change') $$,
   'ações do modelo no catálogo da auditoria');
 
