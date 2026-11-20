@@ -130,7 +130,14 @@ function MenuDaPessoa({ nome, clara, acaoSair }: { nome: string; clara: boolean;
   }, [aberto]);
 
   return (
-    <div ref={raiz} className="relative">
+    <div
+      ref={raiz}
+      className="relative"
+      onBlur={(e) => {
+        // Tab para fora do menu também fecha (o foco saiu da raiz)
+        if (aberto && !raiz.current?.contains(e.relatedTarget as Node | null)) setAberto(false);
+      }}
+    >
       <button
         ref={botao}
         type="button"
@@ -147,7 +154,9 @@ function MenuDaPessoa({ nome, clara, acaoSair }: { nome: string; clara: boolean;
       </button>
       <div id={idDoMenu} hidden={!aberto} className="absolute right-0 z-10 mt-2 min-w-56 rounded-md border border-border bg-surface-raised p-1 text-text-primary">
         <form action={acaoSair}>
-          <button type="submit" className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm hover:bg-surface-card">
+          {/* o painel é claro mesmo com a barra escura: o anel volta ao focus-ring. O "!" vence a regra da barra escura
+              ([&_:focus-visible]:outline-on-brand no header), que tem a mesma especificidade. */}
+          <button type="submit" className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm hover:bg-surface-card focus-visible:outline-focus-ring!">
             {t.sair}
           </button>
         </form>
