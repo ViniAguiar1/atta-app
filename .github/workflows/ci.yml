@@ -6,7 +6,8 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [main]
+    # trem/** são os vagões do trem de merge (scripts/trem.sh): push roda a suíte inteira, sem filtro de caminho
+    branches: [main, "trem/**"]
 
 permissions:
   contents: read

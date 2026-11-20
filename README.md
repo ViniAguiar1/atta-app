@@ -47,6 +47,24 @@ pnpm db stop                          # para sem apagar os dados
 ```
 Nunca use a base local de outro agente sem combinar.
 
+## Trem de merge (`scripts/trem.sh`)
+
+A regra continua a do PLANO: rebase na `main` atual, CI verde nesse estado e um merge por vez. O trem faz isso por todos, sem disputa, testando até 3 PRs em cascata ao mesmo tempo:
+`trem/1` = main + A, `trem/2` = main + A + B, `trem/3` = main + A + B + C, cada um com a suíte inteira.
+
+- **Entrada:** o autor põe a etiqueta `fila` quando já tem o ✅ do revisor (no sensível, também do Tech Lead e do Security Engineer) e a prévia da Vercel verde. Commit novo depois do ✅ pede ✅ de novo (ou o ✅ cita o SHA).
+- **Ordem:** `conserta-main` primeiro, depois a ordem do CTO em `Shared/atta/migracao/fila.txt` (um número de PR por linha) e, por fim, o número do PR.
+- **Antes de cada squash:** a árvore do PR rebaseado é idêntica à testada (`HEAD^{tree}`), o head do PR é o mesmo que entrou no trem, as aprovações valem e a `main` não está vermelha. O script deixa no PR o SHA da árvore e o link do CI que a testou.
+- **Falha:** o PR sai da fila (`fila-falhou`, comentário com o link) e os de trás voltam na próxima volta.
+- Os ramos `trem/*` não geram prévia (`vercel.json`).
+
+```bash
+bash scripts/trem.sh ensaio          # padrão: só mostra o que faria (nada de push, comentário ou merge)
+bash scripts/trem.sh ensaio 36 38    # ensaio com uma lista de PRs
+bash scripts/trem.sh testar          # empurra trem/1..3 e espera o CI (gasta cota do Actions)
+TREM_MERGE_LIBERADO=1 bash scripts/trem.sh andar   # faz os merges; só com a decisão do CTO
+```
+
 ## App
 ```bash
 pnpm install
