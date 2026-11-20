@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decidirGuarda, destinoSeguro, exigeSessao } from "./rotas";
+import { decidirGuarda, destinoSeguro, exigeSessao, ROTA_API_VERIFICACAO, ROTAS_PUBLICAS_DE_API } from "./rotas";
 
 describe("rotas", () => {
   it("só o painel exige sessão", () => {
@@ -33,5 +33,13 @@ describe("rotas", () => {
     expect(decidirGuarda("/painel/seguranca/2fa", "", admin)).toBeNull();
     expect(decidirGuarda("/painel/agenda", "", { ...admin, aal: "aal2" })).toBeNull();
     expect(decidirGuarda("/painel/agenda", "", { tenant_id: "t", app_role: "COLABORADOR", aal: "aal1" })).toBeNull();
+  });
+});
+
+describe("API pública da verificação (MIG-24)", () => {
+  it("fica fora da guarda de staff, com e sem sessão", () => {
+    expect(ROTAS_PUBLICAS_DE_API).toContain("/public/v1/verificar");
+    expect(exigeSessao(`${ROTA_API_VERIFICACAO}/ATTA-7K3M-9QPX-2B4D`)).toBe(false);
+    expect(decidirGuarda(`${ROTA_API_VERIFICACAO}/ATTA-7K3M-9QPX-2B4D`, "", null)).toBeNull();
   });
 });

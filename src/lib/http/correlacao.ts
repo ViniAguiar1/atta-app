@@ -16,6 +16,16 @@ export function prepararCabecalhosDaRequisicao(recebidos: Headers, idNovo: strin
   return h;
 }
 
+/**
+ * O IP do usuário: o 1º item do x-forwarded-for que a Vercel entrega, só se for um endereço válido; senão, null.
+ * Um lugar só para a trilha (cabecalhosParaOSupabase) e para o limitador de tentativas (src/server/limite.ts), para
+ * os dois contarem o mesmo IP (pedido da Segurança no #65). Nunca x-real-ip nem cabeçalho que o navegador escolhe.
+ */
+export function ipDoCliente(recebidos: Headers, ehIp: (valor: string) => boolean): string | null {
+  const ip = (recebidos.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
+  return ip && ehIp(ip) ? ip : null;
+}
+
 /** No servidor: o que vai em todo pedido ao Supabase. Id fora do formato do proxy vira um novo; IP inválido não vai. */
 export function cabecalhosParaOSupabase(
   recebidos: Headers,
@@ -24,7 +34,7 @@ export function cabecalhosParaOSupabase(
 ): Record<string, string> {
   const id = recebidos.get(CABECALHO_REQUEST_ID);
   const saida: Record<string, string> = { [CABECALHO_REQUEST_ID]: id && UUID.test(id) ? id : gerarId() };
-  const ip = (recebidos.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
-  if (ip && ehIp(ip)) saida[CABECALHO_IP_DO_CLIENTE] = ip;
+  const ip = ipDoCliente(recebidos, ehIp);
+  if (ip) saida[CABECALHO_IP_DO_CLIENTE] = ip;
   return saida;
 }

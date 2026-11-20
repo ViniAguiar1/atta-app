@@ -11,7 +11,12 @@ export type Database = {
             [_ in never]: never
           }
           Functions: {
-            "atta_in_service_delete_blockers":
+            "atta_code_verify":
+{ Args: { "p_code": string }; Returns: {
+              "document_type": string,"evidence_sha256": string,"exists": boolean,"level": string,"signed_at": string,"status": string,"template_version": number,"tenant_trade_name": string
+            }[]
+                           },
+"atta_in_service_delete_blockers":
 { Args: { "p_service_id": string }; Returns: {
               "template_id": string,"title": string
             }[]
