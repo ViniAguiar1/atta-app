@@ -4,6 +4,12 @@ import { createHmac } from "node:crypto";
 export const SENHA = "Senha-Ficticia-123";
 export const SESSAO_DA_GESTORA = "e2e/.auth/gestora.json";
 
+/**
+ * Onde a pessoa cai ao entrar: /painel, ou a primeira aba pronta que o papel vê (o /painel redireciona para ela; hoje
+ * Configurações para o ADMIN; para o Colaborador, nenhuma ainda). Vale enquanto as telas entram, uma a uma.
+ */
+export const INICIO_DO_PAINEL = /\/painel(\/[a-z-]+){0,2}$/;
+
 // TOTP (RFC 6238: SHA-1, 6 dígitos, passo de 30 s), para o e2e responder ao segundo fator como o app autenticador.
 // O segredo da gestora é o do supabase/seed.sql: fictício e público, só do banco local e do CI.
 export const SEGREDO_DA_GESTORA = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
