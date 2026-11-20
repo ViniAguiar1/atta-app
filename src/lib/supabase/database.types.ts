@@ -143,6 +143,72 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"appointment": {
+                  Row: {
+                    "absent_at": string | null,"absent_mode": string | null,"appointment_type": string,"cancel_reason": string | null,"cancelled_at": string | null,"checkin_started_at": string | null,"concluded_at": string | null,"concluded_by_reception": boolean,"created_at": string,"created_by": string | null,"ends_at": string,"id": string,"in_service_at": string | null,"modality": string,"person_id": string | null,"professional_link_id": string,"provisional_patient_id": string | null,"ready_at": string | null,"return_of_appointment_id": string | null,"starts_at": string,"status": string,"tenant_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "absent_at"?: string | null,"absent_mode"?: string | null,"appointment_type": string,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"checkin_started_at"?: string | null,"concluded_at"?: string | null,"concluded_by_reception"?: boolean,"created_at"?: string,"created_by"?: string | null,"ends_at": string,"id"?: string,"in_service_at"?: string | null,"modality"?: string,"person_id"?: string | null,"professional_link_id": string,"provisional_patient_id"?: string | null,"ready_at"?: string | null,"return_of_appointment_id"?: string | null,"starts_at": string,"status"?: string,"tenant_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "absent_at"?: string | null,"absent_mode"?: string | null,"appointment_type"?: string,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"checkin_started_at"?: string | null,"concluded_at"?: string | null,"concluded_by_reception"?: boolean,"created_at"?: string,"created_by"?: string | null,"ends_at"?: string,"id"?: string,"in_service_at"?: string | null,"modality"?: string,"person_id"?: string | null,"professional_link_id"?: string,"provisional_patient_id"?: string | null,"ready_at"?: string | null,"return_of_appointment_id"?: string | null,"starts_at"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "appointment_return_fk"
+      columns: ["tenant_id","person_id","return_of_appointment_id"]
+isOneToOne: false
+      referencedRelation: "appointment"
+      referencedColumns: ["tenant_id","person_id","id"]
+    }
+                  ]
+                },"appointment_clinic_service": {
+                  Row: {
+                    "appointment_id": string,"clinic_service_id": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "appointment_id": string,"clinic_service_id": string,"tenant_id": string
+                  }
+                  Update: {
+                    "appointment_id"?: string,"clinic_service_id"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "appointment_clinic_service_appointment_fk"
+      columns: ["tenant_id","appointment_id"]
+isOneToOne: false
+      referencedRelation: "appointment"
+      referencedColumns: ["tenant_id","id"]
+    },{
+      foreignKeyName: "appointment_clinic_service_service_fk"
+      columns: ["tenant_id","clinic_service_id"]
+isOneToOne: false
+      referencedRelation: "clinic_service"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"appointment_transition": {
+                  Row: {
+                    "actor": string | null,"appointment_id": string,"at": string,"from_status": string,"id": string,"reason": string | null,"tenant_id": string,"to_status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "actor"?: string | null,"appointment_id": string,"at"?: string,"from_status": string,"id"?: string,"reason"?: string | null,"tenant_id": string,"to_status": string
+                  }
+                  Update: {
+                    "actor"?: string | null,"appointment_id"?: string,"at"?: string,"from_status"?: string,"id"?: string,"reason"?: string | null,"tenant_id"?: string,"to_status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "appointment_transition_appointment_fk"
+      columns: ["tenant_id","appointment_id"]
+isOneToOne: false
+      referencedRelation: "appointment"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
                 },"business_hours": {
                   Row: {
                     "created_at": string,"ends_at": string,"id": string,"starts_at": string,"tenant_id": string,"weekday": number
@@ -299,7 +365,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "check_link_rules":
+            "apply_transition":
+{ Args: { "p_absent_mode"?: string,"p_by_reception"?: boolean,"p_id": string,"p_reason"?: string,"p_tenant": string,"p_to": string }; Returns: undefined
+                           },
+"check_link_rules":
 { Args: { "p_appointment_type": string,"p_clinic_service_id": string }; Returns: undefined
                            },
 "effective_settings":
@@ -321,6 +390,9 @@ isOneToOne: false
 { Args: { "p_appointment_type"?: string,"p_clinic_service_id"?: string }; Returns: {
               "allowed_ints": (number)[],"default_bool": boolean,"default_int": number,"key": string,"max_int": number,"min_int": number,"source": string,"value_bool": boolean,"value_int": number,"value_type": string
             }[]
+                           },
+"transition_appointment":
+{ Args: { "p_id": string,"p_reason"?: string,"p_to": string }; Returns: undefined
                            }
           }
           Enums: {
