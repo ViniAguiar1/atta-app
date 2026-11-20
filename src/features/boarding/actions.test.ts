@@ -58,4 +58,11 @@ describe("confirmarPin (action)", () => {
     expect(mocks.apagarGrant).toHaveBeenCalledTimes(3);
     expect(mocks.apagarLink).not.toHaveBeenCalled();
   });
+
+  it("link que não vale mais apaga também o cookie do link", async () => {
+    mocks.confirmarPin.mockResolvedValue({ ok: true, data: { status: "indisponivel" } });
+    expect(await confirmarPin({ pin: "2468" })).toEqual({ ok: true, data: { status: "indisponivel" } });
+    expect(mocks.apagarGrant).toHaveBeenCalled();
+    expect(mocks.apagarLink).toHaveBeenCalled();
+  });
 });
