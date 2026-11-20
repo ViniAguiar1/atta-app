@@ -76,6 +76,29 @@ export type Database = {
 "report_divergence":
 { Args: { "p_person_id": string,"p_reason": string }; Returns: string
                            },
+"team_accept_invite":
+{ Args: { "p_membership_id": string }; Returns: undefined
+                           },
+"team_invite":
+{ Args: { "p_app_role": string,"p_permissions"?: Json,"p_user_id": string }; Returns: string
+                           },
+"team_list":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "app_role": string,"display_name": string,"email": string,"is_owner": boolean,"last_sign_in_at": string,"membership_id": string,"permissions": Json,"status": string,"user_id": string
+            }[]
+                           },
+"team_reactivate":
+{ Args: { "p_membership_id": string }; Returns: undefined
+                           },
+"team_remove":
+{ Args: { "p_membership_id": string }; Returns: undefined
+                           },
+"team_set_permissions":
+{ Args: { "p_membership_id": string,"p_permissions": Json }; Returns: undefined
+                           },
+"team_suspend":
+{ Args: { "p_membership_id": string }; Returns: undefined
+                           },
 "template_deactivate":
 { Args: { "p_template_id": string }; Returns: undefined
                            },
@@ -320,14 +343,14 @@ isOneToOne: false
                   ]
                 },"membership": {
                   Row: {
-                    "app_role": string,"created_at": string,"deleted_at": string | null,"id": string,"status": string,"tenant_id": string,"updated_at": string,"user_id": string
+                    "app_role": string,"created_at": string,"deleted_at": string | null,"id": string,"is_owner": boolean,"status": string,"tenant_id": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "app_role": string,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"status"?: string,"tenant_id": string,"updated_at"?: string,"user_id": string
+                    "app_role": string,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"is_owner"?: boolean,"status"?: string,"tenant_id": string,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "app_role"?: string,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string,"user_id"?: string
+                    "app_role"?: string,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"is_owner"?: boolean,"status"?: string,"tenant_id"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
