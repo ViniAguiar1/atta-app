@@ -19,13 +19,16 @@ const ENCONTRADO = {
 
 type Chamada = { fn: string; args: Record<string, unknown> };
 
-function cliente(opcoes: { limite?: boolean; linha?: unknown; erro?: { code: string; message: string } } = {}) {
+function cliente(opcoes: { limite?: boolean; teto?: boolean; linha?: unknown; erro?: { code: string; message: string } } = {}) {
   const chamadas: Chamada[] = [];
   const c = {
     schema: () => ({
       rpc: (fn: string, args: Record<string, unknown>) => {
         chamadas.push({ fn, args });
-        if (fn === "rate_limit_hit") return Promise.resolve({ data: opcoes.limite ?? true, error: null });
+        if (fn === "rate_limit_hit") {
+          const ok = args.p_bucket === "verify.global" ? (opcoes.teto ?? true) : (opcoes.limite ?? true);
+          return Promise.resolve({ data: ok, error: null });
+        }
         if (opcoes.erro) return Promise.resolve({ data: null, error: opcoes.erro });
         return Promise.resolve({ data: [opcoes.linha ?? NAO_ENCONTRADO], error: null });
       },
@@ -41,14 +44,15 @@ describe("verificarCodigo", () => {
     const { c, chamadas } = cliente({ linha: ENCONTRADO });
     const r = await verificarCodigo(" atta 7k3m 9qpx 2b4d ", comIp, c);
     expect(r).toEqual({ ok: true, data: ENCONTRADO });
-    expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit", "atta_code_verify"]);
-    expect(chamadas[1]!.args).toEqual({ p_code: "ATTA-7K3M-9QPX-2B4D" });
+    expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit", "rate_limit_hit", "atta_code_verify"]);
+    expect(chamadas[2]!.args).toEqual({ p_code: "ATTA-7K3M-9QPX-2B4D" });
   });
 
   it("o limite é contado primeiro, com o IP do x-forwarded-for, e o IP não vai ao banco em claro", async () => {
     const { c, chamadas } = cliente({ linha: ENCONTRADO });
     await verificarCodigo("ATTA-7K3M-9QPX-2B4D", comIp, c);
     expect(chamadas[0]).toMatchObject({ fn: "rate_limit_hit", args: { p_bucket: "verify.ip", p_limit: 30, p_window_seconds: 60 } });
+    expect(chamadas[1]).toMatchObject({ fn: "rate_limit_hit", args: { p_bucket: "verify.global", p_limit: 600, p_window_seconds: 60 } });
     expect(JSON.stringify(chamadas)).not.toContain("203.0.113.7");
   });
 
@@ -60,13 +64,21 @@ describe("verificarCodigo", () => {
     expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit"]);
   });
 
+  it("teto da rota inteira (600/min) passou: INDISPONIVEL, sem consultar o código", async () => {
+    const { c, chamadas } = cliente({ teto: false });
+    const r = await verificarCodigo("ATTA-7K3M-9QPX-2B4D", comIp, c);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("INDISPONIVEL");
+    expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit", "rate_limit_hit"]);
+  });
+
   it("malformado responde igual ao inexistente, e também conta no limite", async () => {
     const inexistente = await verificarCodigo("ATTA-0000-0000-0000", comIp, cliente().c);
     const { c, chamadas } = cliente();
     const malformado = await verificarCodigo("<script>alert(1)</script>", comIp, c);
     expect(malformado).toEqual(inexistente);
     expect(malformado).toEqual({ ok: true, data: NAO_ENCONTRADO });
-    expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit"]);
+    expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit", "rate_limit_hit"]);
     expect((await verificarCodigo("x".repeat(500), comIp, cliente().c))).toEqual(inexistente);
   });
 
