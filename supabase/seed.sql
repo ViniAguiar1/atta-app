@@ -8,6 +8,7 @@
 --   colaboradora.ficticia@exemplo.test COLABORADOR (TOTP opcional)
 --   convidado.ficticio@exemplo.test    sem clínica (cai em /sem-clinica)
 --   gestora.beta.ficticia@exemplo.test ADMIN da 2ª clínica (isolamento entre clínicas)
+--   recupera.ficticia@exemplo.test     COLABORADOR do e2e do "Esqueci a senha" (a senha dela muda no teste)
 -- Nomes de clínica e de pessoa sem termo de ambiente: aparecem na tela, como na produção.
 -- Os ids começam em eeee para não cruzar com os dos testes pgTAP.
 -- ---------------------------------------------------------------------------------------------------------------
@@ -21,7 +22,8 @@ with pessoa (id, email, nome) as (
     ('eeee0000-0000-4000-8000-0000000000a2'::uuid, 'admin.novo.ficticio@exemplo.test', 'Otávio Lins'),
     ('eeee0000-0000-4000-8000-0000000000c1'::uuid, 'colaboradora.ficticia@exemplo.test', 'Rafaela Moura'),
     ('eeee0000-0000-4000-8000-0000000000f5'::uuid, 'convidado.ficticio@exemplo.test', 'Caio Brandão'),
-    ('eeee0000-0000-4000-8000-0000000000b1'::uuid, 'gestora.beta.ficticia@exemplo.test', 'Lívia Castro')
+    ('eeee0000-0000-4000-8000-0000000000b1'::uuid, 'gestora.beta.ficticia@exemplo.test', 'Lívia Castro'),
+    ('eeee0000-0000-4000-8000-0000000000c2'::uuid, 'recupera.ficticia@exemplo.test', 'Marta Siqueira')
 ), usuario as (
   -- os campos de token vazios (e não nulos) são o que o Auth espera de um usuário criado fora da API
   insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -44,7 +46,8 @@ insert into platform.membership (tenant_id, user_id, app_role) values
   ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000a1', 'ADMIN'),
   ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000a2', 'ADMIN'),
   ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c1', 'COLABORADOR'),
-  ('eeee0000-0000-4000-8000-000000000002', 'eeee0000-0000-4000-8000-0000000000b1', 'ADMIN');
+  ('eeee0000-0000-4000-8000-000000000002', 'eeee0000-0000-4000-8000-0000000000b1', 'ADMIN'),
+  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c2', 'COLABORADOR');
 
 -- TOTP da gestora, já verificado. Segredo fictício e público (base32), igual ao de e2e/totp.ts.
 insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at, secret)
