@@ -297,6 +297,11 @@ isOneToOne: false
               "key": string,"level": string,"value": Json
             }[]
                            },
+"link_rules_effective":
+{ Args: { "p_tenant": string }; Returns: {
+              "appointment_type": string,"clinic_service_id": string,"key": string,"level": string,"v": number
+            }[]
+                           },
 "set_setting":
 { Args: { "p_appointment_type"?: string,"p_clinic_service_id"?: string,"p_key": string,"p_value": Json }; Returns: {
               "key": string,"level": string,"value": Json

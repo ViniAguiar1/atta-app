@@ -1,7 +1,7 @@
 -- MIG-10b: Configurações › Agendamentos (Link Check-in Online, celulares do Fluxo alternativo, leitura da tela) e S3-2
 -- (grant por coluna e auditoria em atta_in.setting). Dados fictícios: bytes e rótulos inventados.
 begin;
-select plan(25);
+select plan(30);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -43,6 +43,10 @@ create function pg_temp.celular(p_label text) returns void language sql as $$
   insert into atta_in.alt_flow_phone (id, tenant_id, label, phone_masked, phone_enc, dek_wrapped, kek_version)
   values (gen_random_uuid(), (select private.current_tenant_id()), p_label, '(11) 9••••-0000', '\x01aa', '\x01bb', 1)
 $$;
+create function pg_temp.chaves_da_trilha() returns text language sql security definer as $$
+  select string_agg(distinct k, ',' order by k) from audit.event e, jsonb_object_keys(e.after) k
+  where e.action = 'setting.change'
+$$;
 create function pg_temp.eventos(p_action text) returns int language sql security definer as $$
   select count(*)::int from audit.event where action = p_action
 $$;
@@ -80,14 +84,27 @@ select ok((select value_int = 200 and source = 'unidade' from atta_in.settings_s
 select throws_ok($$ select pg_temp.salvar('link_envio_antecedencia_h', 3) $$, 'P0001', 'ATTA-IN-0003',
                  'baixar o envio para 3 h com o lembrete de 200 min é conflito (a transação volta)');
 
+-- as regras valem também para escrita direta e para todos os escopos (gatilho adiado; aqui conferido na hora)
+set constraints all immediate;
+select throws_ok($$ update atta_in.setting set value_int = 3 where key = 'link_envio_antecedencia_h' $$,
+                 'P0001', 'ATTA-IN-0003',
+                 'escrita direta na tabela também respeita as regras (envio de 3 h com o 1º lembrete de 200 min)');
+select lives_ok($$ select null from atta_in.set_setting('lembrete_1_min', '180', 'consulta') $$,
+                'consulta com 1º lembrete de 180 min (cabe nas 4 h da unidade)');
+select lives_ok($$ select pg_temp.salvar('lembrete_1_min', 60) $$, 'unidade volta ao 1º lembrete de 60 min');
+select throws_ok($$ select pg_temp.salvar('link_envio_antecedencia_h', 2) $$, 'P0001', 'ATTA-IN-0003',
+                 'baixar o envio da unidade para 2 h deixaria a consulta incoerente: recusado');
+set constraints all deferred;
+
 -- S3-2: grant por coluna, carimbo de quem mudou e auditoria
 select throws_ok($$ update atta_in.setting set key = 'lembrete_2_min' where key = 'lembrete_1_min' $$, '42501', null,
                  'ninguém troca a chave por fora');
 select throws_ok($$ update atta_in.setting set created_by = gen_random_uuid() $$, '42501', null,
                  'ninguém grava created_by por fora');
 select ok((select updated_by = (current_setting('request.jwt.claims')::jsonb ->> 'sub')::uuid
-           from atta_in.setting where key = 'lembrete_1_min'), 'o banco carimba quem mudou');
-select is(pg_temp.eventos('setting.change'), 3, 'cada mudança de configuração vai para a auditoria (só as que gravaram)');
+           from atta_in.setting where key = 'lembrete_1_min' and level = 'unidade'), 'o banco carimba quem mudou');
+select is(pg_temp.eventos('setting.change'), 5, 'cada mudança de configuração vai para a auditoria (só as que gravaram)');
+select ok(pg_temp.chaves_da_trilha() !~ '(^|,)value(,|$)', 'a trilha usa o nome da configuração, nunca a chave value');
 
 -- celulares do Fluxo alternativo: cifrados, o painel lê só a máscara; até 10
 select lives_ok($$ select pg_temp.celular('Recepção') $$, 'ADMIN cadastra um celular da clínica');
