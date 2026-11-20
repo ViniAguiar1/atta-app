@@ -17,9 +17,5 @@ export const seletoresDeCor = [
   `JSXAttribute[name.name="style"] ${emTexto(`/${COR}/`)}`,
 ].map((selector) => ({ selector, message: MENSAGEM }));
 
-/** Bloco do flat config. Atenção: no-restricted-syntax é uma regra só; se outro bloco a definir depois, junte os seletores. */
-export const coresSoPorToken = {
-  files: ["src/**/*.{ts,tsx}"],
-  ignores: ["src/**/*.test.{ts,tsx}"],
-  rules: { "no-restricted-syntax": ["error", ...seletoresDeCor] },
-};
+// No flat config, no-restricted-syntax é uma regra só, e o último bloco que a define vence: os seletores de cor entram
+// junto com os outros, num bloco único, no eslint.config.mjs (antes, um bloco posterior os apagava sem aviso).
