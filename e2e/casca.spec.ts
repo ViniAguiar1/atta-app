@@ -36,6 +36,24 @@ test.describe("com sessão", () => {
     expect(await page.locator("body").innerText()).not.toMatch(PROIBIDO);
   });
 
+  test("as 6 abas do simulador aparecem para o ADMIN, e os módulos sem dado abrem no estado vazio, sem 404", async ({ page }) => {
+    await page.goto("/painel/metricas");
+    const abas = page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link");
+    await expect(abas).toHaveText(["Agendamentos", "Pacientes", "Termos & Docs", "ATTA", "Métricas", "Configurações"]);
+    await expect(page.getByRole("link", { name: /^Notificações/ })).toBeVisible();
+    for (const [rota, aba, vazio] of [
+      ["/painel/documentos", "Termos & Docs", "Nenhum modelo de documento ainda"],
+      ["/painel/atta", "ATTA", "Nada para mostrar agora"],
+      ["/painel/metricas", "Métricas", "Ainda não há dados para as métricas"],
+      ["/painel/notificacoes", null, "Nenhuma notificação"],
+    ] as const) {
+      await page.goto(rota);
+      await expect(page.getByRole("main").getByText(vazio)).toBeVisible();
+      if (aba) await expect(page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link", { name: aba })).toHaveAttribute("aria-current", "page");
+      expect((await axe(page)).violations, rota).toEqual([]);
+    }
+  });
+
   test("/ e /login com sessão vão ao painel", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveURL(INICIO_DO_PAINEL);

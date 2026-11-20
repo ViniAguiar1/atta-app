@@ -2,13 +2,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { SessaoDoPainel } from "../sessao";
-import { ABAS } from "../abas";
 import { BarraDoPainel as Barra } from "./BarraDoPainel";
 
-// a casca só mostra módulo pronto; aqui, todos prontos (e o sino), para testar a barra inteira
-const PRONTOS = [...ABAS.map((a) => a.href), "/painel/notificacoes"];
 const acaoSair = vi.fn(async () => {});
-const BarraDoPainel = (p: Omit<React.ComponentProps<typeof Barra>, "prontos" | "acaoSair">) => <Barra prontos={PRONTOS} acaoSair={acaoSair} {...p} />;
+const BarraDoPainel = (p: Omit<React.ComponentProps<typeof Barra>, "acaoSair">) => <Barra acaoSair={acaoSair} {...p} />;
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/painel/configuracoes/agendamentos" }));
 
@@ -26,7 +23,21 @@ describe("barra do painel (MIG-40)", () => {
     expect(screen.getByText("AE")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("cores do Guia v21 na barra escura: aba ativa em brand-active com texto branco 600, inativas a 78 %", () => {
+  it("como o simulador (print 28): as 6 abas para o ADMIN, com o separador antes de Métricas, e o nome da pessoa", () => {
+    render(<BarraDoPainel sessao={sessao} />);
+    expect(modulos().getAllByRole("link").map((l) => l.textContent)).toEqual([
+      "Agendamentos",
+      "Pacientes",
+      "Termos & Docs",
+      "ATTA",
+      "Métricas",
+      "Configurações",
+    ]);
+    expect(modulos().getByRole("link", { name: "ATTA" }).className).toContain("font-atta");
+    expect(screen.getByText("Ana Exemplo")).toHaveAttribute("aria-hidden", "true"); // o rótulo do botão já diz o nome
+  });
+
+  it("cores do simulador na barra escura: aba ativa em brand-active com texto branco 600, inativas a 78 %", () => {
     render(<BarraDoPainel sessao={sessao} />);
     expect(modulos().getByRole("link", { name: "Configurações" }).className).toMatch(/\bbg-brand-active\b.*\bfont-semibold\b.*\btext-on-brand\b/);
     expect(modulos().getByRole("link", { name: "Agendamentos" }).className).toContain("text-on-brand/78");
@@ -44,10 +55,9 @@ describe("barra do painel (MIG-40)", () => {
     expect(screen.getByRole("button", { name: "Deixar a barra escura" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("sem módulo pronto não há aba nem sino, e sem nome de clínica não sobra texto vazio", () => {
-    render(<Barra sessao={{ ...sessao, clinica: null }} prontos={[]} acaoSair={acaoSair} />);
-    expect(screen.getByRole("navigation", { name: "Módulos do painel" }).querySelectorAll("a")).toHaveLength(0);
-    expect(screen.queryByRole("link", { name: /Notificações/ })).toBeNull();
+  it("o sino aparece sempre, e sem nome de clínica não sobra texto vazio", () => {
+    render(<BarraDoPainel sessao={{ ...sessao, clinica: null, notificacoes: 0 }} />);
+    expect(screen.getByRole("link", { name: "Notificações" })).toHaveAttribute("href", "/painel/notificacoes");
     expect(screen.queryByTitle("Clínica Fictícia")).toBeNull();
   });
 

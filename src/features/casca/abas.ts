@@ -17,23 +17,25 @@ export const ABAS: Aba[] = [
 ];
 
 /**
- * Módulos com tela pronta, numa lista só (decisão do CTO, regra do stage): aba de módulo que ainda não existe não
- * aparece. Cada item (MIG-41 a MIG-48, e o sino no MIG-45) acrescenta a sua rota aqui quando a tela entra.
+ * Telas fora do painel que só abrem na produção com a porta real (check-in, Boarding Check): a lista única que o
+ * moduloDisponivel consulta. O painel não usa mais esta lista: as 6 abas aparecem sempre (decisão do dono, 20/11,
+ * PLANO "Abas e fidelidade ao simulador"), e a tela sem dado real mostra o estado vazio do design pela porta vazia
+ * (modelo: src/server/agenda/porta.ts, #142), sem 404 e sem dado de mentira.
  */
-export const MODULOS_PRONTOS: readonly string[] = ["/painel/pacientes", "/painel/configuracoes"]; // MIG-43 e MIG-42: porta real
+export const MODULOS_PRONTOS: readonly string[] = [];
 
 /**
- * Se a tela de um módulo (ou seção) pode abrir: na produção, só com a porta real (está em MODULOS_PRONTOS); fora da
- * produção (prévia, local e CI), também com a porta simulada, para revisão e QA. As páginas chamam notFound() quando
- * der false. Só no servidor: no navegador o VERCEL_ENV não existe (decisão do Tech Lead Frontend, 20/11).
+ * Se uma tela de fora do painel pode abrir: na produção, só com a porta real (está em MODULOS_PRONTOS); fora da
+ * produção (prévia, local e CI), também com a porta simulada, para revisão e QA. Só no servidor: no navegador o
+ * VERCEL_ENV não existe.
  */
 export const emProducao = () => process.env.VERCEL_ENV === "production";
 
 export const moduloDisponivel = (href: string, prontos: readonly string[] = MODULOS_PRONTOS) =>
   prontos.includes(href) || !emProducao();
 
-export const abasDoPapel = (papel: Papel | null, prontos: readonly string[] = MODULOS_PRONTOS) =>
-  ABAS.filter((aba) => prontos.includes(aba.href) && (!aba.somenteAdmin || papel === "ADMIN"));
+/** As abas que o papel vê: todas, menos Métricas e Configurações para quem não é ADMIN (§10.4.3). */
+export const abasDoPapel = (papel: Papel | null) => ABAS.filter((aba) => !aba.somenteAdmin || papel === "ADMIN");
 
 /** A aba ativa é a do segundo segmento da rota (/painel/configuracoes/agendamentos → Configurações). */
 export const abaAtiva = (caminho: string) => ABAS.find((aba) => caminho === aba.href || caminho.startsWith(`${aba.href}/`));
