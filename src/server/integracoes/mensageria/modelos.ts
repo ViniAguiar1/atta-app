@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 /**
  * Catálogo fechado de modelos de mensagem.
  *
@@ -6,8 +7,8 @@ import "server-only";
  * Cada variável tem um tipo com validação; serviço, procedimento ou motivo não cabem em nenhum tipo.
  * Os textos são RASCUNHO: o texto final é da PO, e os de WhatsApp passam pela aprovação da Meta.
  */
-import { falha, ok, type Resultado } from "../comum/resultado";
-import type { Canal, Finalidade, MensagemRenderizada, NovoEnvio } from "./tipos";
+import { falhaProvedor, okProvedor, type ResultadoProvedor } from "../comum/resultado-provedor";
+import type { Canal, Endereco, Finalidade, MensagemRenderizada, NovoEnvio } from "./tipos";
 
 type TipoVariavel =
   "codigo" | "url" | "nome_clinica" | "primeiro_nome" | "data_hora" | "evento_equipe" | "valor" | "data" | "numero";
@@ -211,31 +212,53 @@ function validarVariavel(tipo: TipoVariavel, valor: string, opcoes: OpcoesRender
 const escaparHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-/** Valida o pedido contra o catálogo e devolve a mensagem pronta para o provedor. */
+const uuid = z.uuid();
+const emailNovo = z.email().max(254);
+
+/**
+ * Confere a referência do destinatário antes de enfileirar (ADR 0005 §1): pessoa, profissional ou membro por id;
+ * endereço cru só no convite de equipe por e-mail.
+ */
+export function validarDestinatario(
+  envio: Pick<NovoEnvio, "canal" | "modelo" | "destinatario">,
+): ResultadoProvedor<void> {
+  const d = envio.destinatario;
+  if (d.tipo === "email_novo") {
+    if (envio.modelo !== "convite_equipe" || envio.canal !== "email" || !emailNovo.safeParse(d.endereco).success)
+      return falhaProvedor("permanente", "destinatario_invalido", "endereço cru só no convite de equipe por e-mail");
+    return okProvedor(undefined);
+  }
+  return uuid.safeParse(d.id).success
+    ? okProvedor(undefined)
+    : falhaProvedor("permanente", "destinatario_invalido", "referência de destinatário inválida");
+}
+
+/** Valida o pedido contra o catálogo e devolve a mensagem pronta para o provedor, já com o endereço resolvido. */
 export function renderizar(
-  envio: Pick<NovoEnvio, "canal" | "finalidade" | "modelo" | "variaveis" | "destinatario" | "chaveIdempotencia">,
+  envio: Pick<NovoEnvio, "canal" | "finalidade" | "modelo" | "variaveis" | "chaveIdempotencia">,
+  para: Endereco,
   opcoes: OpcoesRender,
-): Resultado<MensagemRenderizada> {
-  if (!ehModelo(envio.modelo)) return falha("permanente", "modelo_desconhecido", "modelo fora do catálogo");
+): ResultadoProvedor<MensagemRenderizada> {
+  if (!ehModelo(envio.modelo)) return falhaProvedor("permanente", "modelo_desconhecido", "modelo fora do catálogo");
   const modelo: Modelo = MODELOS[envio.modelo];
   if (modelo.finalidade !== envio.finalidade)
-    return falha("permanente", "finalidade_divergente", "modelo não serve a esta finalidade");
+    return falhaProvedor("permanente", "finalidade_divergente", "modelo não serve a esta finalidade");
   if (!modelo.canais.includes(envio.canal))
-    return falha("permanente", "canal_nao_suportado", "modelo não existe neste canal");
+    return falhaProvedor("permanente", "canal_nao_suportado", "modelo não existe neste canal");
   const esperadoTipo = envio.canal === "email" ? "email" : "telefone";
-  if (envio.destinatario.tipo !== esperadoTipo)
-    return falha("permanente", "destinatario_invalido", "destinatário não combina com o canal");
+  if (para.tipo !== esperadoTipo)
+    return falhaProvedor("permanente", "destinatario_invalido", "destinatário não combina com o canal");
 
   const nomes = modelo.variaveis.map(([n]) => n);
   const extras = Object.keys(envio.variaveis).filter((n) => !nomes.includes(n));
   if (extras.length > 0)
-    return falha("permanente", "variavel_nao_permitida", `variáveis fora do modelo: ${extras.join(", ")}`);
+    return falhaProvedor("permanente", "variavel_nao_permitida", `variáveis fora do modelo: ${extras.join(", ")}`);
 
   const valores: string[] = [];
   for (const [nome, tipo] of modelo.variaveis) {
     const valor = envio.variaveis[nome];
     if (valor === undefined || !validarVariavel(tipo, valor, opcoes)) {
-      return falha("permanente", "variavel_invalida", `variável inválida: ${nome}`);
+      return falhaProvedor("permanente", "variavel_invalida", `variável inválida: ${nome}`);
     }
     valores.push(valor);
   }
@@ -246,10 +269,10 @@ export function renderizar(
       return escapar ? escaparHtml(v) : v;
     });
 
-  const base = { canal: envio.canal, para: envio.destinatario.endereco, chaveIdempotencia: envio.chaveIdempotencia };
+  const base = { canal: envio.canal, para: para.valor, chaveIdempotencia: envio.chaveIdempotencia };
   if (envio.canal === "whatsapp") {
-    if (!modelo.whatsapp) return falha("permanente", "canal_nao_suportado", "modelo sem versão WhatsApp");
-    return ok({
+    if (!modelo.whatsapp) return falhaProvedor("permanente", "canal_nao_suportado", "modelo sem versão WhatsApp");
+    return okProvedor({
       ...base,
       whatsapp: {
         modelo: modelo.whatsapp.modelo,
@@ -260,8 +283,8 @@ export function renderizar(
       },
     });
   }
-  if (envio.canal === "sms") return ok({ ...base, texto: preencher(modelo.texto) });
-  return ok({
+  if (envio.canal === "sms") return okProvedor({ ...base, texto: preencher(modelo.texto) });
+  return okProvedor({
     ...base,
     assunto: preencher(modelo.assunto ?? "ATTA"),
     texto: preencher(modelo.texto),

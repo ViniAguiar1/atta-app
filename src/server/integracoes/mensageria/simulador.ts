@@ -10,7 +10,7 @@ import "server-only";
  * A caixa de saída guarda o que "saiu", para a tela de desenvolvimento mostrar o código do check-in.
  */
 import { randomUUID } from "node:crypto";
-import { falha, ok, type Resultado } from "../comum/resultado";
+import { falhaProvedor, okProvedor, type ResultadoProvedor } from "../comum/resultado-provedor";
 import type { ProvedorMensagem, RequisicaoWebhook } from "./porta";
 import type { Canal, MensagemRenderizada, RetornoEntrega } from "./tipos";
 
@@ -32,20 +32,20 @@ export class SimuladorMensageria implements ProvedorMensagem {
     this.nome = `simulador-${canal}`;
   }
 
-  async enviar(mensagem: MensagemRenderizada): Promise<Resultado<{ idExterno: string }>> {
+  async enviar(mensagem: MensagemRenderizada): Promise<ResultadoProvedor<{ idExterno: string }>> {
     const repetido = this.porChave.get(mensagem.chaveIdempotencia);
-    if (repetido) return ok({ idExterno: repetido });
+    if (repetido) return okProvedor({ idExterno: repetido });
 
     const para = mensagem.para;
     if (para.endsWith("0000") || para.startsWith("falha@"))
-      return falha("permanente", "sim_destino_invalido", "simulador: destino recusado");
+      return falhaProvedor("permanente", "sim_destino_invalido", "simulador: destino recusado");
     if (para.endsWith("9999") || para.startsWith("instavel@"))
-      return falha("transitoria", "sim_indisponivel", "simulador: provedor indisponível");
+      return falhaProvedor("transitoria", "sim_indisponivel", "simulador: provedor indisponível");
 
     const idExterno = `sim_${randomUUID()}`;
     this.porChave.set(mensagem.chaveIdempotencia, idExterno);
     this.caixaDeSaida.push({ idExterno, mensagem, enviadoEm: this.agora() });
-    return ok({ idExterno });
+    return okProvedor({ idExterno });
   }
 
   /** Gera os retornos de entrega que o provedor real mandaria por webhook. */
@@ -61,14 +61,14 @@ export class SimuladorMensageria implements ProvedorMensagem {
   }
 
   /** O simulador aceita webhook em JSON simples `{retornos: [...]}`, sem assinatura (só fora de produção). */
-  interpretarRetorno(requisicao: RequisicaoWebhook): Resultado<readonly RetornoEntrega[]> {
+  interpretarRetorno(requisicao: RequisicaoWebhook): ResultadoProvedor<readonly RetornoEntrega[]> {
     try {
       const dados = JSON.parse(requisicao.corpo) as {
         retornos?: (Omit<RetornoEntrega, "quando"> & { quando: string })[];
       };
-      return ok((dados.retornos ?? []).map((r) => ({ ...r, quando: new Date(r.quando) })));
+      return okProvedor((dados.retornos ?? []).map((r) => ({ ...r, quando: new Date(r.quando) })));
     } catch {
-      return falha("permanente", "corpo_invalido", "simulador: corpo inválido");
+      return falhaProvedor("permanente", "corpo_invalido", "simulador: corpo inválido");
     }
   }
 

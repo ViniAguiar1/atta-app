@@ -1,5 +1,5 @@
 import "server-only";
-import type { Falha } from "../comum/resultado";
+import type { FalhaProvedor } from "../comum/resultado-provedor";
 
 export type Canal = "whatsapp" | "sms" | "email";
 
@@ -48,10 +48,18 @@ export const ORDEM_ESTADO: Readonly<Record<EstadoEnvio, number>> = {
   expirado: 5,
 };
 
-/** Telefone em E.164 (+55...) ou e-mail. Nunca vai para log; na tela, só mascarado. */
-export interface Destinatario {
+/**
+ * Quem recebe, por referência (ADR 0005 §1): a fila resolve e decifra o contato no servidor. O único caso com
+ * endereço cru é o convite de equipe para um e-mail que ainda não está no sistema (`convite_equipe`).
+ */
+export type ReferenciaDestinatario =
+  | { readonly tipo: "person" | "professional" | "membership"; readonly id: string }
+  | { readonly tipo: "email_novo"; readonly endereco: string };
+
+/** Endereço já resolvido (telefone em E.164 ou e-mail). Só em memória: nunca vai para log; na tela, mascarado. */
+export interface Endereco {
   readonly tipo: "telefone" | "email";
-  readonly endereco: string;
+  readonly valor: string;
 }
 
 /** Referência ao que originou o envio (agendamento, link, fatura...). Sem dado pessoal. */
@@ -64,7 +72,7 @@ export interface NovoEnvio {
   readonly tenantId: string;
   readonly canal: Canal;
   readonly finalidade: Finalidade;
-  readonly destinatario: Destinatario;
+  readonly destinatario: ReferenciaDestinatario;
   readonly modelo: string; // id do catálogo em modelos.ts
   readonly variaveis: Readonly<Record<string, string>>;
   /** Única por tenant: repetir o pedido não duplica o envio (PDD 9.6). */
@@ -87,7 +95,7 @@ export interface Envio extends NovoEnvio {
   readonly tentativas: number;
   readonly proximaTentativaEm: Date;
   readonly idExterno?: string;
-  readonly ultimaFalha?: Pick<Falha, "tipo" | "codigo">;
+  readonly ultimaFalha?: Pick<FalhaProvedor, "tipo" | "codigo">;
   readonly envioOrigemId?: string; // preenchido no envio alternativo
   readonly criadoEm: Date;
   readonly atualizadoEm: Date;

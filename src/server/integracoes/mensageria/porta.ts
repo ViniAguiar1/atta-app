@@ -1,5 +1,5 @@
 import "server-only";
-import type { Resultado } from "../comum/resultado";
+import type { ResultadoProvedor } from "../comum/resultado-provedor";
 import type { Canal, MensagemRenderizada, RetornoEntrega } from "./tipos";
 
 /** Requisição de webhook crua, para o adaptador conferir a assinatura sobre o corpo exato. */
@@ -17,7 +17,7 @@ export interface ProvedorMensagem {
   readonly canal: Canal;
   readonly nome: string;
   /** Envia uma mensagem já validada. Repetir com a mesma chave não pode duplicar no provedor, quando ele aceitar chave. */
-  enviar(mensagem: MensagemRenderizada): Promise<Resultado<{ readonly idExterno: string }>>;
+  enviar(mensagem: MensagemRenderizada): Promise<ResultadoProvedor<{ readonly idExterno: string }>>;
   /** Confere a assinatura e traduz o webhook de status. Assinatura inválida = falha `assinatura_invalida`. */
-  interpretarRetorno(requisicao: RequisicaoWebhook): Resultado<readonly RetornoEntrega[]>;
+  interpretarRetorno(requisicao: RequisicaoWebhook): ResultadoProvedor<readonly RetornoEntrega[]>;
 }

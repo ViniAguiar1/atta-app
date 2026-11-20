@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MODELOS, modeloEhEssencial, renderizar } from "./modelos";
+import { MODELOS, modeloEhEssencial, renderizar, validarDestinatario } from "./modelos";
 
 // Só dados fictícios: telefone de teste, clínica inventada.
 const opcoes = { hostsPermitidos: ["attahub.com.br"] };
@@ -7,15 +7,16 @@ const linkCheckin = {
   canal: "whatsapp" as const,
   finalidade: "link_checkin" as const,
   modelo: "link_checkin",
-  destinatario: { tipo: "telefone" as const, endereco: "+5511912340001" },
   chaveIdempotencia: "k1",
 };
+const celular = { tipo: "telefone" as const, valor: "+5511912340001" };
 const variaveis = { nome_clinica: "Clínica Fictícia Aurora", data_hora: "20/11 às 15:00" };
 
 describe("catálogo de modelos", () => {
   it("monta o WhatsApp com o modelo aprovado e os parâmetros em ordem", () => {
     const r = renderizar(
       { ...linkCheckin, variaveis: { ...variaveis, link: "https://checkin.attahub.com.br/c/Ab3dE" } },
+      celular,
       opcoes,
     );
     expect(r.ok && r.valor.whatsapp).toEqual({
@@ -34,6 +35,7 @@ describe("catálogo de modelos", () => {
         modelo: "codigo_verificacao",
         variaveis: { codigo: "482913" },
       },
+      celular,
       opcoes,
     );
     expect(r.ok && r.valor.whatsapp).toMatchObject({
@@ -52,6 +54,7 @@ describe("catálogo de modelos", () => {
         modelo: "codigo_verificacao",
         variaveis: { codigo: "482913" },
       },
+      celular,
       opcoes,
     );
     expect(sms.ok && sms.valor.texto).toBe(
@@ -62,10 +65,10 @@ describe("catálogo de modelos", () => {
         canal: "email",
         finalidade: "convite_equipe",
         modelo: "convite_equipe",
-        destinatario: { tipo: "email", endereco: "colaborador@clinica-ficticia.test" },
         chaveIdempotencia: "k2",
         variaveis: { nome_clinica: "Clínica A & B", link: "https://painel.attahub.com.br/convite/Zx9" },
       },
+      { tipo: "email", valor: "colaborador@clinica-ficticia.test" },
       opcoes,
     );
     expect(email.ok && email.valor.assunto).toBe("Convite para a equipe de Clínica A & B no ATTA");
@@ -78,6 +81,7 @@ describe("catálogo de modelos", () => {
         ...linkCheckin,
         variaveis: { ...variaveis, link: "https://checkin.attahub.com.br/c/Ab3dE", procedimento: "Toxina" },
       },
+      celular,
       opcoes,
     );
     expect(!r.ok && r.falha).toMatchObject({ tipo: "permanente", codigo: "variavel_nao_permitida" });
@@ -90,7 +94,7 @@ describe("catálogo de modelos", () => {
       "http://checkin.attahub.com.br/c/Ab3dE",
       "https://usuario@checkin.attahub.com.br/c/Ab3dE",
     ]) {
-      const r = renderizar({ ...linkCheckin, variaveis: { ...variaveis, link } }, opcoes);
+      const r = renderizar({ ...linkCheckin, variaveis: { ...variaveis, link } }, celular, opcoes);
       expect(r.ok, link).toBe(false);
     }
   });
@@ -99,13 +103,44 @@ describe("catálogo de modelos", () => {
     const casos = [
       { ...linkCheckin, modelo: "texto_livre" },
       { ...linkCheckin, canal: "email" as const },
-      { ...linkCheckin, destinatario: { tipo: "email" as const, endereco: "a@b.test" } },
+      { ...linkCheckin, canal: "sms" as const, finalidade: "convite_equipe" as const },
       { ...linkCheckin, finalidade: "lembrete_checkin" as const },
     ];
     for (const c of casos)
       expect(
-        renderizar({ ...c, variaveis: { ...variaveis, link: "https://checkin.attahub.com.br/c/Ab3dE" } }, opcoes).ok,
+        renderizar(
+          { ...c, variaveis: { ...variaveis, link: "https://checkin.attahub.com.br/c/Ab3dE" } },
+          celular,
+          opcoes,
+        ).ok,
       ).toBe(false);
+  });
+
+  it("endereço com o tipo errado para o canal é recusado", () => {
+    const r = renderizar(
+      { ...linkCheckin, variaveis: { ...variaveis, link: "https://checkin.attahub.com.br/c/A" } },
+      { tipo: "email", valor: "a@b.test" },
+      opcoes,
+    );
+    expect(!r.ok && r.falha.codigo).toBe("destinatario_invalido");
+  });
+
+  it("destinatário por referência; endereço cru só no convite de equipe (ADR 0005)", () => {
+    const pessoa = { tipo: "person" as const, id: "00000000-0000-4000-8000-0000000000e1" };
+    expect(validarDestinatario({ canal: "whatsapp", modelo: "link_checkin", destinatario: pessoa }).ok).toBe(true);
+    expect(
+      validarDestinatario({ canal: "whatsapp", modelo: "link_checkin", destinatario: { tipo: "person", id: "1" } }).ok,
+    ).toBe(false);
+    const cru = { tipo: "email_novo" as const, endereco: "nova.colaboradora@clinica-ficticia.test" };
+    expect(validarDestinatario({ canal: "email", modelo: "convite_equipe", destinatario: cru }).ok).toBe(true);
+    expect(validarDestinatario({ canal: "email", modelo: "alerta_equipe", destinatario: cru }).ok).toBe(false);
+    expect(
+      validarDestinatario({
+        canal: "email",
+        modelo: "convite_equipe",
+        destinatario: { tipo: "email_novo", endereco: "x" },
+      }).ok,
+    ).toBe(false);
   });
 
   it("nome da clínica não carrega link nem quebra de linha", () => {
@@ -113,6 +148,7 @@ describe("catálogo de modelos", () => {
       expect(
         renderizar(
           { ...linkCheckin, variaveis: { ...variaveis, nome_clinica, link: "https://checkin.attahub.com.br/c/A" } },
+          celular,
           opcoes,
         ).ok,
       ).toBe(false);
