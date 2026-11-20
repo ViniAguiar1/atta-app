@@ -6,18 +6,17 @@ import { sessaoDoPainel } from "@/features/casca/sessao";
 import { ROTA_LOGIN } from "@/lib/auth/rotas";
 import { sair } from "../login/actions";
 
-// Casca do painel da clínica (MIG-40): a barra de módulos em cima e a tela abaixo, no mesmo cartão, como no Simulador
-// ATTA-in. Largura máxima de 1200 px e margem de 24 px (Guia de Design §6). A sessão é por requisição: a barra fica no
-// Suspense (cacheComponents). Sem sessão, a tela de entrar (o proxy já desvia; aqui é a segunda trava).
+// Casca do painel da clínica (MIG-40): a barra de módulos colada no topo, de ponta a ponta, e a tela logo abaixo, direto no
+// fundo da página (pedido do dono, 20/11: sem moldura, sem margem externa, sem cantos nem borda no contêiner). O espaçamento
+// interno do conteúdo fica o de sempre. A sessão é por requisição: a barra fica no Suspense (cacheComponents). Sem sessão,
+// a tela de entrar (o proxy já desvia; aqui é a segunda trava).
 export default function LayoutDoPainel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto max-w-[75rem] px-6 py-6">
-      <div className="rounded-md border border-border bg-surface-app">
-        <Suspense fallback={<div aria-hidden="true" className="min-h-[4.25rem] rounded-t-md bg-brand" />}>
-          <Barra />
-        </Suspense>
-        <main className="px-6 py-6">{children}</main>
-      </div>
+    <div className="min-h-dvh bg-surface-app">
+      <Suspense fallback={<div aria-hidden="true" className="min-h-[4.25rem] bg-brand" />}>
+        <Barra />
+      </Suspense>
+      <main className="px-4 py-6 medium:px-6">{children}</main>
     </div>
   );
 }
