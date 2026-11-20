@@ -1,8 +1,10 @@
 -- MIG-12: colunas da tela de Pacientes (MIG-43), iguais na lista e na busca. Dados fictícios.
 begin;
-select plan(9);
+select plan(16);
 
-insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A');
+insert into platform.tenant (id, name) values
+  ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
+  ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
 
 create function pg_temp.entrar(p_tenant uuid, p_role text) returns void language plpgsql as $$
 declare
@@ -34,6 +36,19 @@ returns boolean language sql as $$
     p_is_incomplete => p_incompleto)
 $$;
 
+-- B reaproveita a pessoa da A pelo CPF (pending) com nome, nascimento e contato digitados por ela
+create function pg_temp.cadastrar_na_b() returns boolean language sql as $$
+  select reused from api.patient_register(gen_random_uuid(), 'Nome Local da B', null, date '2001-01-01',
+    sha256('529.982.247-25'::bytea), '···.···.247-25', '\x01aa'::bytea,
+    p_phone_enc => '\x01ff', p_dek_wrapped => '\x01cc', p_kek_version => 1::smallint,
+    p_local_envelope_id => '00000000-0000-4000-8000-0000000000f9', p_local_phone_enc => '\x01b7',
+    p_local_dek_wrapped => '\x01b8', p_local_kek_version => 1::smallint)
+$$;
+create function pg_temp.verificar_na_rede(p_person uuid) returns void language sql security definer as $$
+  insert into network.identity_verification (person_id, verified_at, expires_at, proof_hash, result)
+  values (p_person, now(), now() + interval '6 months', sha256('prova'::bytea), 'aprovada')
+$$;
+
 do $$ begin
   execute format('grant execute on all functions in schema %I to authenticated', pg_my_temp_schema()::regnamespace);
 end $$;
@@ -61,6 +76,25 @@ select is((select display_name from api.patient_search(p_doc_hmac => sha256('529
 select is((select count(*)::int from api.patient_search(p_name => 'Ninguém')), 0, 'nome que não existe: nada');
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
 select is((select count(*)::int from api.patient_list()), 2, 'o Colaborador também lista (Pacientes é dele)');
+
+-- pending (B reaproveitou pelo CPF): só o que a B digitou, e nada da verificação da rede
+select pg_temp.verificar_na_rede('00000000-0000-4000-8000-0000000000e1');
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
+select ok((select is_verified from api.patient_list() where person_id = '00000000-0000-4000-8000-0000000000e1'),
+          'owner: a A vê o selo da verificação');
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000b', 'ADMIN');
+select is(pg_temp.cadastrar_na_b(), true, 'B reaproveita a pessoa pelo CPF (pending)');
+select results_eq($$ select display_name, display_is_social, birth_date, network_access from api.patient_list() $$,
+                  $$ values ('Nome Local da B'::text, false, date '2001-01-01', 'pending'::text) $$,
+                  'pending: nome e nascimento são os que a B digitou');
+select ok((select phone_enc = '\x01b7' and dek_wrapped = '\x01b8' and envelope_id = '00000000-0000-4000-8000-0000000000f9'
+           from api.patient_list()), 'pending: contato e envelope são os locais da B');
+select ok((select not is_verified and verified_until is null from api.patient_list()),
+          'pending: o selo da rede não aparece, mesmo com verificação aprovada');
+select is((select count(*)::int from api.patient_search(p_name => 'Mari')), 0,
+          'pending: a busca da B pelo nome da rede não acha nada');
+select is((select display_name from api.patient_search(p_name => 'Local da B')), 'Nome Local da B',
+          'pending: a busca da B pelo nome que ela digitou acha, com as mesmas colunas');
 
 select * from finish();
 rollback;

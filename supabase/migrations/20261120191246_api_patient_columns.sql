@@ -3,7 +3,8 @@
 -- As duas leem de private.patient_rows, o único lugar que decide o que a clínica vê de cada paciente:
 --   - nome de exibição (o social quando houver) e se ele é o social; nascimento; is_incomplete (calculado no banco);
 --   - documento mascarado, selo, contato cifrado com o envelope e o envelope_id para o AAD (ADR 0002 §6);
---   - em network_access = 'pending', só o que a clínica digitou (local_*), como antes;
+--   - em network_access = 'pending', só o que a clínica digitou (local_*), como antes, e o selo de verificação da rede
+--     não aparece (is_verified = false, verified_until nulo);
 --   - last_appointment vem nulo até a agenda (MIG-11) e documents vem [] até o schema documents: os campos já estão no
 --     contrato, para a tela não mudar quando eles chegarem;
 --   - total_active: total de pacientes da clínica, para o rodapé "n de n ativo(s)".
@@ -42,12 +43,14 @@ as $$
                              case when a.pending then l.local_kek_version else p.kek_version end
                      ) n (full_name, social_name, birth_date, phone_enc, email_enc, envelope_id, dek_wrapped,
                           kek_version)
+  -- em pending a clínica não sabe nada da rede, nem que a pessoa foi verificada (Tech Lead, revisão do #90)
   left join lateral (select iv.expires_at from network.identity_verification iv
-                     where iv.person_id = p.id and iv.result = 'aprovada' and iv.expires_at > now()
+                     where not a.pending
+                       and iv.person_id = p.id and iv.result = 'aprovada' and iv.expires_at > now()
                      order by iv.expires_at desc limit 1) v on true
   where l.tenant_id = p_tenant and p.deleted_at is null
 $$;
-revoke all on function private.patient_rows(uuid) from public, anon, authenticated;
+revoke all on function private.patient_rows(uuid) from public, anon, authenticated, service_role;
 
 drop function api.patient_list(text, uuid, int);
 drop function api.patient_search(text, bytea);
@@ -66,7 +69,6 @@ as $$
 #variable_conflict use_column
 declare
   v_tenant uuid := (select private.current_tenant_id());
-  v_total int;
   v_count int;
 begin
   if v_tenant is null or not coalesce((select private.has_permission('patients', 'view')), false) then
@@ -75,12 +77,12 @@ begin
   if p_limit is null or p_limit not between 1 and 100 or num_nonnulls(p_after_name, p_after_id) = 1 then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'page';
   end if;
-  select count(*)::int into v_total from private.patient_rows(v_tenant);
   return query
   select r.person_id, r.display_name, r.display_is_social, r.cpf_masked, r.foreign_doc_masked, r.birth_date,
          r.is_incomplete, r.is_verified, r.verified_until, r.phone_enc, r.email_enc, r.envelope_id, r.dek_wrapped,
-         r.kek_version, r.network_access, r.linked_at, r.last_appointment, r.documents, v_total
-  from private.patient_rows(v_tenant) r
+         r.kek_version, r.network_access, r.linked_at, r.last_appointment, r.documents, r.total::int
+  -- uma leitura só: o total de ativos sai da mesma consulta, antes do filtro da página ou da busca
+  from (select pr.*, count(*) over () as total from private.patient_rows(v_tenant) pr) r
   where p_after_name is null or (lower(r.display_name), r.person_id) > (lower(p_after_name), p_after_id)
   order by lower(r.display_name), r.person_id
   limit p_limit;
@@ -103,7 +105,6 @@ as $$
 declare
   v_tenant uuid := (select private.current_tenant_id());
   v_pattern text;
-  v_total int;
   v_count int;
 begin
   if v_tenant is null or not coalesce((select private.has_permission('patients', 'view')), false) then
@@ -115,12 +116,12 @@ begin
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'query';
   end if;
   v_pattern := '%' || replace(replace(replace(btrim(coalesce(p_name, '')), '\', '\\'), '%', '\%'), '_', '\_') || '%';
-  select count(*)::int into v_total from private.patient_rows(v_tenant);
   return query
   select r.person_id, r.display_name, r.display_is_social, r.cpf_masked, r.foreign_doc_masked, r.birth_date,
          r.is_incomplete, r.is_verified, r.verified_until, r.phone_enc, r.email_enc, r.envelope_id, r.dek_wrapped,
-         r.kek_version, r.network_access, r.linked_at, r.last_appointment, r.documents, v_total
-  from private.patient_rows(v_tenant) r
+         r.kek_version, r.network_access, r.linked_at, r.last_appointment, r.documents, r.total::int
+  -- uma leitura só: o total de ativos sai da mesma consulta, antes do filtro da página ou da busca
+  from (select pr.*, count(*) over () as total from private.patient_rows(v_tenant) pr) r
   where case when p_doc_hmac is not null then r.cpf_hmac = p_doc_hmac or r.foreign_doc_hmac = p_doc_hmac
              else r.full_name_for_search ilike v_pattern or r.social_name_for_search ilike v_pattern end
   order by lower(r.display_name), r.person_id
