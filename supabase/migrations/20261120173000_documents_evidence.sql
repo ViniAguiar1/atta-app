@@ -4,15 +4,19 @@
 -- o INSERT), 0026 (objeto cifrado com DEK própria) e 0002 (Cofre). As funções de vincular, assinar e concluir vêm nos
 -- PRs seguintes; aqui ficam as tabelas, as travas e a RLS. Sempre para a frente.
 
+-- alvo da FK composta do documento (a versão do modelo é da mesma clínica); a tabela é imutável por gatilho de linha,
+-- e acrescentar a restrição não toca as linhas
+alter table documents.template_version add constraint template_version_tenant_id_uq unique (tenant_id, id);
+
 -- ---------------------------------------------------------------------------------------------------------------
 -- Documento: o termo ou documento clínico de um paciente (Pasta) ou o Termo de Autorização de um profissional
 -- ---------------------------------------------------------------------------------------------------------------
 create table documents.document (
   id                   uuid primary key default gen_random_uuid(),
   tenant_id            uuid not null references platform.tenant (id),
-  template_version_id  uuid references documents.template_version (id),   -- nulo só em docs clínicos enviados
-  person_id            uuid references network.person (id),                -- documento de paciente
-  professional_link_id uuid references platform.professional_tenant_link (id),  -- Termo de Autorização (§10.4.3)
+  template_version_id  uuid,                      -- nulo só em docs clínicos enviados
+  person_id            uuid,                      -- paciente VINCULADO a esta clínica (network.person_tenant_link)
+  professional_link_id uuid,                      -- vínculo do profissional com esta clínica (Termo de Autorização)
   folder_section       text check (folder_section in ('termos', 'docs_clinicos')),   -- Pasta do Paciente (RN-FIC-05)
   appointment_id       uuid,                        -- atendimento (atta_in, só o id: plataforma não referencia produto)
   status               text not null default 'aguardando_assinatura' check (status in
@@ -22,10 +26,21 @@ create table documents.document (
                          'erro_de_registro', 'indisponibilidade_de_insumo', 'no_show')),   -- os 6 chips do §10.2.3
   cancelled_by         uuid,
   cancelled_at         timestamptz,
+  replaced_by_document_id uuid,                   -- §17.6: o definitivo só é substituído por nova emissão
   created_by           uuid,
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now(),
   constraint document_tenant_id_uq unique (tenant_id, id),
+  -- isolamento entre clínicas: tudo o que o documento referencia é da mesma clínica
+  constraint document_template_version_fk foreign key (tenant_id, template_version_id)
+    references documents.template_version (tenant_id, id),
+  constraint document_person_link_fk foreign key (tenant_id, person_id)
+    references network.person_tenant_link (tenant_id, person_id),
+  constraint document_professional_link_fk foreign key (tenant_id, professional_link_id)
+    references platform.professional_tenant_link (tenant_id, id),
+  constraint document_replaced_by_fk foreign key (tenant_id, replaced_by_document_id)
+    references documents.document (tenant_id, id),
+  constraint document_replaced_check check ((status = 'substituido') = (replaced_by_document_id is not null)),
   constraint document_owner_check check (num_nonnulls(person_id, professional_link_id) = 1),
   constraint document_folder_check check ((person_id is null) = (folder_section is null)),
   constraint document_template_check check (template_version_id is not null or folder_section = 'docs_clinicos'),
@@ -41,8 +56,9 @@ create index document_tenant_appointment_idx on documents.document (tenant_id, a
 create trigger document_set_updated_at before update on documents.document
   for each row execute function private.set_updated_at();
 
--- Ciclo de vida só para a frente (§17.6): assinado definitivo, recusado, cancelado e substituído são finais; o
--- pré-assinado só vira definitivo, cancelado (lixeira) ou substituído. Ninguém apaga documento.
+-- Ciclo de vida só para a frente (§17.6): aguardando → pré-assinado, recusado ou cancelado; pré-assinado → definitivo
+-- ou cancelado (lixeira, §10.2.3); o definitivo só é substituído por nova emissão (replaced_by_document_id).
+-- Recusado, cancelado e substituído são finais. Ninguém apaga documento.
 create function private.document_guard_status()
 returns trigger
 language plpgsql
@@ -54,12 +70,15 @@ begin
   end if;
   if new.status is distinct from old.status and not (
        (old.status = 'aguardando_assinatura' and new.status in ('pre_assinado', 'recusado', 'cancelado'))
-    or (old.status = 'pre_assinado' and new.status in ('assinado_definitivo', 'cancelado', 'substituido'))
+    or (old.status = 'pre_assinado' and new.status in ('assinado_definitivo', 'cancelado'))
+    or (old.status = 'assinado_definitivo' and new.status = 'substituido')
   ) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'document_status';
   end if;
-  if (new.tenant_id, new.person_id, new.professional_link_id, new.template_version_id)
-       is distinct from (old.tenant_id, old.person_id, old.professional_link_id, old.template_version_id) then
+  if (new.tenant_id, new.person_id, new.professional_link_id, new.template_version_id, new.folder_section,
+      new.appointment_id)
+       is distinct from (old.tenant_id, old.person_id, old.professional_link_id, old.template_version_id,
+                         old.folder_section, old.appointment_id) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'document_identity';
   end if;
   return new;
@@ -83,7 +102,9 @@ create table documents.evidence (
   code_nonce        integer not null default 0 check (code_nonce >= 0),   -- colisão → servidor recalcula (ADR 0006 §5)
   signed_at         timestamptz not null,
   created_at        timestamptz not null default now(),
+  constraint evidence_tenant_id_uq unique (tenant_id, id),
   constraint evidence_document_fk foreign key (tenant_id, document_id) references documents.document (tenant_id, id),
+  constraint evidence_signed_at_ms_check check (signed_at = date_trunc('milliseconds', signed_at)),
   constraint evidence_sha256_check check (evidence_sha256 = encode(sha256(payload_canonical), 'hex')),
   constraint evidence_code_check check (atta_code ~ '^ATTA-[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){2}$'),
   -- o payload declara a mesma versão, e o momento da assinatura é o signature.signed_at DO PRÓPRIO payload, em ms e
@@ -112,11 +133,13 @@ create table documents.seal_key (
 create table documents.seal (
   id           uuid primary key default gen_random_uuid(),
   tenant_id    uuid not null,
-  evidence_id  uuid not null references documents.evidence (id),
+  evidence_id  uuid not null,
   kid          text not null references documents.seal_key (kid),
   signature    bytea not null check (octet_length(signature) = 64),   -- Ed25519 sobre o evidence_sha256 em ASCII
   created_at   timestamptz not null default now(),
-  constraint seal_evidence_kid_uq unique (evidence_id, kid)
+  constraint seal_evidence_kid_uq unique (evidence_id, kid),
+  constraint seal_tenant_id_uq unique (tenant_id, id),
+  constraint seal_evidence_fk foreign key (tenant_id, evidence_id) references documents.evidence (tenant_id, id)
 );
 create index seal_tenant_idx on documents.seal (tenant_id);
 
@@ -124,11 +147,12 @@ create index seal_tenant_idx on documents.seal (tenant_id);
 create table documents.seal_timestamp (
   id          uuid primary key default gen_random_uuid(),
   tenant_id   uuid not null,
-  seal_id     uuid not null references documents.seal (id),
+  seal_id     uuid not null,
   kind        text not null check (kind = 'rfc3161'),
   token       bytea not null,
   issuer      text not null,
-  created_at  timestamptz not null default now()
+  created_at  timestamptz not null default now(),
+  constraint seal_timestamp_seal_fk foreign key (tenant_id, seal_id) references documents.seal (tenant_id, id)
 );
 
 -- ---------------------------------------------------------------------------------------------------------------
@@ -169,7 +193,7 @@ $$;
 revoke all on function private.reject_evidence_change() from public, anon, authenticated, service_role;
 
 do $$ declare t text; begin
-  foreach t in array array['documents.evidence', 'documents.seal', 'documents.seal_key', 'documents.seal_timestamp',
+  foreach t in array array['documents.evidence', 'documents.seal', 'documents.seal_timestamp',
                            'documents.stored_object'] loop
     execute format('create trigger append_only before update or delete on %s for each row
                     execute function private.reject_evidence_change()', t);
@@ -185,6 +209,35 @@ do $$ declare t text; begin
 end $$;
 create trigger document_no_truncate before truncate on documents.document
   for each statement execute function private.reject_evidence_change();
+
+-- Manifesto do selo (ADR 0014; rotação e vazamento, ADR 0002 e §19.10): a única mudança aceita é aposentar a chave,
+-- uma vez, levando valid_until de nulo para um instante depois do valid_from e não no passado. Nada mais muda, e a
+-- chave não se apaga: selo antigo precisa continuar verificável para sempre.
+create function private.seal_key_guard()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_op <> 'UPDATE' then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'seal_key_immutable';
+  end if;
+  if (new.id, new.kid, new.alg, new.public_key_spki, new.valid_from, new.created_at)
+       is distinct from (old.id, old.kid, old.alg, old.public_key_spki, old.valid_from, old.created_at)
+     or old.valid_until is not null
+     or new.valid_until is null
+     or new.valid_until <= old.valid_from
+     or new.valid_until < pg_catalog.now() then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'seal_key_retire';
+  end if;
+  return new;
+end
+$$;
+revoke all on function private.seal_key_guard() from public, anon, authenticated, service_role;
+create trigger seal_key_guard before update or delete on documents.seal_key
+  for each row execute function private.seal_key_guard();
+create trigger seal_key_no_truncate before truncate on documents.seal_key
+  for each statement execute function private.seal_key_guard();
 
 -- O painel lê o documento (estado, divisória, atendimento) com a permissão de Termos & Docs; a escrita é só por
 -- função em api (próximos PRs). Evidência, selo e objeto não têm grant: a leitura também passa por função.
