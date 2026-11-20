@@ -1,0 +1,18 @@
+{
+  "pepper_hex": "7065707065722d73696e74657469636f2d64652d74657374652d6174696e3532",
+  "pepper_versao": 1,
+  "casos": [
+    {
+      "cpf": "12345678901",
+      "hmac_hex": "18a374256b7254215116412add6dd1aa590b2175e29d60b7f5c503f9c895560e"
+    },
+    {
+      "cpf": "98765432101",
+      "hmac_hex": "b7420d8c1efc4d9a23af461ddb90f06e434fcc43c5657919f8efa87aa718c309"
+    },
+    {
+      "cpf": "11122233301",
+      "hmac_hex": "7740d4793aefc1bfa0908d6b48b03dcfbcf0c6e5502d8cc8b3cc5b3a84b43f63"
+    }
+  ]
+}

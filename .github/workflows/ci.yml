@@ -42,6 +42,28 @@ jobs:
           marcar banco '^(supabase/|src/lib/supabase/database\.types\.ts$|scripts/supabase-local\.sh$|\.github/workflows/)'
           marcar web '^(src/|e2e/|public/|eslint-rules/|package\.json$|pnpm-lock\.yaml$|next\.config\.ts$|playwright\.config\.ts$|\.github/workflows/)'
 
+  vetores:
+    name: vetores do ATTA Sign imutáveis
+    # Cópia congelada dos vetores do atta-core (MIG-21): vetor existente não muda nem sai; o SHA256SUMS só ganha linha.
+    # Mudança de cálculo nasce como atta_sign_v2 ao lado (README de tests/vectors/atta_sign_v1).
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mexidos="$(git diff --diff-filter=MDRT --name-only "$BASE...$HEAD" -- tests/vectors | grep -v -E '(README\.md|SHA256SUMS)$' || true)"
+          if [ -n "$mexidos" ]; then echo "::error::vetor existente alterado ou removido:"; echo "$mexidos"; exit 1; fi
+          if git diff -U0 "$BASE...$HEAD" -- tests/vectors/SHA256SUMS | grep -q -E '^-[^-]'; then
+            echo "::error::tests/vectors/SHA256SUMS só pode ganhar linhas"; exit 1
+          fi
+
   app:
     name: lint + typecheck + testes
     runs-on: ubuntu-24.04

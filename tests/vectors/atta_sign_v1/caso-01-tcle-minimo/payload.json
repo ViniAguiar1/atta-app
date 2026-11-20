@@ -1,0 +1,64 @@
+{
+  "atta_sign_version": "1",
+  "document": {
+    "id": "019a2b40-0000-7000-8000-000000000001",
+    "type": "tcle",
+    "template_id": "019a2b40-0000-7000-8000-0000000000a1",
+    "template_version": 1,
+    "body_sha256": "b1f2e0810dcd3328380a300c6cb91116a6d7ec7325ac32e0640876b1c15fcc65",
+    "body_normalization": "nfc+lf+trim",
+    "body_pdf_sha256": "2147ab98aa0518e83f61aa01871520dcd086ffe006d1622a3ed25d0fb7ad0b00"
+  },
+  "tenant": {
+    "legal_name": "Clinica Exemplo Ltda",
+    "trade_name": "Clinica Exemplo",
+    "cnpj": "12.345.678/0001-95",
+    "technical_responsible": {
+      "name": "Ana Souza",
+      "council": "CRO-SP 12345",
+      "identity_document": null
+    }
+  },
+  "parties": [
+    {
+      "ref": "p1",
+      "role": "patient",
+      "capacity": "titular",
+      "acting_for": null,
+      "name": "Carlos Pereira",
+      "identity_document": {
+        "type": "cpf",
+        "masked": "***.***.789-01"
+      },
+      "identity_verification_level": 1
+    }
+  ],
+  "signature": {
+    "signer": "p1",
+    "level": "atta_sign",
+    "signed_at": "2026-11-23T14:05:09.412Z",
+    "stroke_sha256": "68f5d25ae3a274faab1f625d07986fb2d92880585163f0f1c91d7b6ef1d0da1e",
+    "ip": "203.0.113.7",
+    "user_agent_sha256": "2a563cb08646958ece368235c989568128af3a457f402477946eb8f71e0f025d",
+    "device_hint": "mobile/android",
+    "exposure": {
+      "opened_at": "2026-11-23T14:03:41.008Z",
+      "scroll_completed_at": "2026-11-23T14:04:52.731Z",
+      "accepted_at": "2026-11-23T14:05:09.412Z",
+      "exposure_ms": 88404,
+      "scroll_complete": true
+    },
+    "auth_factors": [
+      "cpf",
+      "birth_date"
+    ],
+    "assisted_by": null
+  },
+  "context": {
+    "product": "atta_in",
+    "context_type": "appointment",
+    "context_id": "019a2b40-0000-7000-8000-0000000000c1",
+    "consent_purpose": null
+  },
+  "extensions": {}
+}
