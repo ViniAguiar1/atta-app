@@ -13,6 +13,7 @@ export const TEXTOS = {
   ajudaWhatsapp: "É por aqui que você recebe o Boarding Check de cada atendimento.", // simulador
   conviteEm: (quando: string) => `Convite de ${quando}`, // simulador
   continuar: "Continuar", // simulador
+  selecione: "Selecione", // provisório (opção vazia dos selects)
   voltar: "Voltar", // simulador
   conferindo: "Conferindo…", // provisório
   passo2: "Passo 2 de 4 · Validação do conselho", // simulador (aba "Validação do conselho")
