@@ -24,7 +24,8 @@ test.describe("gestora da Clínica Alfa", () => {
     await expect(aba).toHaveAttribute("aria-current", "page");
     const tabela = page.getByRole("table", { name: "Pacientes da clínica" });
     await expect(tabela.getByRole("columnheader")).toHaveText(["Paciente", "Identificação", "Contato", "Último atendimento", "Documentos"]);
-    await expect(tabela.getByRole("rowheader")).toHaveText(DA_ALFA.map((n) => new RegExp(`^${n}`)));
+    // a célula traz também as iniciais do avatar (escondidas do leitor de tela, mas no texto): casa pelo nome
+    await expect(tabela.getByRole("rowheader")).toHaveText(DA_ALFA.map((n) => new RegExp(n)));
     await expect(page.getByText("Otávio Ramos")).toHaveCount(0); // paciente só da Clínica Beta
   });
 
@@ -47,9 +48,9 @@ test.describe("gestora da Clínica Alfa", () => {
     await page.goto("/painel/pacientes");
     const busca = page.getByRole("searchbox", { name: "Buscar paciente por nome ou CPF" });
     await busca.fill("edu");
-    await expect(page.getByRole("rowheader")).toHaveText([/^Eduardo Lima/]);
+    await expect(page.getByRole("rowheader")).toHaveText([/Eduardo Lima/]);
     await busca.fill("529.982.247-25");
-    await expect(page.getByRole("rowheader")).toHaveText([/^Juliana Prates/]);
+    await expect(page.getByRole("rowheader")).toHaveText([/Juliana Prates/]);
     expect(page.url()).not.toContain("529");
     await busca.fill("473.821.690-22"); // CPF da paciente da Beta: aqui não aparece
     await expect(page.getByText("Nenhum resultado para os filtros aplicados")).toBeVisible();
