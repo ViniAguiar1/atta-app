@@ -1,5 +1,5 @@
 import "server-only";
-import { type Erro, falha, ok, type Resultado } from "@/lib/errors";
+import { falha, ok, type Resultado } from "@/lib/errors";
 import type { ChaveDeParametro, Parametro, PortaConfiguracoes } from "./porta";
 
 // Simulada de Configurações até o MIG-10b (Backend 2): os padrões e limites do contrato, e as regras cruzadas do banco
@@ -22,11 +22,8 @@ const atual = (): Parametro[] =>
 
 const inteiro = (lista: Parametro[], chave: ChaveDeParametro) => Number(lista.find((p) => p.chave === chave)?.valor);
 
-// Conflito como o falhaDoBanco do #37 devolve: a regra no reason (ADR 0001 §5). O Erro da main ainda não tem o campo.
-const conflito = (regra: ChaveDeParametro): Resultado<never> => {
-  const error: Erro & { reason: string } = { code: "CONFLITO", message: "Regra cruzada.", reason: `ATTA-IN-0003:${regra}` };
-  return { ok: false, error };
-};
+// Conflito como o falhaDoBanco devolve: a regra no reason (ADR 0001 §5).
+const conflito = (regra: ChaveDeParametro): Resultado<never> => falha("CONFLITO", "Regra cruzada.", undefined, `ATTA-IN-0003:${regra}`);
 
 export const portaConfiguracoesSimulada: PortaConfiguracoes = {
   async parametros() {
