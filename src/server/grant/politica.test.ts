@@ -7,6 +7,10 @@ const migration = readFileSync(
   join(process.cwd(), "supabase/migrations/20261120160000_platform_access_grant.sql"),
   "utf8",
 );
+const migrationPropass = readFileSync(
+  join(process.cwd(), "supabase/migrations/20261120211920_platform_propass.sql"),
+  "utf8",
+);
 
 describe("política do grant", () => {
   it("os números batem com private.grant_policy (o banco decide; a regra fica num lugar só)", () => {
@@ -15,6 +19,11 @@ describe("política do grant", () => {
     expect(migration).toContain("when 'patient_checkin' then interval '30 minutes'");
     expect(migration).toContain("when 'patient_checkin' then interval '2 hours'");
     expect(migration).toContain("when 'professional_boarding' then interval '8 hours'");
+  });
+
+  it("o link do PROpass vale 7 dias, sem inatividade, como em private.grant_policy (PDD §10.4.3)", () => {
+    expect(POLITICA.professional_propass).toEqual({ inatividadeSeg: null, tetoSeg: 604800 });
+    expect(migrationPropass).toContain("when 'professional_propass' then interval '7 days'");
   });
 
   it("segredo de 32 bytes, diferente a cada vez; o hash é o sha256 de 32 bytes", () => {

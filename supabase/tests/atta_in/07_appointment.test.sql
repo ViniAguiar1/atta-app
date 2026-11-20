@@ -16,11 +16,12 @@ insert into platform.professional (id, display_name, council, council_uf, counci
 values ('00000000-0000-4000-8000-0000000000f1', 'Dra. Fictícia', 'cro', 'SP', '12345', sha256('cpf-prof'::bytea),
         '···.···.000-01', '\x01', '\x01', '\x01', 1);
 insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
-                                               envelope_id, dek_wrapped, kek_version, propass_completed_at)
+                                               envelope_id, dek_wrapped, kek_version, propass_completed_at,
+                                               privacy_notice_version, privacy_notice_ack_at)
 values ('00000000-0000-4000-8000-0000000000d1', '00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f1', sha256('dra@a.test'::bytea),
-        '\x01', gen_random_uuid(), '\x01', 1, now()),
+        '\x01', gen_random_uuid(), '\x01', 1, now(), 'v1', now()),
        ('00000000-0000-4000-8000-0000000000d2', '00000000-0000-4000-8000-00000000000a', null, sha256('dr2@a.test'::bytea), '\x01', gen_random_uuid(),
-        '\x01', 1, null);
+        '\x01', 1, null, null, null);
 insert into atta_in.clinic_service (id, tenant_id, name, duration_min) values
   ('00000000-0000-4000-8000-0000000000c1', '00000000-0000-4000-8000-00000000000a', 'Limpeza de Pele Fictícia', 60),
   ('00000000-0000-4000-8000-0000000000c2', '00000000-0000-4000-8000-00000000000a', 'Serviço Não Autorizado', 30);
@@ -96,9 +97,11 @@ create function pg_temp.propass_link3() returns void language sql security defin
   values ('00000000-0000-4000-8000-0000000000f3', 'Dr. Fictício Dois', 'crm', 'SP', '777', sha256('cpf-prof-3'::bytea),
           '···.···.000-03', '\x01', '\x01', '\x01', 1);
   insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
-                                                 envelope_id, dek_wrapped, kek_version, propass_completed_at)
+                                                 envelope_id, dek_wrapped, kek_version, propass_completed_at,
+                                                 privacy_notice_version, privacy_notice_ack_at)
   values ('00000000-0000-4000-8000-0000000000d3', '00000000-0000-4000-8000-00000000000a',
-          '00000000-0000-4000-8000-0000000000f3', sha256('dr3@a.test'::bytea), '\x01', gen_random_uuid(), '\x01', 1, now());
+          '00000000-0000-4000-8000-0000000000f3', sha256('dr3@a.test'::bytea), '\x01', gen_random_uuid(), '\x01', 1, now(),
+          'v1', now());
 $$;
 create function pg_temp.status(p_id uuid) returns text language sql security definer as $$
   select status from atta_in.appointment where id = p_id
