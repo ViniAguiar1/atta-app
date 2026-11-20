@@ -152,11 +152,12 @@ select is_empty($$ select nome || ' (' || detalhe || ')' from seg_vazamento wher
 select is_empty($$ select nome || ' (' || detalhe || ')' from seg_vazamento where persona = 'admin_aal1' and tipo = 'função' $$,
   'ADMIN sem 2º fator: nenhuma função exposta devolve dado nem age');
 
--- 6 e 7: recusa limpa. Por enquanto em modo relatório: lista (diag) quem recusa com outro código, sem reprovar
-select diag(coalesce('recusa com outro código: ' || string_agg(distinct persona || ' ' || nome || ' ' || estado, '; '), 'nenhuma'))
-  from seg_recusa r where r.estado not in ('42501', 'P0002')
-   and not exists (select 1 from seg_recusa_liberada l where l.nome = r.nome);
-select ok(true, 'relatório das recusas com outro código (modo relatório)');
+-- 6 e 7: recusa limpa. Para essas personas, só 42501 (sem permissão) e P0002 (não encontrado); outro código (ex.:
+-- P0001 de argumento) antes da permissão é oráculo (sugestão do TL no #102). Exceção nova só com o motivo, na lista.
+select is_empty($$ select distinct persona || ' ' || nome || ' ' || estado from seg_recusa r
+                    where r.estado not in ('42501', 'P0002')
+                      and not exists (select 1 from seg_recusa_liberada l where l.nome = r.nome) $$,
+  'toda recusa às personas sem direito é 42501 ou P0002 (nada de validar argumento antes da permissão)');
 select is_empty($$ select format('%I.%I', n.nspname, c.relname) from pg_class c join pg_namespace n on n.oid = c.relnamespace
                     where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f') $$,
   'o schema public continua vazio (nenhuma tabela ou view)');
