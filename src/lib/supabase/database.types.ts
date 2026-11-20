@@ -23,12 +23,17 @@ export type Database = {
                            },
 "atta_in_template_list":
 { Args: Record<PropertyKey, never>; Returns: {
-              "allowed_actions": Json,"clinic_service_ids": (string)[],"current_version": number,"frequency": string,"id": string,"kind": string,"required": boolean,"status": string,"title": string,"updated_at": string,"validity_months": number
+              "allowed_actions": Json,"clinic_service_ids": (string)[],"clinic_services": Json,"current_version": number,"current_version_published_at": string,"frequency": string,"id": string,"kind": string,"required": boolean,"signed_count": number,"status": string,"title": string,"updated_at": string,"validity_months": number
             }[]
                            },
 "atta_in_template_publish":
 { Args: { "p_template_id": string }; Returns: {
               "body_sha256": string,"template_version_id": string,"version": number
+            }[]
+                           },
+"atta_in_template_summary":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "active_count": number,"active_optional_count": number,"active_required_count": number,"expired_count": number,"expiring_count": number,"signed_atta_sign_count": number,"signed_count": number
             }[]
                            },
 "audit_auth_event":
