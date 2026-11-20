@@ -42,12 +42,13 @@ select gen_random_uuid(), id, id::text, 'email',
   jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true), now(), now(), now()
 from usuario;
 
-insert into platform.membership (tenant_id, user_id, app_role) values
-  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000a1', 'ADMIN'),
-  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000a2', 'ADMIN'),
-  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c1', 'COLABORADOR'),
-  ('eeee0000-0000-4000-8000-000000000002', 'eeee0000-0000-4000-8000-0000000000b1', 'ADMIN'),
-  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c2', 'COLABORADOR');
+-- a1 e b1 são os titulares (is_owner, MIG-06); a2 é o gestor adicional da clínica 1 (no máximo 2 ADMIN, §10.4.3)
+insert into platform.membership (tenant_id, user_id, app_role, is_owner) values
+  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000a1', 'ADMIN', true),
+  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000a2', 'ADMIN', false),
+  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c1', 'COLABORADOR', false),
+  ('eeee0000-0000-4000-8000-000000000002', 'eeee0000-0000-4000-8000-0000000000b1', 'ADMIN', true),
+  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c2', 'COLABORADOR', false);
 
 -- TOTP da gestora, já verificado. Segredo fictício e público (base32), igual ao de e2e/totp.ts.
 insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at, secret)
