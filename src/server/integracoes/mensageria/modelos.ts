@@ -11,7 +11,7 @@ import { falhaProvedor, okProvedor, type ResultadoProvedor } from "../comum/resu
 import type { Canal, Endereco, Finalidade, MensagemRenderizada, NovoEnvio } from "./tipos";
 
 type TipoVariavel =
-  "codigo" | "url" | "nome_clinica" | "primeiro_nome" | "data_hora" | "evento_equipe" | "valor" | "data" | "numero";
+  "codigo" | "url" | "nome_clinica" | "data_hora" | "evento_equipe" | "periodo" | "valor" | "data" | "numero";
 
 /** Eventos de Configurações › Notificações (10.4.6), com o rótulo que vai na mensagem. */
 export const EVENTOS_EQUIPE = {
@@ -152,6 +152,18 @@ export const MODELOS = {
     assunto: "{nome_clinica}: seus documentos assinados",
     texto: "Conforme pedido na recepção, seguem em anexo os documentos assinados no seu atendimento em {nome_clinica}.",
   },
+  resumo_equipe: {
+    finalidade: "resumo_equipe",
+    canais: ["email", "whatsapp"],
+    essencial: false,
+    variaveis: [
+      ["periodo", "periodo"],
+      ["link", "url"],
+    ],
+    whatsapp: { modelo: "atta_resumo_equipe", categoria: "utility" },
+    assunto: "ATTA: resumo {periodo} da operação",
+    texto: "O resumo {periodo} da operação da clínica está pronto: {link}",
+  },
   convite_equipe: {
     finalidade: "convite_equipe",
     canais: ["email"],
@@ -188,10 +200,17 @@ function validarVariavel(tipo: TipoVariavel, valor: string, opcoes: OpcoesRender
       return /^\d{2}\/\d{2}( às \d{2}:\d{2})?$/.test(valor);
     case "valor":
       return /^R\$ \d{1,3}(\.\d{3})*,\d{2}$/.test(valor);
-    case "primeiro_nome":
-      return /^[\p{L}'-]{1,30}$/u.test(valor);
+    case "periodo":
+      return valor === "diário" || valor === "semanal";
     case "nome_clinica":
-      return valor.length >= 2 && valor.length <= 60 && !/[<>{}\n]/.test(valor) && !/https?:/i.test(valor);
+      // sem link nem formatação: a Meta também recusa quebra de linha, tab e 4 espaços seguidos em parâmetro
+      return (
+        valor.length >= 2 &&
+        valor.length <= 60 &&
+        !/[<>{}\r\n\t]/.test(valor) &&
+        !/ {4}/.test(valor) &&
+        !/https?:|www\./i.test(valor)
+      );
     case "evento_equipe":
       return (Object.values(EVENTOS_EQUIPE) as string[]).includes(valor);
     case "url": {
@@ -204,7 +223,9 @@ function validarVariavel(tipo: TipoVariavel, valor: string, opcoes: OpcoesRender
       const hostOk = opcoes.hostsPermitidos.some((h) => url.hostname === h || url.hostname.endsWith(`.${h}`));
       const protocoloOk = url.protocol === "https:" || url.hostname === "localhost";
       // RN-AGN-CONV-04: nenhum dado pessoal em URL; o link carrega só um identificador opaco.
-      return hostOk && protocoloOk && url.search === "" && url.username === "" && valor.length <= 200;
+      // e o fragmento também vai no texto da mensagem; 11 dígitos seguidos no caminho parecem CPF, não id opaco
+      const semDado = url.search === "" && url.hash === "" && url.username === "" && url.password === "";
+      return hostOk && protocoloOk && semDado && !/\d{11}/.test(url.pathname) && valor.length <= 200;
     }
   }
 }

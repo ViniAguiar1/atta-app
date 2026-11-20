@@ -37,6 +37,17 @@ describe("simulador de mensageria", () => {
     expect(sim.retornosPendentes()).toEqual([expect.objectContaining({ estado: "falhou", cobravel: false })]);
   });
 
+  it("mostra o código também quando ele sai pelo SMS alternativo", async () => {
+    const sim = new SimuladorMensageria("sms");
+    await sim.enviar({
+      canal: "sms",
+      para: "+5511912340002",
+      chaveIdempotencia: "s1",
+      texto: "ATTA: seu código de check-in é 731904. Vale por 10 minutos. Não compartilhe.",
+    });
+    expect(sim.ultimoCodigoPara("+5511912340002")).toBe("731904");
+  });
+
   it("e-mail nunca é cobrável", async () => {
     const sim = new SimuladorMensageria("email");
     await sim.enviar({

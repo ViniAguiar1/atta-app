@@ -49,11 +49,12 @@ export const ORDEM_ESTADO: Readonly<Record<EstadoEnvio, number>> = {
 };
 
 /**
- * Quem recebe, por referência (ADR 0005 §1): a fila resolve e decifra o contato no servidor. O único caso com
+ * Quem recebe, por referência (ADR 0005 §1): a fila resolve e decifra o contato no servidor. `provisional_patient`
+ * é o importado com CPF novo antes do primeiro check-in (contato em network.person_import_provisional, mesmo tenant). O único caso com
  * endereço cru é o convite de equipe para um e-mail que ainda não está no sistema (`convite_equipe`).
  */
 export type ReferenciaDestinatario =
-  | { readonly tipo: "person" | "professional" | "membership"; readonly id: string }
+  | { readonly tipo: "person" | "provisional_patient" | "professional" | "membership"; readonly id: string }
   | { readonly tipo: "email_novo"; readonly endereco: string };
 
 /** Endereço já resolvido (telefone em E.164 ou e-mail). Só em memória: nunca vai para log; na tela, mascarado. */

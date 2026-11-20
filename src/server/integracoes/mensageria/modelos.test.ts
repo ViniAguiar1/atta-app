@@ -93,6 +93,9 @@ describe("catálogo de modelos", () => {
       "https://checkin.attahub.com.br/c?cpf=52998224725",
       "http://checkin.attahub.com.br/c/Ab3dE",
       "https://usuario@checkin.attahub.com.br/c/Ab3dE",
+      "https://checkin.attahub.com.br/c/A#cpf=52998224725",
+      "https://:segredo@checkin.attahub.com.br/c/A",
+      "https://checkin.attahub.com.br/c/52998224725",
     ]) {
       const r = renderizar({ ...linkCheckin, variaveis: { ...variaveis, link } }, celular, opcoes);
       expect(r.ok, link).toBe(false);
@@ -127,6 +130,10 @@ describe("catálogo de modelos", () => {
 
   it("destinatário por referência; endereço cru só no convite de equipe (ADR 0005)", () => {
     const pessoa = { tipo: "person" as const, id: "00000000-0000-4000-8000-0000000000e1" };
+    const provisorio = { tipo: "provisional_patient" as const, id: "00000000-0000-4000-8000-0000000000f1" };
+    expect(validarDestinatario({ canal: "whatsapp", modelo: "lembrete_checkin", destinatario: provisorio }).ok).toBe(
+      true,
+    );
     expect(validarDestinatario({ canal: "whatsapp", modelo: "link_checkin", destinatario: pessoa }).ok).toBe(true);
     expect(
       validarDestinatario({ canal: "whatsapp", modelo: "link_checkin", destinatario: { tipo: "person", id: "1" } }).ok,
@@ -144,7 +151,15 @@ describe("catálogo de modelos", () => {
   });
 
   it("nome da clínica não carrega link nem quebra de linha", () => {
-    for (const nome_clinica of ["Veja https://x.test", "Linha\nnova", "X"]) {
+    for (const nome_clinica of [
+      "Veja https://x.test",
+      "Linha\nnova",
+      "Volta\rcarro",
+      "Com\ttab",
+      "Quatro    espaços",
+      "www.golpe.example",
+      "X",
+    ]) {
       expect(
         renderizar(
           { ...linkCheckin, variaveis: { ...variaveis, nome_clinica, link: "https://checkin.attahub.com.br/c/A" } },
@@ -160,5 +175,27 @@ describe("catálogo de modelos", () => {
       expect(modeloEhEssencial(id)).toBe(true);
     expect(modeloEhEssencial("alerta_equipe")).toBe(false);
     expect(Object.values(MODELOS).every((m) => !("whatsapp" in m) || m.whatsapp.modelo.startsWith("atta_"))).toBe(true);
+  });
+});
+
+describe("resumo da equipe e classificação HTTP", () => {
+  it("resumo diário ou semanal, nunca outro período", () => {
+    const base = {
+      canal: "email" as const,
+      finalidade: "resumo_equipe" as const,
+      modelo: "resumo_equipe",
+      chaveIdempotencia: "r1",
+    };
+    const gestor = { tipo: "email" as const, valor: "gestor@clinica-ficticia.test" };
+    const ok = renderizar(
+      { ...base, variaveis: { periodo: "diário", link: "https://painel.attahub.com.br/metricas" } },
+      gestor,
+      opcoes,
+    );
+    expect(ok.ok && ok.valor.assunto).toBe("ATTA: resumo diário da operação");
+    expect(
+      renderizar({ ...base, variaveis: { periodo: "mensal", link: "https://painel.attahub.com.br/m" } }, gestor, opcoes)
+        .ok,
+    ).toBe(false);
   });
 });

@@ -74,9 +74,14 @@ export class SimuladorMensageria implements ProvedorMensagem {
 
   /** Último código enviado a um número (tela de desenvolvimento e testes E2E). */
   ultimoCodigoPara(telefone: string): string | undefined {
-    const item = [...this.caixaDeSaida]
-      .reverse()
-      .find((i) => i.mensagem.para === telefone && i.mensagem.whatsapp?.codigoNoBotao);
-    return item?.mensagem.whatsapp?.codigoNoBotao ?? undefined;
+    // WhatsApp leva o código no botão; no SMS alternativo, ele vem no texto do modelo codigo_verificacao
+    const codigoDe = (m: MensagemRenderizada) =>
+      m.whatsapp?.codigoNoBotao ??
+      (m.canal === "sms" ? /código de check-in é (\d{6})/.exec(m.texto ?? "")?.[1] : undefined);
+    for (const item of [...this.caixaDeSaida].reverse()) {
+      const codigo = item.mensagem.para === telefone ? codigoDe(item.mensagem) : undefined;
+      if (codigo) return codigo;
+    }
+    return undefined;
   }
 }

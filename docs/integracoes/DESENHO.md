@@ -7,7 +7,7 @@ Cada integração é uma **porta** (interface TypeScript em `src/server/integrac
 
 ## Fila de envio (base do MIG-30, usada por 31, 32 e 34)
 - Quem faz o quê (ADR 0005 §1): o MIG-15 (BE2) decide quem recebe, quando e por qual finalidade e chama `enfileirar`; a fila valida contra o catálogo, envia, tenta de novo e registra a entrega.
-- **Destinatário por referência** (`person`, `professional` ou `membership` + id): a fila resolve e decifra o contato no servidor (`getCofre('network')`). Endereço cru só no `convite_equipe` para e-mail novo, validado com Zod.
+- **Destinatário por referência** (`person`, `provisional_patient`, `professional` ou `membership` + id; o provisório é lido em `network.person_import_provisional`, conferindo o tenant): a fila resolve e decifra o contato no servidor (`getCofre('network')`). Endereço cru só no `convite_equipe` para e-mail novo, validado com Zod.
 - Tabela `integrations.delivery` (schema `integrations`, fechado, já na ADR 0001), com o destino cifrado e mascarado, com a semântica do ADR 0028: reivindicar com lease (`FOR UPDATE SKIP LOCKED`), tentativa numerada, esperas de 5 s, 30 s e 5 min, falha definitiva na 4ª; falha permanente ou de configuração não repete.
 - Idempotência por `(tenant_id, chave_idempotencia)` (PDD 9.6). Webhooks deduplicados em `integracoes.webhook_recebido`.
 - **Modelos fechados** (`mensageria/modelos.ts`): não existe texto livre; cada variável tem tipo validado (código de 6 dígitos, URL só dos hosts do ATTA e sem query, nome da clínica, data e hora, evento da lista do 10.4.6). É a trava da RN-NOT-01 (nada de dado de saúde) e da RN-AGN-CONV-04 (nada de dado pessoal em URL).

@@ -32,7 +32,8 @@ export const falhaProvedor = (tipo: TipoFalha, codigo: string, mensagem: string)
 export function falhaPorStatusHttp(status: number, origem: string): ResultadoProvedor<never> {
   if (status === 401 || status === 403)
     return falhaProvedor("configuracao", `http_${status}`, `${origem}: credencial recusada`);
-  if (status === 408 || status === 429 || status >= 500)
+  // 409: pedido concorrente com a mesma chave de idempotência; o adaptador separa o conflito definitivo
+  if (status === 408 || status === 409 || status === 429 || status >= 500)
     return falhaProvedor("transitoria", `http_${status}`, `${origem}: indisponível`);
   return falhaProvedor("permanente", `http_${status}`, `${origem}: pedido recusado`);
 }
