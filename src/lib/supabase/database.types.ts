@@ -21,13 +21,56 @@ export type Database = {
           }
         },"atta_in": {
           Tables: {
-            [_ in never]: never
+            "setting": {
+                  Row: {
+                    "appointment_type": string | null,"clinic_service_id": string | null,"created_at": string,"created_by": string | null,"id": string,"key": string,"level": string,"tenant_id": string,"updated_at": string,"updated_by": string | null,"value_bool": boolean | null,"value_int": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "appointment_type"?: string | null,"clinic_service_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"key": string,"level": string,"tenant_id": string,"updated_at"?: string,"updated_by"?: string | null,"value_bool"?: boolean | null,"value_int"?: number | null
+                  }
+                  Update: {
+                    "appointment_type"?: string | null,"clinic_service_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"key"?: string,"level"?: string,"tenant_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"value_bool"?: boolean | null,"value_int"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "setting_key_fkey"
+      columns: ["key"]
+isOneToOne: false
+      referencedRelation: "setting_definition"
+      referencedColumns: ["key"]
+    }
+                  ]
+                },"setting_definition": {
+                  Row: {
+                    "allowed_ints": (number)[] | null,"created_at": string,"default_bool": boolean | null,"default_int": number | null,"key": string,"max_int": number | null,"min_int": number | null,"value_type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "allowed_ints"?: (number)[] | null,"created_at"?: string,"default_bool"?: boolean | null,"default_int"?: number | null,"key": string,"max_int"?: number | null,"min_int"?: number | null,"value_type": string
+                  }
+                  Update: {
+                    "allowed_ints"?: (number)[] | null,"created_at"?: string,"default_bool"?: boolean | null,"default_int"?: number | null,"key"?: string,"max_int"?: number | null,"min_int"?: number | null,"value_type"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                }
           }
           Views: {
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "effective_settings":
+{ Args: { "p_appointment_type"?: string,"p_clinic_service_id"?: string }; Returns: {
+              "key": string,"level": string,"value": Json
+            }[]
+                           },
+"set_setting":
+{ Args: { "p_appointment_type"?: string,"p_clinic_service_id"?: string,"p_key": string,"p_value": Json }; Returns: {
+              "key": string,"level": string,"value": Json
+            }[]
+                           }
           }
           Enums: {
             [_ in never]: never
