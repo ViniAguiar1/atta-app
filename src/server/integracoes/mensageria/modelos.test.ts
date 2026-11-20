@@ -1,0 +1,201 @@
+import { describe, expect, it } from "vitest";
+import { MODELOS, modeloEhEssencial, renderizar, validarDestinatario } from "./modelos";
+
+// Só dados fictícios: telefone de teste, clínica inventada.
+const opcoes = { hostsPermitidos: ["attahub.com.br"] };
+const linkCheckin = {
+  canal: "whatsapp" as const,
+  finalidade: "link_checkin" as const,
+  modelo: "link_checkin",
+  chaveIdempotencia: "k1",
+};
+const celular = { tipo: "telefone" as const, valor: "+5511912340001" };
+const variaveis = { nome_clinica: "Clínica Fictícia Aurora", data_hora: "20/11 às 15:00" };
+
+describe("catálogo de modelos", () => {
+  it("monta o WhatsApp com o modelo aprovado e os parâmetros em ordem", () => {
+    const r = renderizar(
+      { ...linkCheckin, variaveis: { ...variaveis, link: "https://checkin.attahub.com.br/c/Ab3dE" } },
+      celular,
+      opcoes,
+    );
+    expect(r.ok && r.valor.whatsapp).toEqual({
+      modelo: "atta_link_checkin",
+      idioma: "pt_BR",
+      categoria: "utility",
+      parametros: ["Clínica Fictícia Aurora", "20/11 às 15:00", "https://checkin.attahub.com.br/c/Ab3dE"],
+    });
+  });
+
+  it("o código vai também no botão de copiar (modelo de autenticação)", () => {
+    const r = renderizar(
+      {
+        ...linkCheckin,
+        finalidade: "codigo_verificacao",
+        modelo: "codigo_verificacao",
+        variaveis: { codigo: "482913" },
+      },
+      celular,
+      opcoes,
+    );
+    expect(r.ok && r.valor.whatsapp).toMatchObject({
+      categoria: "authentication",
+      parametros: ["482913"],
+      codigoNoBotao: "482913",
+    });
+  });
+
+  it("SMS e e-mail saem em texto, com o HTML escapado", () => {
+    const sms = renderizar(
+      {
+        ...linkCheckin,
+        canal: "sms",
+        finalidade: "codigo_verificacao",
+        modelo: "codigo_verificacao",
+        variaveis: { codigo: "482913" },
+      },
+      celular,
+      opcoes,
+    );
+    expect(sms.ok && sms.valor.texto).toBe(
+      "ATTA: seu código de check-in é 482913. Vale por 10 minutos. Não compartilhe.",
+    );
+    const email = renderizar(
+      {
+        canal: "email",
+        finalidade: "convite_equipe",
+        modelo: "convite_equipe",
+        chaveIdempotencia: "k2",
+        variaveis: { nome_clinica: "Clínica A & B", link: "https://painel.attahub.com.br/convite/Zx9" },
+      },
+      { tipo: "email", valor: "colaborador@clinica-ficticia.test" },
+      opcoes,
+    );
+    expect(email.ok && email.valor.assunto).toBe("Convite para a equipe de Clínica A & B no ATTA");
+    expect(email.ok && email.valor.html).toContain("Clínica A &amp; B");
+  });
+
+  it("variável fora do modelo nunca sai: é por onde dado de saúde vazaria (RN-NOT-01)", () => {
+    const r = renderizar(
+      {
+        ...linkCheckin,
+        variaveis: { ...variaveis, link: "https://checkin.attahub.com.br/c/Ab3dE", procedimento: "Toxina" },
+      },
+      celular,
+      opcoes,
+    );
+    expect(!r.ok && r.falha).toMatchObject({ tipo: "permanente", codigo: "variavel_nao_permitida" });
+  });
+
+  it("link só do ATTA e sem dado na URL (RN-AGN-CONV-04)", () => {
+    for (const link of [
+      "https://golpe.example/c/Ab3dE",
+      "https://checkin.attahub.com.br/c?cpf=52998224725",
+      "http://checkin.attahub.com.br/c/Ab3dE",
+      "https://usuario@checkin.attahub.com.br/c/Ab3dE",
+      "https://checkin.attahub.com.br/c/A#cpf=52998224725",
+      "https://:segredo@checkin.attahub.com.br/c/A",
+      "https://checkin.attahub.com.br/c/52998224725",
+    ]) {
+      const r = renderizar({ ...linkCheckin, variaveis: { ...variaveis, link } }, celular, opcoes);
+      expect(r.ok, link).toBe(false);
+    }
+  });
+
+  it("recusa modelo, canal, destinatário ou finalidade que não combinam", () => {
+    const casos = [
+      { ...linkCheckin, modelo: "texto_livre" },
+      { ...linkCheckin, canal: "email" as const },
+      { ...linkCheckin, canal: "sms" as const, finalidade: "convite_equipe" as const },
+      { ...linkCheckin, finalidade: "lembrete_checkin" as const },
+    ];
+    for (const c of casos)
+      expect(
+        renderizar(
+          { ...c, variaveis: { ...variaveis, link: "https://checkin.attahub.com.br/c/Ab3dE" } },
+          celular,
+          opcoes,
+        ).ok,
+      ).toBe(false);
+  });
+
+  it("endereço com o tipo errado para o canal é recusado", () => {
+    const r = renderizar(
+      { ...linkCheckin, variaveis: { ...variaveis, link: "https://checkin.attahub.com.br/c/A" } },
+      { tipo: "email", valor: "a@b.test" },
+      opcoes,
+    );
+    expect(!r.ok && r.falha.codigo).toBe("destinatario_invalido");
+  });
+
+  it("destinatário por referência; endereço cru só no convite de equipe (ADR 0005)", () => {
+    const pessoa = { tipo: "person" as const, id: "00000000-0000-4000-8000-0000000000e1" };
+    const provisorio = { tipo: "provisional_patient" as const, id: "00000000-0000-4000-8000-0000000000f1" };
+    expect(validarDestinatario({ canal: "whatsapp", modelo: "lembrete_checkin", destinatario: provisorio }).ok).toBe(
+      true,
+    );
+    expect(validarDestinatario({ canal: "whatsapp", modelo: "link_checkin", destinatario: pessoa }).ok).toBe(true);
+    expect(
+      validarDestinatario({ canal: "whatsapp", modelo: "link_checkin", destinatario: { tipo: "person", id: "1" } }).ok,
+    ).toBe(false);
+    const cru = { tipo: "email_novo" as const, endereco: "nova.colaboradora@clinica-ficticia.test" };
+    expect(validarDestinatario({ canal: "email", modelo: "convite_equipe", destinatario: cru }).ok).toBe(true);
+    expect(validarDestinatario({ canal: "email", modelo: "alerta_equipe", destinatario: cru }).ok).toBe(false);
+    expect(
+      validarDestinatario({
+        canal: "email",
+        modelo: "convite_equipe",
+        destinatario: { tipo: "email_novo", endereco: "x" },
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("nome da clínica não carrega link nem quebra de linha", () => {
+    for (const nome_clinica of [
+      "Veja https://x.test",
+      "Linha\nnova",
+      "Volta\rcarro",
+      "Com\ttab",
+      "Quatro    espaços",
+      "www.golpe.example",
+      "X",
+    ]) {
+      expect(
+        renderizar(
+          { ...linkCheckin, variaveis: { ...variaveis, nome_clinica, link: "https://checkin.attahub.com.br/c/A" } },
+          celular,
+          opcoes,
+        ).ok,
+      ).toBe(false);
+    }
+  });
+
+  it("todo modelo do paciente é essencial (RN-NOT-02); alerta da equipe não", () => {
+    for (const id of ["codigo_verificacao", "link_checkin", "lembrete_checkin", "link_termos"])
+      expect(modeloEhEssencial(id)).toBe(true);
+    expect(modeloEhEssencial("alerta_equipe")).toBe(false);
+    expect(Object.values(MODELOS).every((m) => !("whatsapp" in m) || m.whatsapp.modelo.startsWith("atta_"))).toBe(true);
+  });
+});
+
+describe("resumo da equipe e classificação HTTP", () => {
+  it("resumo diário ou semanal, nunca outro período", () => {
+    const base = {
+      canal: "email" as const,
+      finalidade: "resumo_equipe" as const,
+      modelo: "resumo_equipe",
+      chaveIdempotencia: "r1",
+    };
+    const gestor = { tipo: "email" as const, valor: "gestor@clinica-ficticia.test" };
+    const ok = renderizar(
+      { ...base, variaveis: { periodo: "diário", link: "https://painel.attahub.com.br/metricas" } },
+      gestor,
+      opcoes,
+    );
+    expect(ok.ok && ok.valor.assunto).toBe("ATTA: resumo diário da operação");
+    expect(
+      renderizar({ ...base, variaveis: { periodo: "mensal", link: "https://painel.attahub.com.br/m" } }, gestor, opcoes)
+        .ok,
+    ).toBe(false);
+  });
+});
