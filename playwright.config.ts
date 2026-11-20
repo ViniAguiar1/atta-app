@@ -4,6 +4,7 @@ const porta = Number(process.env.PORT ?? 3000);
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: ["producao/**"], // e2e de produção: playwright.producao.config.ts, com build próprio
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",

@@ -182,3 +182,12 @@ jobs:
         run: echo "ATTA_REDE_CHAVE_MESTRA=k1:$(node -e "process.stdout.write(Buffer.from('atta-app-ci-kek-de-teste-ficticia','ascii').subarray(0,32).toString('hex'))")" >> "$GITHUB_ENV"
       - run: pnpm build
       - run: pnpm test:e2e
+      # e2e de produção (pedido do FE2 e do TL Frontend, 20/11): com VERCEL_ENV=production, as rotas com porta simulada
+      # (check-in, Boarding Check, /b) dão 404. A guarda roda no build (prerender parcial), então é um build próprio,
+      # depois do e2e normal e no mesmo job (aproveita o install, o navegador e o Supabase). Specs em e2e/producao/.
+      - name: build de produção (VERCEL_ENV=production)
+        env:
+          VERCEL_ENV: production
+        run: pnpm build
+      - name: e2e de produção (rotas com porta simulada dão 404)
+        run: pnpm test:e2e:producao
