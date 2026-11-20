@@ -19,7 +19,7 @@ create table platform.membership_permission (
   membership_id uuid not null,
   module text not null,
   action text not null check (action in ('view', 'create', 'edit')),
-  granted_by uuid references auth.users (id) on delete restrict, -- nulo = padrão aplicado pelo sistema
+  granted_by uuid references auth.users (id) on delete set null, -- nulo = padrão aplicado pelo sistema
   granted_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   foreign key (membership_id, tenant_id) references platform.membership (id, tenant_id) on delete restrict,
@@ -59,8 +59,24 @@ create constraint trigger membership_permission_requires_view
   deferrable initially immediate
   for each row execute function private.membership_permission_requires_view();
 
--- Padrão sugerido ao convidar (PDD §10.4.3), aplicado quando o vínculo nasce COLABORADOR ou passa a ser. Quem convida
--- ajusta a matriz depois, na mesma transação, por api.team_set_permissions. Não sobrescreve linha que já existe.
+-- Padrão sugerido ao convidar (PDD §10.4.3): Agendamentos e Pacientes (ver, criar, editar) e ATTA (ver). Num lugar só,
+-- usado pelo gatilho e pelo backfill. Não sobrescreve linha que já existe.
+create or replace function private.membership_apply_default_permissions(p_membership_id uuid, p_tenant_id uuid)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into platform.membership_permission (tenant_id, membership_id, module, action)
+  select p_tenant_id, p_membership_id, d.module, d.action
+    from (values ('appointments', 'view'), ('appointments', 'create'), ('appointments', 'edit'),
+                 ('patients', 'view'), ('patients', 'create'), ('patients', 'edit'),
+                 ('atta', 'view')) d(module, action)
+  on conflict (tenant_id, membership_id, module, action) do nothing
+$$;
+
+-- Aplicado quando o vínculo nasce COLABORADOR ou passa a ser. Quem convida ajusta a matriz depois, na mesma transação,
+-- por api.team_set_permissions.
 create or replace function private.membership_default_permissions()
 returns trigger
 language plpgsql
@@ -69,15 +85,7 @@ set search_path = ''
 as $$
 begin
   if new.app_role = 'COLABORADOR' and (tg_op = 'INSERT' or old.app_role is distinct from new.app_role) then
-    insert into platform.membership_permission (tenant_id, membership_id, module, action)
-    values (new.tenant_id, new.id, 'appointments', 'view'),
-           (new.tenant_id, new.id, 'appointments', 'create'),
-           (new.tenant_id, new.id, 'appointments', 'edit'),
-           (new.tenant_id, new.id, 'patients', 'view'),
-           (new.tenant_id, new.id, 'patients', 'create'),
-           (new.tenant_id, new.id, 'patients', 'edit'),
-           (new.tenant_id, new.id, 'atta', 'view')
-    on conflict (tenant_id, membership_id, module, action) do nothing;
+    perform private.membership_apply_default_permissions(new.id, new.tenant_id);
   end if;
   return null;
 end
@@ -85,6 +93,12 @@ $$;
 create trigger membership_default_permissions
   after insert or update of app_role on platform.membership
   for each row execute function private.membership_default_permissions();
+
+-- Backfill: o COLABORADOR que já existia antes desta migration (ex.: a conta de teste da nuvem) recebe o mesmo padrão,
+-- para não perder o painel no db push (pedido do Backend 1 na revisão). Até aqui o stub liberava os 5 módulos.
+select private.membership_apply_default_permissions(m.id, m.tenant_id)
+  from platform.membership m
+ where m.app_role = 'COLABORADOR' and m.deleted_at is null;
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- RLS forçada e grants mínimos (ADR 0001 §2). Leitura: a própria matriz (a tela decide as abas) e, para quem tem o
@@ -141,6 +155,7 @@ as $$
           select 1 from platform.membership_permission p
            where p.membership_id = m.id and p.tenant_id = m.tenant_id
              and p.module = p_module and p.action = p_action)
+        -- redundante com o constraint trigger (criar/editar sem ver não grava); fica como segunda barreira
         and (p_action = 'view' or exists (
           select 1 from platform.membership_permission p
            where p.membership_id = m.id and p.tenant_id = m.tenant_id
@@ -157,5 +172,6 @@ as $$
 $$;
 
 -- As funções novas de private não são chamáveis por ninguém de fora (só pelos gatilhos).
-revoke all on function private.membership_permission_requires_view(), private.membership_default_permissions()
+revoke all on function private.membership_permission_requires_view(), private.membership_default_permissions(),
+  private.membership_apply_default_permissions(uuid, uuid)
   from public, anon, authenticated, service_role;

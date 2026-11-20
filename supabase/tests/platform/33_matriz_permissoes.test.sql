@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 grant execute on all functions in schema extensions to authenticated;
-select plan(34);
+select plan(39);
 
 -- hora do login no token (MIG-03: sessão de no máximo 12 h; sem amr, has_permission nega)
 create function pg_temp.com_login(c text) returns text language sql as $$
@@ -138,6 +138,28 @@ reset role;
 -- 8. As funções dos gatilhos não são chamáveis de fora
 select is(has_function_privilege('authenticated', 'private.membership_default_permissions()', 'EXECUTE'), false,
   'authenticated não executa a função do padrão');
+select is(has_function_privilege('authenticated', 'private.membership_apply_default_permissions(uuid, uuid)', 'EXECUTE'),
+  false, 'authenticated não executa o backfill do padrão');
+
+-- 9. Backfill: o COLABORADOR que existia antes da migration (sem nenhuma linha) recebe o padrão
+delete from platform.membership_permission where membership_id = '11111111-0000-4000-8000-0000000000c2';
+select private.membership_apply_default_permissions('11111111-0000-4000-8000-0000000000c2', 'aaaaaaaa-0000-4000-8000-000000000001');
+select is((select count(*)::int from platform.membership_permission where membership_id = '11111111-0000-4000-8000-0000000000c2'),
+  7, 'COLABORADOR antigo sem linhas recebe o padrão sugerido no backfill');
+select lives_ok($$ select private.membership_apply_default_permissions('11111111-0000-4000-8000-0000000000c2',
+  'aaaaaaaa-0000-4000-8000-000000000001') $$, 'o backfill roda de novo sem duplicar (on conflict)');
+
+-- 10. A mesma pessoa em duas clínicas: a matriz é por vínculo (sugestão da Segurança)
+insert into platform.membership (id, tenant_id, user_id, app_role) values
+  ('11111111-0000-4000-8000-0000000000d2', 'bbbbbbbb-0000-4000-8000-000000000002', 'c2c2c2c2-0000-4000-8000-0000000000c2', 'COLABORADOR');
+insert into platform.membership_permission (tenant_id, membership_id, module, action)
+  values ('bbbbbbbb-0000-4000-8000-000000000002', '11111111-0000-4000-8000-0000000000d2', 'metrics', 'view');
+set local role authenticated;
+select pg_temp.como('c2c2c2c2-0000-4000-8000-0000000000c2', 'COLABORADOR');
+select is(private.has_permission('metrics', 'view'), false, 'Métricas liberada na clínica B não vale com o token da A');
+select set_config('request.jwt.claims', pg_temp.com_login('{"sub":"c2c2c2c2-0000-4000-8000-0000000000c2","role":"authenticated","tenant_id":"bbbbbbbb-0000-4000-8000-000000000002","app_role":"COLABORADOR","aal":"aal1"}'), true);
+select ok(private.has_permission('metrics', 'view'), 'com o token da B, vale a matriz da B');
+reset role;
 
 select * from finish();
 rollback;
