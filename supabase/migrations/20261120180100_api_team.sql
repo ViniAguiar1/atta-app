@@ -14,7 +14,7 @@
 --
 -- Erros: 42501 ATTA-AUTH-0004 (sem permissão), P0002 ATTA-CORE-0005 (não encontrado, também para outra clínica),
 -- P0001 ATTA-IN-0001 (campo inválido, detail = campo), 23505 ATTA-IN-0002 (já existe) e P0001 ATTA-IN-0003 (o estado
--- não permite; detail = admin_limit | owner_protected | protected_action | status | role | self).
+-- não permite; detail = admin_limit | owner_protected | protected_action | status | role | self | not_invited | tenant).
 
 alter table platform.membership drop constraint membership_status_check,
   add constraint membership_status_check
@@ -177,6 +177,12 @@ begin
   if not exists (select 1 from auth.users u where u.id = p_user_id) then
     raise exception using errcode = 'P0002', message = 'ATTA-CORE-0005', detail = 'user_id';
   end if;
+  -- Só quem acabou de receber o convite (inviteUserByEmail grava invited_at) e nunca entrou. Sem a troca de clínica
+  -- ativa (ADR 0001, em aberto), uma conta em uso não ganha um segundo vínculo por aqui (Segurança, revisão do #54).
+  if not exists (select 1 from auth.users u
+                  where u.id = p_user_id and u.invited_at is not null and u.last_sign_in_at is null) then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'not_invited';
+  end if;
 
   v_status := case p_app_role when 'ADMIN' then 'pending_verification' else 'invited' end;
   begin
@@ -219,6 +225,11 @@ begin
   end if;
   if v.status <> 'invited' then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'status';
+  end if;
+  -- Token já com outra clínica (dois convites ao mesmo tempo, e um aceito): recusa claro aqui, em vez de cair no
+  -- "tenant divergente" do audit.record_event. Sem troca de clínica ativa, um vínculo ativo por conta (Segurança).
+  if private.current_tenant_id() is not null and private.current_tenant_id() <> v.tenant_id then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'tenant';
   end if;
   update platform.membership set status = 'active' where id = v.id;
   perform audit.record_event('team.accept', 'platform.membership', v.id, '{}'::jsonb,
