@@ -48,6 +48,22 @@ export type Database = {
 "patient_update":
 { Args: { "p_birth_date"?: string,"p_email_enc"?: string,"p_full_name"?: string,"p_local_dek_wrapped"?: string,"p_local_envelope_id"?: string,"p_local_kek_version"?: number,"p_person_id": string,"p_phone_enc"?: string,"p_reason": string,"p_social_name"?: string }; Returns: undefined
                            },
+"professional_get":
+{ Args: { "p_professional_id": string }; Returns: {
+              "active": boolean,"council": string,"council_number": string,"council_uf": string,"cpf_masked": string,"dek_wrapped": string,"display_name": string,"email_enc": string,"envelope_id": string,"kek_version": number,"phone_enc": string,"professional_id": string
+            }[]
+                           },
+"professional_register":
+{ Args: { "p_council": string,"p_council_number": string,"p_council_uf": string,"p_cpf_enc"?: string,"p_cpf_hmac"?: string,"p_cpf_masked"?: string,"p_dek_wrapped"?: string,"p_display_name": string,"p_email_enc"?: string,"p_envelope_id"?: string,"p_id": string,"p_kek_version"?: number,"p_link_dek_wrapped"?: string,"p_link_kek_version"?: number,"p_phone_enc"?: string }; Returns: {
+              "professional_id": string,"reused": boolean
+            }[]
+                           },
+"professional_set_active":
+{ Args: { "p_active": boolean,"p_professional_id": string }; Returns: undefined
+                           },
+"professional_set_contact":
+{ Args: { "p_dek_wrapped"?: string,"p_email_enc"?: string,"p_envelope_id"?: string,"p_kek_version"?: number,"p_phone_enc"?: string,"p_professional_id": string }; Returns: undefined
+                           },
 "report_divergence":
 { Args: { "p_person_id": string,"p_reason": string }; Returns: string
                            }
@@ -169,6 +185,46 @@ isOneToOne: false
                   Relationships: [
                     {
       foreignKeyName: "membership_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenant"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"professional": {
+                  Row: {
+                    "council": string,"council_number": string,"council_uf": string,"cpf_enc": string | null,"cpf_hmac": string | null,"cpf_masked": string | null,"created_at": string,"dek_wrapped": string | null,"deleted_at": string | null,"display_name": string,"id": string,"kek_version": number | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "council": string,"council_number": string,"council_uf": string,"cpf_enc"?: string | null,"cpf_hmac"?: string | null,"cpf_masked"?: string | null,"created_at"?: string,"dek_wrapped"?: string | null,"deleted_at"?: string | null,"display_name": string,"id"?: string,"kek_version"?: number | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "council"?: string,"council_number"?: string,"council_uf"?: string,"cpf_enc"?: string | null,"cpf_hmac"?: string | null,"cpf_masked"?: string | null,"created_at"?: string,"dek_wrapped"?: string | null,"deleted_at"?: string | null,"display_name"?: string,"id"?: string,"kek_version"?: number | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"professional_tenant_link": {
+                  Row: {
+                    "active": boolean,"created_by_tenant": boolean,"dek_wrapped": string | null,"email_enc": string | null,"envelope_id": string | null,"kek_version": number | null,"linked_at": string,"phone_enc": string | null,"professional_id": string,"tenant_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"created_by_tenant"?: boolean,"dek_wrapped"?: string | null,"email_enc"?: string | null,"envelope_id"?: string | null,"kek_version"?: number | null,"linked_at"?: string,"phone_enc"?: string | null,"professional_id": string,"tenant_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "active"?: boolean,"created_by_tenant"?: boolean,"dek_wrapped"?: string | null,"email_enc"?: string | null,"envelope_id"?: string | null,"kek_version"?: number | null,"linked_at"?: string,"phone_enc"?: string | null,"professional_id"?: string,"tenant_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "professional_tenant_link_professional_id_fkey"
+      columns: ["professional_id"]
+isOneToOne: false
+      referencedRelation: "professional"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "professional_tenant_link_tenant_id_fkey"
       columns: ["tenant_id"]
 isOneToOne: false
       referencedRelation: "tenant"
