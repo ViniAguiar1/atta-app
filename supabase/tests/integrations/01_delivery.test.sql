@@ -1,6 +1,6 @@
 -- MIG-30 (parte 3): fila de envio (ADR 0005 §1; PDD v206 §9.4, §21, §10.2.1, §10.2.3). Dados fictícios.
 begin;
-select plan(41);
+select plan(48);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -8,10 +8,22 @@ insert into platform.tenant (id, name) values
 insert into network.person (id, full_name, is_incomplete) values ('00000000-0000-4000-8000-0000000000e1', 'Paciente Fictícia', true);
 insert into network.person_tenant_link (tenant_id, person_id)
 values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000e1');
+insert into platform.professional (id, display_name, council, council_uf, council_number, cpf_hmac, cpf_masked, cpf_enc,
+                                   email_enc, dek_wrapped, kek_version)
+values ('00000000-0000-4000-8000-0000000000f1', 'Dra. Fictícia', 'cro', 'SP', '12345', sha256('cpf-prof'::bytea),
+        '···.···.000-01', '\x01', '\x01', '\x01', 1);
+-- d1: profissional com PROpass; d2: convite ainda sem PROpass
 insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
-                                               envelope_id, dek_wrapped, kek_version)
-values ('00000000-0000-4000-8000-0000000000d2', '00000000-0000-4000-8000-00000000000a', null, sha256('convite@a.test'::bytea),
-        '\x01', gen_random_uuid(), '\x01', 1);
+                                               envelope_id, dek_wrapped, kek_version, propass_completed_at)
+values ('00000000-0000-4000-8000-0000000000d1', '00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f1',
+        sha256('dra@a.test'::bytea), '\x01', gen_random_uuid(), '\x01', 1, now()),
+       ('00000000-0000-4000-8000-0000000000d2', '00000000-0000-4000-8000-00000000000a', null, sha256('convite@a.test'::bytea),
+        '\x01', gen_random_uuid(), '\x01', 1, null);
+-- grant do link do Boarding Check (MIG-13a): ainda não enviado
+insert into platform.access_grant (id, purpose, tenant_id, professional_link_id, appointment_id, secret_hash, expires_at)
+values ('00000000-0000-4000-8000-0000000000b1', 'professional_boarding', '00000000-0000-4000-8000-00000000000a',
+        '00000000-0000-4000-8000-0000000000d1', '00000000-0000-4000-8000-0000000000a2', sha256('segredo-b1'::bytea),
+        now() + interval '8 hours');
 
 create function pg_temp.entrar(p_tenant uuid, p_role text) returns void language plpgsql as $$
 declare
@@ -52,6 +64,9 @@ language sql as $$
   select api.delivery_enqueue(p_tenant, 'whatsapp', 'codigo_verificacao', 'person', '00000000-0000-4000-8000-0000000000e1',
     '{"codigo": "482913"}', p_key, 'sistema', 0::smallint, now() + interval '10 minutes', null, '{sms}', 'appointment',
     '00000000-0000-4000-8000-0000000000a1')
+$$;
+create function pg_temp.enviado_em(p_grant uuid) returns timestamptz language sql security definer as $$
+  select sent_at from platform.access_grant where id = p_grant
 $$;
 create function pg_temp.reivindicar(p_key text) returns smallint language sql as $$
   select attempt from api.delivery_claim(100, 60) c where c.idempotency_key = p_key
@@ -122,6 +137,23 @@ select is((pg_temp.d('k1:alt:sms')).alternatives, '{}'::text[], 'o SMS não tem 
 select is((pg_temp.d('k1')).variables, '{"codigo": "***"}'::jsonb, 'o código sai da linha quando o envio termina');
 select is((pg_temp.d('k1:alt:sms')).variables, '{"codigo": "482913"}'::jsonb, 'o SMS ainda leva o código');
 
+-- bloqueado no stage: definitivo e sem SMS (ADR 0005 §1) -----------------------------------------------------------
+select pg_temp.codigo('k10');
+select is(pg_temp.reivindicar('k10'), 1::smallint, 'código para destino fora da lista de permitidos');
+select is(api.delivery_mark_failed((pg_temp.d('k10')).id, 1::smallint, 'bloqueado_stage', 'bloqueado_stage'), 'bloqueado_stage',
+          'bloqueado no stage é definitivo');
+select is(((pg_temp.d('k10')).state, (pg_temp.d('k10:alt:sms')).id), ('bloqueado_stage'::text, null::uuid),
+          'e não aciona o SMS: o destino não está na lista em canal nenhum');
+
+-- link do Boarding Check: o envio aceito marca o grant (RN-FIC-07, os 8 h contam daqui) ---------------------------
+select api.delivery_enqueue('00000000-0000-4000-8000-00000000000a', 'whatsapp', 'link_boarding_check', 'professional',
+  '00000000-0000-4000-8000-0000000000d1', '{"nome_clinica": "Clínica Fictícia A", "data_hora": "20/11 às 15:00", "link": "x"}',
+  'k11', 'sistema', 1::smallint, null, null, '{sms}', 'access_grant', '00000000-0000-4000-8000-0000000000b1');
+select is(pg_temp.enviado_em('00000000-0000-4000-8000-0000000000b1'), null, 'antes do envio, o grant não vale');
+select is(pg_temp.reivindicar('k11'), 1::smallint, 'link reivindicado');
+select ok(api.delivery_mark_sent((pg_temp.d('k11')).id, 1::smallint, 'wamid.ficticio.b1', '••••0009'), 'aceito pelo provedor');
+select ok(pg_temp.enviado_em('00000000-0000-4000-8000-0000000000b1') is not null, 'o primeiro envio aceito marca o grant');
+
 -- retorno do provedor --------------------------------------------------------------------------------------------
 select pg_temp.codigo('k8');
 select is(pg_temp.reivindicar('k8'), 1::smallint, 'outro código reivindicado');
@@ -148,7 +180,7 @@ select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
 select is((select destination_masked from api.delivery_list() where id = (select id from pg_temp.d('k8'))), '••••0001',
           'o ADMIN vê o histórico com o destino mascarado');
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
-select is((select count(*)::int from api.delivery_list('appointment', '00000000-0000-4000-8000-0000000000a1')), 4,
+select is((select count(*)::int from api.delivery_list('appointment', '00000000-0000-4000-8000-0000000000a1')), 5,
           'quem vê a agenda vê os envios daquele atendimento');
 select throws_ok($$ select * from api.delivery_list() $$, '42501', 'ATTA-AUTH-0004',
                  'sem Configurações, o Colaborador não vê o histórico geral');
