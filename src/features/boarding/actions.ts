@@ -1,8 +1,9 @@
 "use server";
 
-import { falhaDeValidacao, ok, type Resultado } from "@/lib/errors";
+import { falha, falhaDeValidacao, ok, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { apagarLink, lerHashDoLink } from "@/server/boarding/cookies";
+import { boardingNoAr } from "@/server/boarding/disponivel";
 import { portaBoarding } from "@/server/boarding/porta";
 import { apagarGrant, gravarGrant } from "@/server/grant/cookie";
 import { type DesfechoDoPin, minutosAte, pinSchema } from "./schema";
@@ -12,6 +13,7 @@ import { type DesfechoDoPin, minutosAte, pinSchema } from "./schema";
 // se o PIN não vale, o cookie da sessão sai na mesma resposta. Sem cookie do link, a resposta é a mesma de link vencido.
 // Os limites (5 seguidos: 15 min; 10 no total: revoga) são do banco; a action só repassa. Log sem PIN nem segredo.
 export async function confirmarPin(entrada: unknown): Promise<Resultado<DesfechoDoPin>> {
+  if (!boardingNoAr()) return falha("NAO_ENCONTRADO", "Boarding Check fora da produção."); // porta simulada
   const dados = pinSchema.safeParse(entrada);
   if (!dados.success) return falhaDeValidacao(dados.error.issues);
   const hashDoLink = await lerHashDoLink();
