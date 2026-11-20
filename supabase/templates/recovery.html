@@ -1,9 +1,57 @@
 <!doctype html>
-<html lang="pt-BR">
-  <body style="font-family: Arial, sans-serif; color: #2b2b2b; line-height: 1.5">
-    <p><strong>ATTA-in</strong></p>
-    <p>Recebemos um pedido para criar uma nova senha de acesso ao painel da clínica.</p>
-    <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery">Criar nova senha</a></p>
-    <p style="color:#6b6b6b; font-size: 13px">Se você não pediu isto, ignore este e-mail. O link vale por 1 hora e só funciona uma vez.</p>
-  </body>
+<html lang="pt-BR" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Criar nova senha · ATTA-in</title>
+<!--[if mso]><style>table,td,a,p,h1{font-family:Arial,sans-serif !important;}</style><![endif]-->
+<style>
+  @media (max-width: 620px) {
+    .cartao { padding: 28px 20px !important; }
+    .cabecalho { padding: 16px 12px !important; }
+    .botao a { display: block !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    body, .fundo { background-color: #242423 !important; }
+    .cartao { background-color: #2c3128 !important; border-color: #2c3128 !important; }
+    .cartao h1, .cartao p, .cartao a.link { color: #ffffff !important; }
+    .botao td { background-color: #ffffff !important; }
+    .botao a { color: #2c3128 !important; }
+    .rodape p { color: #E8E4DC !important; }
+  }
+</style>
+</head>
+<body style="margin:0; padding:0; background-color:#F9F8F6;">
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">Use o link para criar uma nova senha de acesso.</div>
+<table role="presentation" class="fundo" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F9F8F6;">
+<tr><td align="center" style="padding:24px 12px;">
+  <!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+    <tr><td class="cabecalho" bgcolor="#2c3128" style="background-color:#2c3128; border-radius:10px 10px 0 0; padding:18px 24px;">
+      <img src="{{ .SiteURL }}/email/atta-in.png" width="152" height="42" alt="ATTA-in" style="display:block; border:0; outline:none; text-decoration:none; color:#ffffff; font-family:'Raleway', 'Segoe UI', Helvetica, Arial, sans-serif; font-size:24px;">
+    </td></tr>
+    <tr><td class="cartao" bgcolor="#ffffff" style="background-color:#ffffff; border:1px solid #E8E4DC; border-top:0; border-radius:0 0 10px 10px; padding:36px 32px; font-family:'Raleway', 'Segoe UI', Helvetica, Arial, sans-serif; color:#242423;">
+      <h1 style="margin:0 0 16px; font-family:'Prata', Georgia, 'Times New Roman', serif; font-size:26px; line-height:1.25; font-weight:400; color:#242423;">Criar nova senha</h1>
+      <p style="margin:0 0 28px; font-size:16px; line-height:1.5; color:#242423;">Recebemos um pedido para criar uma nova senha de acesso ao painel da clínica.</p>
+      <table role="presentation" class="botao" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px;">
+        <tr><td bgcolor="#2c3128" style="background-color:#2c3128; border-radius:6px;">
+          <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block; padding:15px 28px; font-family:'Raleway', 'Segoe UI', Helvetica, Arial, sans-serif; font-size:17px; font-weight:600; line-height:1.2; color:#ffffff; text-decoration:none; border-radius:6px; text-align:center;">Criar nova senha</a>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 8px; font-size:14px; line-height:1.5; color:#5f5e5e;">Se o botão não funcionar, copie e cole este endereço no navegador:</p>
+      <p style="margin:0 0 24px; font-size:14px; line-height:1.5; word-break:break-all;"><a class="link" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery" style="color:#242423; text-decoration:underline;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery</a></p>
+      <p style="margin:0 0 8px; font-size:14px; line-height:1.5; color:#5f5e5e;">O link vale 1 hora e só funciona uma vez.</p>
+      <p style="margin:0; font-size:14px; line-height:1.5; color:#5f5e5e;">Se você não pediu uma nova senha, ignore este e-mail: a sua senha atual continua valendo.</p>
+    </td></tr>
+    <tr><td class="rodape" align="center" style="padding:20px 32px 0;">
+      <p style="margin:0; font-family:'Raleway', 'Segoe UI', Helvetica, Arial, sans-serif; font-size:12px; line-height:1.5; color:#5f5e5e;">ATTA-in · E-mail automático, não responda.</p>
+    </td></tr>
+  </table>
+  <!--[if mso]></td></tr></table><![endif]-->
+</td></tr>
+</table>
+</body>
 </html>
