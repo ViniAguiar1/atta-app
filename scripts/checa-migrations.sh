@@ -4,6 +4,8 @@
 #   (a) duas migrations da árvore atual têm a mesma versão;
 #   (b) com BASE: uma migration nova ou renomeada em BASE...HEAD tem versão menor ou igual à maior versão de BASE.
 #       O `supabase db push` recusa migration anterior à última aplicada, e duas trilhas acabam disputando o número.
+#   (c) com BASE: uma linha nova de migration usa `errcode`/`sqlstate`/condição fora da lista que o src/lib/errors
+#       mapeia (ADR 0001 §5): código fora dela vira INTERNO na tela.
 #
 # Uso:  sh scripts/checa-migrations.sh                       só (a), na árvore atual
 #       sh scripts/checa-migrations.sh origin/main [HEAD]    (a) e (b): rode antes do push, depois de `git fetch`
@@ -13,6 +15,11 @@ dir=supabase/migrations
 base="${1:-}"
 head="${2:-HEAD}"
 erro=0
+
+# códigos SQLSTATE que o src/lib/errors traduz (ADR 0001 §5) e os nomes de condição equivalentes
+CODIGOS_OK="P0001 P0002 42501 23505 23514 23502 23503 22023 40001"
+NOMES_OK="raise_exception no_data_found insufficient_privilege unique_violation check_violation not_null_violation foreign_key_violation invalid_parameter_value serialization_failure"
+NIVEIS="exception notice warning info log debug using sqlstate"
 
 versao() { basename "$1" | sed -n -E 's/^([0-9]+)_.*\.sql$/\1/p'; }
 
@@ -40,7 +47,28 @@ if [ -n "$base" ]; then
       erro=1
     fi
   done
-  [ "$erro" -ne 0 ] || echo "migrations ok: nenhuma versão repetida, e as novas são maiores que ${ultima:-(nenhuma na base)}"
+  # (c) códigos de erro nas linhas novas das migrations do PR
+  for f in $(git diff --diff-filter=AMR --name-only "$base...$head" -- "$dir" | grep -E '\.sql$' || true); do
+    linhas="$(git diff -U0 "$base...$head" -- "$f" | grep -E '^\+' | grep -v -E '^\+\+\+' || true)"
+    [ -n "$linhas" ] || continue
+    codigos="$(printf '%s\n' "$linhas" | grep -o -i -E "(errcode[[:space:]]*:?=[[:space:]]*|sqlstate[[:space:]]+)'[^']*'" |
+      sed -E "s/^[^']*'([^']*)'$/\\1/" || true)"
+    nomes="$(printf '%s\n' "$linhas" | tr 'A-Z' 'a-z' |
+      sed -n -E 's/.*raise[[:space:]]+(exception[[:space:]]+)?([a-z_]+)[[:space:]]*(using|;).*/\2/p' || true)"
+    for c in $codigos; do
+      cu="$(printf '%s' "$c" | tr 'a-z' 'A-Z')"; cl="$(printf '%s' "$c" | tr 'A-Z' 'a-z')"
+      case " $CODIGOS_OK " in *" $cu "*) continue ;; esac
+      case " $NOMES_OK " in *" $cl "*) continue ;; esac
+      echo "::error::$f: errcode '$c' fora da lista que o src/lib/errors mapeia (ADR 0001 §5: $CODIGOS_OK). Use um desses; outro código vira INTERNO na tela."
+      erro=1
+    done
+    for nm in $nomes; do
+      case " $NIVEIS $NOMES_OK " in *" $nm "*) continue ;; esac
+      echo "::error::$f: raise com a condição '$nm', fora da lista que o src/lib/errors mapeia (ADR 0001 §5: $CODIGOS_OK)."
+      erro=1
+    done
+  done
+  [ "$erro" -ne 0 ] || echo "migrations ok: nenhuma versão repetida, as novas são maiores que ${ultima:-(nenhuma na base)} e os códigos de erro estão na lista"
 else
   [ "$erro" -ne 0 ] || echo "migrations ok: nenhuma versão repetida"
 fi
