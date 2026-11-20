@@ -7,6 +7,7 @@ import { decidirGuarda, destinoSeguro, ROTA_CALLBACK, ROTA_LOGIN } from "@/lib/a
 import { agoraEmSegundos, COOKIE_ATIVIDADE } from "@/lib/auth/sessao";
 import { falha, falhaDeValidacao, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { registrarAcesso } from "@/server/auditoria/acesso";
 import { opcoesDoCookieDeAtividade } from "@/lib/supabase/cookies";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
@@ -23,12 +24,16 @@ export async function entrarComSenha(_anterior: Resultado<never> | null, dados: 
   if (error) {
     const status = error.status ?? 0;
     logger.info("auth.entrada", { ok: false, status });
+    // na trilha, sem identificar a conta (nem o e-mail): só o motivo (S3-5)
+    if ([400, 401, 422, 429].includes(status)) await registrarAcesso("auth.login_failed", null, { reason: (error.code ?? String(status)).slice(0, 40) });
     // a mesma mensagem para e-mail inexistente e senha errada, de propósito
     if (status === 429) return falha("LIMITE", "Muitas tentativas.");
     if (status === 400 || status === 401 || status === 422) return falha("NAO_AUTENTICADO", "Credenciais inválidas.");
     return falha("INDISPONIVEL", "Serviço de entrada indisponível.");
   }
   logger.info("auth.entrada", { ok: true });
+  const { data: entrou } = await supabase.auth.getClaims();
+  if (entrou?.claims?.sub) await registrarAcesso("auth.login", entrou.claims.sub, { method: "password", aal: String(entrou.claims.aal ?? "aal1") });
   await marcarAtividade();
   const volta = entrada.data.volta ?? voltaDaTela(await headers());
   redirect(await destinoDepoisDoLogin(supabase, destinoSeguro(volta)));
@@ -76,6 +81,8 @@ export async function entrarComGoogle(dados: FormData): Promise<void> {
 // Sair (POST por server action; o menu da pessoa do Frontend chama esta ação): encerra a sessão e volta ao /login.
 export async function sair(): Promise<void> {
   const supabase = await criarClienteServidor();
+  const { data } = await supabase.auth.getClaims();
+  if (data?.claims?.sub) await registrarAcesso("auth.logout", data.claims.sub);
   await supabase.auth.signOut({ scope: "local" });
   (await cookies()).delete(COOKIE_ATIVIDADE);
   redirect(ROTA_LOGIN);

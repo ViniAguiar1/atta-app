@@ -5,6 +5,7 @@ import { z } from "zod";
 import { destinoSeguro } from "@/lib/auth/rotas";
 import { type Resultado, falha, falhaDeValidacao, ok } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { registrarAcesso } from "@/server/auditoria/acesso";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
 export type Ativacao = { factorId: string; qr: string; segredo: string };
@@ -43,6 +44,9 @@ export async function confirmarCodigo(_anterior: Resultado<never> | null, dados:
   });
   if (!lido.success) return falhaDeValidacao(lido.error.issues);
   const supabase = await criarClienteServidor();
+  // primeira confirmação deste fator = ativação; as seguintes = 2º fator no login (S3-5)
+  const { data: fatores } = await supabase.auth.mfa.listFactors();
+  const ativacao = fatores?.all.find((f) => f.id === lido.data.factorId)?.status !== "verified";
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: lido.data.factorId, code: lido.data.codigo });
   if (error) {
     logger.warn("auth.totp_recusado", { code: error.code ?? "desconhecido" });
@@ -50,5 +54,7 @@ export async function confirmarCodigo(_anterior: Resultado<never> | null, dados:
       ? falha("LIMITE", "Muitas tentativas. Espere alguns minutos e tente de novo.")
       : falha("NAO_AUTENTICADO", "Código incorreto.");
   }
+  const { data } = await supabase.auth.getClaims();
+  if (data?.claims?.sub) await registrarAcesso(ativacao ? "auth.mfa_enrolled" : "auth.mfa_verified", data.claims.sub, { method: "totp" });
   redirect(destinoSeguro(lido.data.volta));
 }
