@@ -1,0 +1,4 @@
+// Grupo de rota (clinica): painel da clínica (ADR 0001 §4). As telas entram pelas trilhas.
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return children;
+}

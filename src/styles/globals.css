@@ -1,0 +1,38 @@
+/* Ordem obrigatória (ADR 0001 §6): o @theme do tokens.theme.css zera cores, fontes e tamanhos do Tailwind
+   (--color-*: initial...), então só existem classes de token: bg-brand, text-text-primary, font-title, text-sm...
+   tokens.css e tokens.theme.css são cópias do atta-platform (commit no cabeçalho de cada um): não edite as cópias. */
+@import "tailwindcss";
+@source not "../../**/*.test.{ts,tsx}";
+@import "./tokens.css";
+@import "./tokens.theme.css";
+
+/* O next/font auto-hospeda as fontes e dá a cada família um nome próprio, exposto nas variáveis --ff-* do <html>
+   (app/layout.tsx); os tokens trazem o nome literal ('Raleway'). Este :root, fora de camada e depois dos tokens, é
+   o único ponto que aponta as fontes dos tokens para o next/font. */
+:root {
+  --font-body: var(--ff-raleway), sans-serif;
+  --font-title: var(--ff-prata), "Playfair Display", serif;
+  --font-sub: var(--ff-poppins), sans-serif;
+}
+
+@layer base {
+  /* Foco sempre visível: anel de 2 px no token de foco (Guia de Design §3; planning/05 §4.5). */
+  :focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* Movimento reduzido: toda transição e animação cai para ~0 ms (planning/05 §6 e §9). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
