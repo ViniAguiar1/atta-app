@@ -1,19 +1,21 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import type { Erro } from "@/lib/errors";
 import type { Parametro } from "@/server/configuracoes/porta";
 import { salvarParametro } from "../actions";
 import { textos as t } from "../textos";
 
-// Um parâmetro numérico (campo) ou de lista (select), gravado sozinho: o número ao sair do campo ou no Enter, a lista ao
-// escolher. Quem decide limite e regra cruzada é o banco; a recusa aparece no campo, com o que fazer (PDD §26.8).
+// Um parâmetro numérico (campo) ou de lista (select), gravado sozinho: o número ao sair do campo ou no Enter, a lista logo
+// depois de escolher (com uma espera curta: no Windows, a seta do teclado troca a opção sem abrir a lista). Quem decide limite e regra cruzada é o banco; a recusa aparece no campo, com o que fazer (PDD §26.8).
 type Props = {
   parametro: Extract<Parametro, { tipo: "int" }>;
   rotulo: string;
   opcao?: (valor: number) => string; // com opção: select com os valores permitidos
   aoSalvar: (p: Parametro) => void;
 };
+
+const ESPERA_DO_SELECT_MS = 700;
 
 function mensagem(erro: Erro, p: Props["parametro"]): string {
   if (erro.code === "VALIDACAO") return t.erros.limite(p.min, p.max);
@@ -31,6 +33,8 @@ export function CampoDeParametro({ parametro, rotulo, opcao, aoSalvar }: Props) 
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
   const [salvando, executar] = useTransition();
+  const espera = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(espera.current), []);
 
   function salvar(texto: string) {
     setSalvo(false);
@@ -60,8 +64,14 @@ export function CampoDeParametro({ parametro, rotulo, opcao, aoSalvar }: Props) 
           {...comum}
           value={rascunho}
           onChange={(e) => {
-            setRascunho(e.target.value);
-            salvar(e.target.value);
+            const valor = e.target.value;
+            setRascunho(valor);
+            clearTimeout(espera.current);
+            espera.current = setTimeout(() => salvar(valor), ESPERA_DO_SELECT_MS);
+          }}
+          onBlur={() => {
+            clearTimeout(espera.current);
+            salvar(rascunho);
           }}
         >
           {parametro.permitidos.map((v) => (

@@ -10,6 +10,8 @@ import { textos as t } from "@/features/configuracoes/textos";
 // Configurações (PDD v206 §10.4): menu lateral em grupos e a seção ao lado. Exclusiva do ADMIN (§10.4.3): quem não é
 // volta ao painel antes de receber qualquer coisa (o menu também fica atrás da guarda). Quem autoriza de fato é a RLS.
 export default function LayoutDeConfiguracoes({ children }: { children: React.ReactNode }) {
+  // fora do Suspense, para o 404 sair antes de qualquer esqueleto (o ambiente é o do build)
+  if (!moduloDisponivel("/painel/configuracoes")) notFound();
   return (
     <Suspense fallback={null}>
       <SoAdmin>{children}</SoAdmin>
@@ -19,7 +21,6 @@ export default function LayoutDeConfiguracoes({ children }: { children: React.Re
 
 async function SoAdmin({ children }: { children: React.ReactNode }) {
   await connection();
-  if (!moduloDisponivel("/painel/configuracoes")) notFound();
   const sessao = await sessaoDoPainel();
   if (sessao?.papel !== "ADMIN") redirect("/painel");
   return (
