@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataState } from "@/components/ui/DataState";
-import { buscarNoDia, resumirDia } from "@/features/agenda/actions";
+import { buscarConcluidos, buscarNoDia, buscarNoPeriodo, resumirDia } from "@/features/agenda/actions";
 import { AgendaHoje } from "@/features/agenda/components/AgendaHoje";
 import { ALTURA_DA_LINHA_REM } from "@/features/agenda/components/TabelaDoDia";
 import { textos } from "@/features/agenda/textos";
@@ -24,7 +24,16 @@ export default function Pagina() {
 async function Hoje() {
   await connection(); // por requisição: o "hoje" é o da clínica na hora do pedido
   const [inicial, resumoInicial] = await Promise.all([portaAgenda.dia({}), portaAgenda.resumo({})]);
-  return <AgendaHoje inicial={inicial} resumoInicial={resumoInicial} buscar={buscarNoDia} resumir={resumirDia} />;
+  return (
+    <AgendaHoje
+      inicial={inicial}
+      resumoInicial={resumoInicial}
+      buscar={buscarNoDia}
+      buscarPeriodo={buscarNoPeriodo}
+      buscarConcluidos={buscarConcluidos}
+      resumir={resumirDia}
+    />
+  );
 }
 
 function Carregando() {

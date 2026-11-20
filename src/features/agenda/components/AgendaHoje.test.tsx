@@ -41,7 +41,7 @@ async function digitar(texto: string) {
 describe("Agenda › Hoje", () => {
   it("mostra a data da clínica por extenso e as colunas do PDD, com o horário em ordem crescente", async () => {
     const dia = await diaSimulado();
-    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(dia)} buscar={vi.fn()} />);
+    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(dia)} buscar={vi.fn()} />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/feira|sábado|domingo/i);
     const cabecalhos = screen.getAllByRole("columnheader").map((th) => th.textContent?.replace("↑", "").trim());
     expect(cabecalhos).toEqual(["Horário", "Paciente", "Procedimento", "Profissional", "Documentos", "Status"]);
@@ -51,7 +51,7 @@ describe("Agenda › Hoje", () => {
   });
 
   it("chips de status, o selo Atrasado ao lado do Agendado e o envio do Boarding Check", async () => {
-    const { container } = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
+    const { container } = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
     expect(estadoDeDados(container)).toBe("pronto");
     const mariana = screen.getByRole("row", { name: /Mariana Costa Albuquerque/ });
     expect(within(mariana).getByText("Agendado")).toBeDefined();
@@ -66,7 +66,7 @@ describe("Agenda › Hoje", () => {
   });
 
   it("documentos com o estado por extenso para o leitor, opcional e Nenhum documento", async () => {
-    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
+    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
     const juliana = screen.getByRole("row", { name: /Juliana Prates/ });
     expect(within(juliana).getByText(", assinado")).toBeDefined();
     expect(within(juliana).getByText(", assinatura recusada")).toBeDefined();
@@ -76,7 +76,7 @@ describe("Agenda › Hoje", () => {
   });
 
   it("CPF mascarado na tela e lido como 'CPF terminado em' pelo leitor", async () => {
-    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
+    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
     const mariana = screen.getByRole("row", { name: /Mariana Costa Albuquerque/ });
     expect(within(mariana).getByText("···.···.484-35").getAttribute("aria-hidden")).toBe("true");
     expect(within(mariana).getByText("CPF terminado em 484-35")).toBeDefined();
@@ -84,12 +84,12 @@ describe("Agenda › Hoje", () => {
 
   it("dia sem agendamento: vazio; falha do servidor: erro com tentar de novo", async () => {
     const dia = await diaSimulado();
-    const semNada = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(vazio(dia))} buscar={vi.fn()} />);
+    const semNada = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(vazio(dia))} buscar={vi.fn()} />);
     expect(estadoDeDados(semNada.container)).toBe("vazio");
     semNada.unmount();
 
     const buscar = vi.fn<(f: unknown) => Promise<Resultado<DiaDaAgenda>>>().mockResolvedValue(ok(dia));
-    const comErro = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={falha("INDISPONIVEL", "fora")} buscar={buscar} />);
+    const comErro = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={falha("INDISPONIVEL", "fora")} buscar={buscar} />);
     expect(estadoDeDados(comErro.container)).toBe("erro");
     fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
     await act(async () => {
@@ -104,7 +104,7 @@ describe("Agenda › Hoje", () => {
     const buscar = vi
       .fn<(f: { busca?: string }) => Promise<Resultado<DiaDaAgenda>>>()
       .mockImplementation(async (f) => ok(f.busca ? vazio(dia) : dia));
-    const { container } = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(dia)} buscar={buscar} />);
+    const { container } = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(dia)} buscar={buscar} />);
     expect(buscar).not.toHaveBeenCalled(); // o primeiro dia veio do servidor
 
     await digitar("  Fulana  ");
@@ -123,7 +123,7 @@ describe("Agenda › Hoje", () => {
     const dia = await diaSimulado();
     let responder: (r: Resultado<DiaDaAgenda>) => void = () => {};
     const buscar = vi.fn(() => new Promise<Resultado<DiaDaAgenda>>((r) => (responder = r)));
-    const { container } = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(dia)} buscar={buscar} />);
+    const { container } = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(dia)} buscar={buscar} />);
     await digitar("Juliana");
     expect(estadoDeDados(container)).toBe("pronto");
     expect(screen.getByRole("region", { name: textos.rotuloDaLista }).getAttribute("aria-busy")).toBe("true");
@@ -134,7 +134,7 @@ describe("Agenda › Hoje", () => {
   it("termo curto e CPF pela metade não buscam e explicam embaixo do campo; CPF inteiro busca", async () => {
     const dia = await diaSimulado();
     const buscar = vi.fn<(f: { busca?: string }) => Promise<Resultado<DiaDaAgenda>>>().mockResolvedValue(ok(dia));
-    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(dia)} buscar={buscar} />);
+    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(dia)} buscar={buscar} />);
     for (const termo of ["j", "431.572", "4315728"]) {
       await digitar(termo);
       expect(buscar).not.toHaveBeenCalled();
@@ -148,12 +148,12 @@ describe("Agenda › Hoje", () => {
   });
 
   it("sem a data (falha no primeiro carregamento), o h1 mostra o nome do módulo", () => {
-    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={falha("INDISPONIVEL", "fora")} buscar={vi.fn()} />);
+    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={falha("INDISPONIVEL", "fora")} buscar={vi.fn()} />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(textos.titulo);
   });
 
   it("títulos de coluna no verde do ATTA-in (PDD §10)", async () => {
-    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
+    render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
     for (const th of screen.getAllByRole("columnheader")) expect(th.className).toContain("text-brand");
   });
 
@@ -162,7 +162,7 @@ describe("Agenda › Hoje", () => {
     const buscar = vi
       .fn<(f: { status?: string[]; semDocumento?: boolean }) => Promise<Resultado<DiaDaAgenda>>>()
       .mockImplementation(async (f) => ok(f.status || f.semDocumento ? vazio(dia) : dia));
-    const { container } = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} inicial={ok(dia)} buscar={buscar} />);
+    const { container } = render(<AgendaHoje resumoInicial={RESUMO} resumir={vi.fn()} buscarPeriodo={portaAgendaSimulada.periodo} buscarConcluidos={portaAgendaSimulada.concluidos} inicial={ok(dia)} buscar={buscar} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Pronto: 1. Filtrar a lista" }));
     await act(async () => {
@@ -188,11 +188,50 @@ describe("Agenda › Hoje", () => {
   it("falha no resumo mostra o erro com tentar de novo só nos cards; a lista continua", async () => {
     const dia = await diaSimulado();
     const resumir = vi.fn().mockResolvedValue(RESUMO);
-    render(<AgendaHoje inicial={ok(dia)} resumoInicial={falha("INDISPONIVEL", "fora")} resumir={resumir} buscar={vi.fn()} />);
+    render(<AgendaHoje inicial={ok(dia)} resumoInicial={falha("INDISPONIVEL", "fora")} resumir={resumir} buscar={vi.fn()} buscarPeriodo={vi.fn()} buscarConcluidos={vi.fn()} />);
     expect(screen.getByRole("region", { name: textos.rotuloDaLista })).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
     await act(async () => {});
     expect(resumir).toHaveBeenCalledOnce();
     expect(screen.getByRole("region", { name: textos.cards.rotulo })).toBeDefined();
+  });
+
+  it("o segmento troca de visão: Todos com a coluna Data e o card Confirmação; Concluídos com Não realizado", async () => {
+    const dia = await diaSimulado();
+    const buscarPeriodo = vi.fn(portaAgendaSimulada.periodo);
+    const buscarConcluidos = vi.fn(portaAgendaSimulada.concluidos);
+    render(
+      <AgendaHoje
+        inicial={ok(dia)}
+        resumoInicial={RESUMO}
+        resumir={vi.fn()}
+        buscar={vi.fn()}
+        buscarPeriodo={buscarPeriodo}
+        buscarConcluidos={buscarConcluidos}
+      />,
+    );
+    const grupo = screen.getByRole("group", { name: textos.visoes.rotulo });
+    expect(within(grupo).getByRole("button", { name: "Hoje" }).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(within(grupo).getByRole("button", { name: "Todos" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(buscarPeriodo).toHaveBeenCalledWith({});
+    expect(screen.getByRole("columnheader", { name: /Data/ })).toBeDefined();
+    expect(screen.getAllByText("Hoje").length).toBeGreaterThan(1); // a coluna Data diz "Hoje" nas linhas de hoje
+    expect(screen.getByRole("heading", { name: "Confirmação" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Filtrar a lista/ })).toBeNull(); // filtros dos cards só na visão Hoje
+    expect(screen.getByText(/\d+ agendamentos$/)).toBeDefined();
+
+    fireEvent.click(within(grupo).getByRole("button", { name: "Concluídos" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(buscarConcluidos).toHaveBeenCalledWith({ periodo: "semana" });
+    expect(screen.getByText("Não realizado")).toBeDefined();
+    expect(screen.getAllByText("Realizado").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Check-in" })).toBeDefined();
+    expect(screen.getByText(/registros? · atendimentos mais antigos ficam na Pasta do Paciente/)).toBeDefined();
   });
 });

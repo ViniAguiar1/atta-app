@@ -1,6 +1,6 @@
 import "server-only";
 import { falhaDeValidacao, ok } from "@/lib/errors";
-import { filtroDoDiaSchema } from "@/features/agenda/schema";
+import { filtroDoDiaSchema, filtroDoPeriodoSchema, filtroDosConcluidosSchema } from "@/features/agenda/schema";
 import type { PortaAgenda } from "./porta";
 
 // Porta vazia da Agenda (regra de stage do Tech Lead Frontend, 20/11): na produção, enquanto não há leitura real,
@@ -28,6 +28,16 @@ export const portaAgendaVazia: PortaAgenda = {
       confirmacao: { agendados: null, aConfirmar: null, confirmados: null },
       semDocumento: null,
     });
+  },
+  async periodo(filtro) {
+    const lido = filtroDoPeriodoSchema.safeParse(filtro);
+    if (!lido.success) return falhaDeValidacao(lido.error.issues);
+    return ok({ hojeLocal: hojeNaClinica(), fuso: FUSO, linhas: [], proximoCursor: null });
+  },
+  async concluidos(filtro) {
+    const lido = filtroDosConcluidosSchema.safeParse(filtro);
+    if (!lido.success) return falhaDeValidacao(lido.error.issues);
+    return ok({ hojeLocal: hojeNaClinica(), fuso: FUSO, linhas: [], proximoCursor: null });
   },
   async avisos() {
     return ok([]);

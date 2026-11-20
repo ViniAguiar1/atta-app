@@ -4,6 +4,8 @@ import { iniciais } from "@/lib/texto/iniciais";
 import { maskCpf } from "@/server/crypto/cpf";
 import {
   filtroDoDiaSchema,
+  filtroDoPeriodoSchema,
+  filtroDosConcluidosSchema,
   type Acao,
   type AvisoDaAgenda,
   type LinhaDaAgenda,
@@ -113,6 +115,51 @@ function linhasDe(dataLocal: string): LinhaDaAgenda[] {
   }));
 }
 
+/** "2026-11-20" + n dias, sem fuso (só a data do calendário). */
+function somarDias(dataLocal: string, n: number): string {
+  const d = new Date(`${dataLocal}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Cópia de uma semente noutro dia, com outro id (sufixo) e o que mudar (estado, ações). */
+function copiaEm(dataLocal: string, indice: number, sufixo: number, extra: Partial<LinhaDaAgenda>): LinhaDaAgenda | null {
+  const base = linhasDe(dataLocal)[indice];
+  if (!base) return null;
+  return { ...base, id: id(sufixo), atrasado: false, boardingCheckEnviadoEm: null, ...extra };
+}
+
+/** Visão Todos: hoje (sem concluídos) e os próximos dias, só Agendado, por horário. */
+function linhasDoPeriodo(hojeLocal: string): LinhaDaAgenda[] {
+  const futuras = [1, 2].flatMap((dias) =>
+    [0, 2, 6].map((indice) =>
+      copiaEm(somarDias(hojeLocal, dias), indice, 1000 + dias * 10 + indice, {
+        status: "agendado",
+        confirmacao: indice === 6 ? "a_confirmar" : "confirmado",
+        acoes: acoes("editar", "confirmar", "remarcar", "detalhes", "cancelar"),
+      }),
+    ),
+  );
+  return [...linhasDe(hojeLocal), ...futuras].filter((l): l is LinhaDaAgenda => l !== null && l.status !== "concluido");
+}
+
+/** Visão Concluídos: concluídos e ausentes ("Não realizado") de dias passados; o mês inclui a semana. */
+function linhasConcluidas(hojeLocal: string, periodo: "semana" | "mes"): LinhaDaAgenda[] {
+  const passado = acoes("envios_dos_links", "detalhes");
+  const semana = [
+    copiaEm(somarDias(hojeLocal, -1), 3, 2001, { status: "concluido", acoes: [...passado, { acao: "enviar_termos" }] }),
+    copiaEm(somarDias(hojeLocal, -1), 4, 2002, { status: "ausente", acoes: passado }),
+    copiaEm(somarDias(hojeLocal, -2), 1, 2003, { status: "concluido", acoes: [...passado, { acao: "enviar_termos" }] }),
+  ];
+  const resto = [copiaEm(somarDias(hojeLocal, -10), 0, 2004, { status: "concluido", acoes: passado })];
+  return [...(periodo === "mes" ? [...resto, ...semana] : semana)]
+    .filter((l): l is LinhaDaAgenda => l !== null)
+    .sort((a, b) => b.inicio.localeCompare(a.inicio));
+}
+
+const casaNome = (busca: string | undefined, l: LinhaDaAgenda) =>
+  !busca || semAcento(l.paciente.nomeExibicao).includes(semAcento(busca));
+
 /** A regra do banco para o card e o aviso "Sem documento vinculado" (§10.2.2): procedimento presencial ou online
  *  ainda por acontecer, sem documento; Avaliação, Retorno e Consulta online não entram. */
 const entraEmSemDocumento = (l: LinhaDaAgenda) =>
@@ -163,6 +210,28 @@ export const portaAgendaSimulada: PortaAgenda = {
       semDocumento: linhas.filter(entraEmSemDocumento).length,
     };
     return ok(resumo);
+  },
+
+  async periodo(filtro) {
+    const lido = filtroDoPeriodoSchema.safeParse(filtro);
+    if (!lido.success) return falhaDeValidacao(lido.error.issues);
+    const { status, busca, vinculoProfissionalId } = lido.data;
+    const hojeLocal = hojeNaClinica();
+    const linhas = linhasDoPeriodo(hojeLocal).filter(
+      (l) =>
+        (!status || status.includes(l.status)) &&
+        (!vinculoProfissionalId || l.profissional.vinculoId === vinculoProfissionalId) &&
+        casaNome(busca, l),
+    );
+    return ok({ hojeLocal, fuso: FUSO, linhas, proximoCursor: null });
+  },
+
+  async concluidos(filtro) {
+    const lido = filtroDosConcluidosSchema.safeParse(filtro);
+    if (!lido.success) return falhaDeValidacao(lido.error.issues);
+    const hojeLocal = hojeNaClinica();
+    const linhas = linhasConcluidas(hojeLocal, lido.data.periodo).filter((l) => casaNome(lido.data.busca, l));
+    return ok({ hojeLocal, fuso: FUSO, linhas, proximoCursor: null });
   },
 
   async avisos() {

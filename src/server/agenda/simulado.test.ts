@@ -83,4 +83,15 @@ describe("porta simulada da agenda", () => {
     const resumo = await dados(porta.resumo({}));
     expect(resumo.semDocumento).toBe(semDoc.length);
   });
+
+  it("Todos: de hoje em diante, sem concluídos; Concluídos: semana dentro do mês, Ausente incluído", async () => {
+    const todos = await dados(porta.periodo({}));
+    expect(todos.linhas.some((l) => l.status === "concluido")).toBe(false);
+    expect(todos.linhas.some((l) => l.inicio.slice(0, 10) > todos.hojeLocal)).toBe(true);
+    const semana = await dados(porta.concluidos({ periodo: "semana" }));
+    const mes = await dados(porta.concluidos({ periodo: "mes" }));
+    expect(semana.linhas.every((l) => ["concluido", "ausente"].includes(l.status))).toBe(true);
+    expect(semana.linhas.some((l) => l.status === "ausente")).toBe(true);
+    expect(mes.linhas.length).toBeGreaterThan(semana.linhas.length);
+  });
 });
