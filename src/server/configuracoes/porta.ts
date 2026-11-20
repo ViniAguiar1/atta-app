@@ -23,11 +23,21 @@ export type Parametro =
   | { chave: ChaveDeParametro; tipo: "int"; valor: number; padrao: number; origem: OrigemDoValor; min: number | null; max: number | null; permitidos: number[] | null }
   | { chave: ChaveDeParametro; tipo: "bool"; valor: boolean; padrao: boolean; origem: OrigemDoValor };
 
+/** Celular da clínica que recebe o link do Fluxo alternativo (PDD §15.3; atta_in.alt_flow_phone, até 10 por clínica). O
+ * número volta mascarado (o Backend 2 guarda cifrado, ADR 0002); editar é remover e adicionar. */
+export type CelularDoFluxo = { id: string; nome: string; numeroMascarado: string };
+
 export type PortaConfiguracoes = {
   /** Os parâmetros da clínica do token, no nível da unidade. SEM_PERMISSAO: quem não é ADMIN. */
   parametros(): Promise<Resultado<Parametro[]>>;
   /** Grava no nível da unidade e devolve o parâmetro como ficou. */
   salvarParametro(chave: ChaveDeParametro, valor: number | boolean): Promise<Resultado<Parametro>>;
+  /** Celulares do Fluxo alternativo da clínica do token, na ordem em que foram cadastrados. */
+  celulares(): Promise<Resultado<CelularDoFluxo[]>>;
+  /** VALIDACAO com fields (nome de 1 a 40 caracteres; número com DDD + 9 dígitos, §16.6); LIMITE: já tem 10. */
+  adicionarCelular(nome: string, numero: string): Promise<Resultado<CelularDoFluxo>>;
+  /** NAO_ENCONTRADO: não existe ou é de outra clínica (a mesma resposta). */
+  removerCelular(id: string): Promise<Resultado<{ id: string }>>;
 };
 
 export const portaConfiguracoes: PortaConfiguracoes = portaConfiguracoesSimulada;
