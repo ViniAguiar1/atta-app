@@ -48,3 +48,17 @@ test("nenhum texto de ambiente nem dica do código em nenhum passo", async ({ pa
   await expect(page.getByLabel("Código")).toBeVisible();
   expect(await page.locator("body").innerText()).not.toMatch(proibido);
 });
+
+// QA no #29: "cadastro novo" traz só o CPF confirmado, com os outros campos vazios e abertos (CPF gerado, guia de teste).
+test("cadastro novo abre a Confirme Seus Dados vazia, só com o CPF confirmado", async ({ page }) => {
+  await page.goto("/checkin/aurora");
+  await page.getByLabel("CPF").fill("11144477735");
+  await page.getByRole("button", { name: "Enviar código" }).click();
+  await page.getByLabel("Código").fill("123456");
+  await page.getByRole("button", { name: "Confirmar" }).click();
+  await expect(page.getByRole("heading", { name: "Confirme Seus Dados" })).toBeVisible();
+  await expect(page.getByText("Não encontramos seu cadastro — vamos criar um novo, é rápido.")).toBeVisible();
+  await expect(page.getByText("···.···.777-35")).toBeVisible();
+  await expect(page.getByLabel("Nome completo")).toHaveValue("");
+  await expect(page.getByLabel("Celular")).toHaveValue("");
+});

@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Botao } from "@/components/ui/Botao";
 import { TituloDoPasso } from "@/components/ui/TituloDoPasso";
 import { buscarCep, salvarDados } from "./actions";
-import { camposPendentes, mascararCelular, mascararCep, type CampoEditavel, type DadosDoPaciente, type DadosEditaveis } from "./schema";
+import { camposPendentes, mascararCelular, prepararEnvio, mascararCep, type CampoEditavel, type DadosDoPaciente, type DadosEditaveis } from "./schema";
 import { ERRO_PADRAO, ERROS, ROTULOS, TEXTOS } from "./textos";
 
 // "Confirme Seus Dados" (PDD v206 §11.5, decisão da PO): modo leitura no padrão do ATTA me; "Está tudo certo" segue;
@@ -43,9 +43,12 @@ export function ConfirmeSeusDados({ dados, novo = false, aoConcluir }: Props) {
   const mudar = (campo: CampoEditavel, valor: string) => {
     setValores((v) => ({ ...v, [campo]: campo === "uf" ? valor.toUpperCase().slice(0, 2) : valor }));
     if (campo === "cep" && valor.replace(/\D/g, "").length === 8) {
+      setAviso(TEXTOS.buscandoCep);
       executar(async () => {
         const r = await buscarCep(valor.replace(/\D/g, ""));
-        if (r.ok) setValores((v) => ({ ...v, ...r.data }));
+        // CEP sem endereço limpa o endereço do CEP anterior: o paciente preenche à mão
+        const endereco = r.ok ? r.data : { logradouro: "", bairro: "", cidade: "", uf: "" };
+        setValores((v) => ({ ...v, ...endereco }));
         setAviso(r.ok ? null : TEXTOS.cepSemEndereco);
       });
     }
@@ -53,7 +56,7 @@ export function ConfirmeSeusDados({ dados, novo = false, aoConcluir }: Props) {
 
   function confirmar(evento: React.FormEvent) {
     evento.preventDefault();
-    const enviar = { ...valores, nomeSocial: nomeSocial ? valores.nomeSocial : "" };
+    const { enviar, emailIgnorado } = prepararEnvio({ ...valores, nomeSocial: nomeSocial ? valores.nomeSocial : "" });
     const pendentes = camposPendentes(enviar);
     setErros(pendentes);
     if (pendentes.length) {
@@ -64,7 +67,7 @@ export function ConfirmeSeusDados({ dados, novo = false, aoConcluir }: Props) {
     executar(async () => {
       const r = await salvarDados(enviar);
       if (!r.ok) return setAviso(TEXTOS.indisponivel);
-      setAviso(TEXTOS.salvo);
+      setAviso(emailIgnorado ? `${TEXTOS.salvo} ${TEXTOS.emailIgnorado}` : TEXTOS.salvo);
       aoConcluir();
     });
   }

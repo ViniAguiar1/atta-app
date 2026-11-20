@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { camposPendentes, celularValido, mascararCelular, mascararCep, nomeValido, type DadosEditaveis } from "./schema";
+import { camposPendentes, celularValido, mascararCelular, mascararCep, nomeValido, prepararEnvio, type DadosEditaveis } from "./schema";
 
 // Validações do PDD v206 §16.6. Dados inventados.
 const completo: DadosEditaveis = {
@@ -42,5 +42,18 @@ describe("§16.6", () => {
     expect(mascararCelular("11987654321")).toBe("(11) 98765-4321");
     expect(mascararCelular("119")).toBe("(11) 9");
     expect(mascararCep("01310100")).toBe("01310-100");
+  });
+
+  it("e-mail mal formado não bloqueia quando há celular válido: sai vazio e a tela avisa", () => {
+    const { enviar, emailIgnorado } = prepararEnvio({ ...completo, email: "abc@" });
+    expect(emailIgnorado).toBe(true);
+    expect(enviar.email).toBe("");
+    expect(camposPendentes(enviar)).toEqual([]);
+  });
+
+  it("sem celular válido, o e-mail mal formado continua bloqueando", () => {
+    const { enviar, emailIgnorado } = prepararEnvio({ ...completo, celular: "", email: "abc@" });
+    expect(emailIgnorado).toBe(false);
+    expect(camposPendentes(enviar).sort()).toEqual(["celular", "email"]);
   });
 });

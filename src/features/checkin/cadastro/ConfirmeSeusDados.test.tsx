@@ -12,7 +12,7 @@ configure({ asyncUtilTimeout: 4000 });
 const DADOS: DadosDoPaciente = {
   nome: "Helena Prado Antunes",
   nomeSocial: "",
-  cpfMascarado: "···.982.247-··",
+  cpfMascarado: "···.···.247-25",
   celular: "11987654321",
   email: "",
   cep: "01310100",
@@ -79,5 +79,38 @@ describe("Confirme Seus Dados (§11.5)", () => {
   it("CPF novo na rede mostra o aviso do PDD", () => {
     render(<ConfirmeSeusDados dados={DADOS} novo aoConcluir={vi.fn()} />);
     expect(screen.getByText("Não encontramos seu cadastro — vamos criar um novo, é rápido.")).toBeInTheDocument();
+  });
+
+  it("e-mail mal formado com celular válido não bloqueia e avisa que não foi salvo", async () => {
+    acoes.salvarDados.mockResolvedValue({ ok: true, data: { salvoEm: "x" } });
+    const aoConcluir = vi.fn();
+    render(<ConfirmeSeusDados dados={DADOS} aoConcluir={aoConcluir} />);
+    await userEvent.type(screen.getByLabelText("Número"), "1000");
+    await userEvent.click(screen.getByRole("button", { name: "Editar informações" }));
+    await userEvent.type(screen.getByLabelText("E-mail"), "abc@");
+    await userEvent.click(screen.getByRole("button", { name: "Está tudo certo" }));
+    await vi.waitFor(() => expect(aoConcluir).toHaveBeenCalled());
+    expect(acoes.salvarDados).toHaveBeenCalledWith(expect.objectContaining({ email: "" }));
+    expect(screen.getByText(/O e-mail não foi salvo/)).toBeInTheDocument();
+  });
+
+  it("CEP sem endereço limpa o endereço do CEP anterior", async () => {
+    acoes.buscarCep.mockResolvedValue({ ok: false, error: { code: "NAO_ENCONTRADO", message: "x" } });
+    render(<ConfirmeSeusDados dados={DADOS} aoConcluir={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Editar informações" }));
+    await userEvent.clear(screen.getByLabelText("CEP"));
+    await userEvent.type(screen.getByLabelText("CEP"), "99999999");
+    expect(await screen.findByText("Não encontramos esse CEP. Preencha o endereço.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Endereço")).toHaveValue("");
+    expect(screen.getByLabelText("Cidade")).toHaveValue("");
+  });
+
+  it("cadastro novo: só o CPF, com todos os outros campos abertos e vazios", () => {
+    const vazio = { ...DADOS, nome: "", celular: "", cep: "", logradouro: "", bairro: "", cidade: "", uf: "", cpfMascarado: "···.···.777-35" };
+    render(<ConfirmeSeusDados dados={vazio} novo aoConcluir={vi.fn()} />);
+    expect(screen.getByText("···.···.777-35")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome completo")).toHaveValue("");
+    expect(screen.getByLabelText("Celular")).toHaveValue("");
+    expect(screen.getByLabelText("CEP")).toHaveValue("");
   });
 });

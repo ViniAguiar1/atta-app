@@ -57,6 +57,17 @@ export type DadosDoPaciente = DadosEditaveis & { cpfMascarado: string; convenio:
 
 export type CampoEditavel = keyof DadosEditaveis;
 
+const emailValido = (v: string) => z.email().safeParse(v.trim()).success;
+
+/**
+ * §16.6: e-mail inválido "Não [bloqueia], se houver telefone". Com celular válido, o e-mail mal formado não vai ao
+ * servidor (sai vazio) e a tela só avisa; sem celular válido, bloqueia como os outros campos.
+ */
+export function prepararEnvio(dados: DadosEditaveis): { enviar: DadosEditaveis; emailIgnorado: boolean } {
+  const ignorar = dados.email.trim() !== "" && !emailValido(dados.email) && celularValido(dados.celular);
+  return { enviar: ignorar ? { ...dados, email: "" } : dados, emailIgnorado: ignorar };
+}
+
 /** Campos que bloqueiam o avanço (§16.6) e ainda estão vazios ou inválidos. */
 export function camposPendentes(dados: DadosEditaveis): CampoEditavel[] {
   const r = dadosSchema.safeParse(dados);
