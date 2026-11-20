@@ -77,6 +77,17 @@ sensivel() { jq -r '.files[].path' <<<"$1" | grep -q -E "$SENSIVEL_RE"; }
 # patch-id (--verbatim) das mudanças do PR num head (diff merge-base(main, H)..H, pela API de comparação; vale para head antigo)
 patch_id() { gh_ api -H "Accept: application/vnd.github.diff" "repos/$REPO/compare/main...$1" | git patch-id --verbatim | cut -d' ' -f1; }
 
+# patch-id (--verbatim) só dos commits próprios do PR: o git cherry descarta os que já estão na main pelo patch-id (o PR
+# de baixo que entrou por rebase com outro SHA, caso do #66 sobre o #53), e o diff vai do pai do primeiro commit
+# restante até o head. Recebe o SHA completo.
+patch_proprio() {
+  local primeiro
+  git -C "$DIR" cat-file -e "$1^{commit}" 2>/dev/null || git -C "$DIR" fetch -q origin "$1" 2>/dev/null || { echo "sem-$1"; return; }
+  primeiro="$(git -C "$DIR" cherry origin/main "$1" | awk '$1 == "+" { print $2; exit }')"
+  [ -n "$primeiro" ] || { echo "vazio"; return; }
+  git -C "$DIR" diff "$primeiro^" "$1" | git patch-id --verbatim | cut -d' ' -f1
+}
+
 # head que o revisor aprovou: o SHA citado no ✅, se existir; senão, pela linha do tempo do PR (GraphQL): o commit de
 # antes do primeiro force-push depois do ✅ (se ele já existia na hora do ✅) ou o último head até a hora do ✅.
 head_aprovado() {
@@ -114,7 +125,8 @@ aprovado_por() {
   case "$corpo" in "❌"*) echo ajustes; return ;; esac
   ha="$(head_aprovado "$n" "$corpo" "$quando")"
   [ -n "$ha" ] || { echo velho; return; }
-  if [ "$ha" = "$head" ] || [ "$(patch_id "$ha")" = "$(patch_id "$head")" ]; then echo sim; else echo velho; fi
+  if [ "$ha" = "$head" ] || [ "$(patch_id "$ha")" = "$(patch_id "$head")" ] ||
+    [ "$(patch_proprio "$ha")" = "$(patch_proprio "$head")" ]; then echo sim; else echo velho; fi
 }
 
 # devolve "ok" ou o motivo de não poder entrar
