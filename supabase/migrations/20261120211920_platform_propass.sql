@@ -18,14 +18,27 @@
 --   - o segredo vai no caminho (/propass/<segredo>); o GET não consome. O link vale enquanto o PROpass não termina
 --     (o Termo de Autorização, com o Backend 3, é a última etapa e revoga o link na parte 2);
 --   - o link do Boarding Check também morre quando a clínica exclui o profissional (o vínculo), como o do PROpass;
---   - conselho que já existe só liga ao profissional existente com o mesmo cpf_hmac, sem mexer nos dados globais dele;
+--   - conselho que já existe só liga ao profissional existente com o mesmo cpf_hmac e o mesmo e-mail do convite
+--     (email_hmac; Security Engineer), sem mexer nos dados globais dele;
+--     a recusa conta no link e a 5ª o revoga (o número do conselho é público: sem isso, o link vira oráculo de CPF);
 --     conselho existente com outro CPF, ou CPF de outro profissional: o mesmo erro genérico, sem dizer qual.
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Colunas novas
 -- ---------------------------------------------------------------------------------------------------------------
 alter table platform.professional
-  add column council_verified_at timestamptz;   -- última conferência do registro no conselho (Camada 1)
+  -- Camada 1 (conferência do registro no conselho). Enquanto a consulta real não existir (R20, com a PO), a porta de
+  -- produção responde nao_consultado, e a tela não afirma a regularidade (Tech Lead Frontend, #127). council_verified_at
+  -- só existe com consulta de verdade. 'nao_confere' nunca grava.
+  -- e-mail do profissional (o do convite, travado), como HMAC: um profissional que já existe só se liga a outra clínica
+  -- pelo mesmo e-mail (Security Engineer, S2 no #129; PDD §10.4.3, "travado, é o mesmo pra onde o convite foi enviado")
+  add column email_hmac bytea,
+  add constraint professional_email_hmac_size_check check (octet_length(email_hmac) = 32),
+  add column council_status text,
+  add column council_verified_at timestamptz,
+  add constraint professional_council_status_check check (council_status in ('regularizado', 'nao_consultado')),
+  add constraint professional_council_verified_check
+    check ((council_status = 'regularizado') = (council_verified_at is not null));
 
 alter table platform.professional_tenant_link
   add column privacy_notice_version text,
@@ -38,6 +51,8 @@ alter table platform.professional_tenant_link
 -- Grant do link do PROpass
 -- ---------------------------------------------------------------------------------------------------------------
 alter table platform.access_grant
+  -- recusas de identidade no envio do PROpass (conselho ou CPF de outro): na 5ª, o link é revogado (Tech Lead, #129)
+  add column propass_failures smallint not null default 0,
   alter column appointment_id drop not null,
   drop constraint access_grant_purpose_check,
   add constraint access_grant_purpose_check
@@ -228,14 +243,17 @@ grant execute on function api.professional_resend_invite(uuid, bytea, bytea, byt
 -- ---------------------------------------------------------------------------------------------------------------
 insert into audit.action (action, kind) values
   ('propass.open', 'access'),
-  ('propass.submit', 'change')
+  ('propass.submit', 'change'),
+  ('propass.refused', 'change')
 on conflict (action) do nothing;
 
--- Abre o PROpass: devolve o e-mail do convite (cifrado, envelope do vínculo) para a tela mostrar travado e a etapa.
+-- Abre o PROpass: devolve o e-mail do convite (cifrado, envelope do vínculo) para a tela mostrar travado, a etapa e
+-- invited_at, a emissão deste link (o convite ou o último "Reenviar Link"), para o rodapé "Convite de <data hora>".
 -- Não consome o link. Link inexistente, vencido, revogado ou de vínculo excluído: a mesma resposta.
 create function api.propass_resolve(p_secret_hash bytea)
 returns table (link_id uuid, tenant_id uuid, tenant_name text, step text, invite_email_enc bytea,
-               invite_envelope_id uuid, invite_dek_wrapped bytea, invite_kek_version smallint, expires_at timestamptz)
+               invite_envelope_id uuid, invite_dek_wrapped bytea, invite_kek_version smallint, invited_at timestamptz,
+               expires_at timestamptz)
 language plpgsql volatile security definer set search_path = ''
 as $$
 #variable_conflict use_column
@@ -253,7 +271,7 @@ begin
   return query
   select l.id, l.tenant_id, t.name,
          case when l.professional_id is null then 'dados' else 'termo' end,
-         l.invite_email_enc, l.envelope_id, l.dek_wrapped, l.kek_version, v.expires_at
+         l.invite_email_enc, l.envelope_id, l.dek_wrapped, l.kek_version, v.created_at, v.expires_at
   from platform.professional_tenant_link l
   join platform.tenant t on t.id = l.tenant_id
   where l.id = v.professional_link_id;
@@ -279,9 +297,9 @@ create function api.propass_submit(
   p_email_enc bytea,
   p_dek_wrapped bytea,
   p_kek_version smallint,
-  p_council_verified boolean,         -- a porta do conselho respondeu registro ativo e conferido
+  p_council_status text,              -- resposta da porta do conselho no envio: 'regularizado' | 'nao_consultado'
   p_privacy_notice_version text       -- versão do Aviso de Privacidade do Profissional que ele confirmou ter lido
-) returns void
+) returns text                        -- 'ok' ou 'recusado' (identidade que não confere; contada no link)
 language plpgsql volatile security definer set search_path = ''
 as $$
 declare
@@ -291,6 +309,8 @@ declare
   v_by_cpf uuid;
   v_prof uuid;
   v_reused boolean := false;
+  v_refused boolean := false;
+  v_failures smallint;
 begin
   select * into v from platform.access_grant g
   where g.secret_hash = p_secret_hash and g.purpose = 'professional_propass';
@@ -310,40 +330,56 @@ begin
   if p_email_hmac is distinct from v_link.invite_email_hmac then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'email';
   end if;
-  if not coalesce(p_council_verified, false) then
+  if p_council_status is null or p_council_status not in ('regularizado', 'nao_consultado') then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'council';
   end if;
 
-  -- conselho existente só liga com o mesmo CPF; CPF de outro profissional também falha. O mesmo erro nos dois casos
-  -- (Tech Lead, 20/11): ninguém se apossa do registro de outro digitando o número do conselho, e nada é revelado.
+  -- conselho existente só liga com o mesmo CPF e o mesmo e-mail (o do convite); CPF de outro profissional,
+  -- profissional excluído ou já ligado a esta clínica também não. A mesma resposta em todos ('recusado'), sem dizer qual (Tech Lead, 20/11): ninguém se apossa
+  -- do registro de outro digitando o número do conselho. Para o link não virar oráculo de CPF (o número do conselho é
+  -- público), cada recusa conta no link e a 5ª o revoga (Tech Lead, #129). Por isso não há raise aqui: o contador
+  -- precisa ficar gravado. O servidor também limita por IP (src/server/limite.ts, propass.submit.ip).
   select * into v_by_council from platform.professional p
   where p.council = p_council and p.council_uf = p_council_uf and p.council_number = p_council_number;
   select p.id into v_by_cpf from platform.professional p where p.cpf_hmac = p_cpf_hmac;
-  if (v_by_council.id is not null and v_by_council.cpf_hmac is distinct from p_cpf_hmac)
-     or (v_by_cpf is not null and v_by_council.id is null) then
-    raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'propass';
+  v_refused := (v_by_council.id is not null and v_by_council.cpf_hmac is distinct from p_cpf_hmac)
+               or (v_by_cpf is not null and v_by_council.id is null)
+               or (v_by_council.id is not null and v_by_council.deleted_at is not null)
+               or (v_by_council.id is not null and v_by_council.email_hmac is distinct from v_link.invite_email_hmac)
+               or exists (select 1 from platform.professional_tenant_link l
+                          where l.tenant_id = v_link.tenant_id and l.professional_id = v_by_council.id
+                            and l.deleted_at is null);
+  if v_refused then
+    update platform.access_grant g set propass_failures = g.propass_failures + 1, last_used_at = now(),
+           revoked_at = case when g.propass_failures + 1 >= 5 then now() else g.revoked_at end
+    where g.id = v.id
+    returning g.propass_failures into v_failures;
+    perform audit.record_event('propass.refused', 'platform.professional_tenant_link', v_link.id,
+      jsonb_build_object('attempt', v_failures), null, null, v_link.tenant_id);
+    if v_failures >= 5 then
+      perform audit.record_event('grant.revoke', 'platform.access_grant', v.id,
+        jsonb_build_object('purpose', 'professional_propass', 'reason', 'propass_attempts'), null, null, v_link.tenant_id);
+    end if;
+    return 'recusado';
   end if;
 
   if v_by_council.id is not null then
-    -- o mesmo profissional, já homologado por outra clínica: liga sem mexer nos dados globais dele
+    -- o mesmo profissional, já homologado por outra clínica: liga sem mexer nos dados globais dele; a conferência
+    -- nova só atualiza o estado do conselho quando houve consulta de verdade
     v_prof := v_by_council.id;
     v_reused := true;
-    if v_by_council.deleted_at is not null then
-      raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'propass';
+    if p_council_status = 'regularizado' then
+      update platform.professional p set council_status = 'regularizado', council_verified_at = now(), updated_at = now()
+      where p.id = v_prof;
     end if;
-    update platform.professional p set council_verified_at = now(), updated_at = now() where p.id = v_prof;
   else
     insert into platform.professional (id, display_name, council, council_uf, council_number, cpf_hmac, cpf_masked,
-                                       cpf_enc, phone_enc, email_enc, dek_wrapped, kek_version, council_verified_at)
+                                       cpf_enc, phone_enc, email_hmac, email_enc, dek_wrapped, kek_version,
+                                       council_status, council_verified_at)
     values (p_professional_id, btrim(p_display_name), p_council, p_council_uf, p_council_number, p_cpf_hmac,
-            p_cpf_masked, p_cpf_enc, p_phone_enc, p_email_enc, p_dek_wrapped, p_kek_version, now());
+            p_cpf_masked, p_cpf_enc, p_phone_enc, p_email_hmac, p_email_enc, p_dek_wrapped, p_kek_version, p_council_status,
+            case when p_council_status = 'regularizado' then now() end);
     v_prof := p_professional_id;
-  end if;
-
-  -- profissional único por clínica (índice do #25): já ligado por outro convite da mesma clínica = erro genérico
-  if exists (select 1 from platform.professional_tenant_link l
-             where l.tenant_id = v_link.tenant_id and l.professional_id = v_prof and l.deleted_at is null) then
-    raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'propass';
   end if;
 
   update platform.professional_tenant_link l
@@ -352,14 +388,16 @@ begin
   where l.id = v_link.id;
   update platform.access_grant g set last_used_at = now() where g.id = v.id;
   perform audit.record_event('propass.submit', 'platform.professional_tenant_link', v_link.id,
-    jsonb_build_object('reused_professional', v_reused, 'privacy_notice_version', btrim(p_privacy_notice_version)),
+    jsonb_build_object('reused_professional', v_reused, 'privacy_notice_version', btrim(p_privacy_notice_version),
+                       'council_status', p_council_status),
     null, jsonb_build_object('professional_id', v_prof), v_link.tenant_id);
+  return 'ok';
 end;
 $$;
 
 revoke all on function api.propass_resolve(bytea) from public, anon, authenticated;
 revoke all on function api.propass_submit(bytea, uuid, text, text, text, text, bytea, text, bytea, bytea, bytea, bytea,
-                                          bytea, smallint, boolean, text) from public, anon, authenticated;
+                                          bytea, smallint, text, text) from public, anon, authenticated;
 grant execute on function api.propass_resolve(bytea) to service_role;
 grant execute on function api.propass_submit(bytea, uuid, text, text, text, text, bytea, text, bytea, bytea, bytea, bytea,
-                                             bytea, smallint, boolean, text) to service_role;
+                                             bytea, smallint, text, text) to service_role;

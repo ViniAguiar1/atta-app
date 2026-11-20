@@ -117,11 +117,11 @@ export type Database = {
                            },
 "propass_resolve":
 { Args: { "p_secret_hash": string }; Returns: {
-              "expires_at": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"link_id": string,"step": string,"tenant_id": string,"tenant_name": string
+              "expires_at": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"invited_at": string,"link_id": string,"step": string,"tenant_id": string,"tenant_name": string
             }[]
                            },
 "propass_submit":
-{ Args: { "p_council": string,"p_council_number": string,"p_council_uf": string,"p_council_verified": boolean,"p_cpf_enc": string,"p_cpf_hmac": string,"p_cpf_masked": string,"p_dek_wrapped": string,"p_display_name": string,"p_email_enc": string,"p_email_hmac": string,"p_kek_version": number,"p_phone_enc": string,"p_privacy_notice_version": string,"p_professional_id": string,"p_secret_hash": string }; Returns: undefined
+{ Args: { "p_council": string,"p_council_number": string,"p_council_status": string,"p_council_uf": string,"p_cpf_enc": string,"p_cpf_hmac": string,"p_cpf_masked": string,"p_dek_wrapped": string,"p_display_name": string,"p_email_enc": string,"p_email_hmac": string,"p_kek_version": number,"p_phone_enc": string,"p_privacy_notice_version": string,"p_professional_id": string,"p_secret_hash": string }; Returns: string
                            },
 "rate_limit_hit":
 { Args: { "p_bucket": string,"p_key_hash": string,"p_limit": number,"p_window_seconds": number }; Returns: boolean
@@ -627,14 +627,14 @@ isOneToOne: false
           Tables: {
             "access_grant": {
                   Row: {
-                    "appointment_id": string | null,"created_at": string,"expires_at": string,"id": string,"last_used_at": string | null,"person_id": string | null,"professional_link_id": string | null,"purpose": string,"revoked_at": string | null,"secret_hash": string,"sent_at": string | null,"tenant_id": string
+                    "appointment_id": string | null,"created_at": string,"expires_at": string,"id": string,"last_used_at": string | null,"person_id": string | null,"professional_link_id": string | null,"propass_failures": number,"purpose": string,"revoked_at": string | null,"secret_hash": string,"sent_at": string | null,"tenant_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "appointment_id"?: string | null,"created_at"?: string,"expires_at": string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_link_id"?: string | null,"purpose": string,"revoked_at"?: string | null,"secret_hash": string,"sent_at"?: string | null,"tenant_id": string
+                    "appointment_id"?: string | null,"created_at"?: string,"expires_at": string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_link_id"?: string | null,"propass_failures"?: number,"purpose": string,"revoked_at"?: string | null,"secret_hash": string,"sent_at"?: string | null,"tenant_id": string
                   }
                   Update: {
-                    "appointment_id"?: string | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_link_id"?: string | null,"purpose"?: string,"revoked_at"?: string | null,"secret_hash"?: string,"sent_at"?: string | null,"tenant_id"?: string
+                    "appointment_id"?: string | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_link_id"?: string | null,"propass_failures"?: number,"purpose"?: string,"revoked_at"?: string | null,"secret_hash"?: string,"sent_at"?: string | null,"tenant_id"?: string
                   }
                   Relationships: [
                     {
@@ -699,14 +699,14 @@ isOneToOne: false
                   ]
                 },"professional": {
                   Row: {
-                    "council": string,"council_number": string,"council_uf": string,"council_verified_at": string | null,"cpf_enc": string,"cpf_hmac": string,"cpf_masked": string,"created_at": string,"dek_wrapped": string,"deleted_at": string | null,"display_name": string,"email_enc": string,"id": string,"kek_version": number,"phone_enc": string | null,"updated_at": string
+                    "council": string,"council_number": string,"council_status": string | null,"council_uf": string,"council_verified_at": string | null,"cpf_enc": string,"cpf_hmac": string,"cpf_masked": string,"created_at": string,"dek_wrapped": string,"deleted_at": string | null,"display_name": string,"email_enc": string,"email_hmac": string | null,"id": string,"kek_version": number,"phone_enc": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "council": string,"council_number": string,"council_uf": string,"council_verified_at"?: string | null,"cpf_enc": string,"cpf_hmac": string,"cpf_masked": string,"created_at"?: string,"dek_wrapped": string,"deleted_at"?: string | null,"display_name": string,"email_enc": string,"id"?: string,"kek_version": number,"phone_enc"?: string | null,"updated_at"?: string
+                    "council": string,"council_number": string,"council_status"?: string | null,"council_uf": string,"council_verified_at"?: string | null,"cpf_enc": string,"cpf_hmac": string,"cpf_masked": string,"created_at"?: string,"dek_wrapped": string,"deleted_at"?: string | null,"display_name": string,"email_enc": string,"email_hmac"?: string | null,"id"?: string,"kek_version": number,"phone_enc"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "council"?: string,"council_number"?: string,"council_uf"?: string,"council_verified_at"?: string | null,"cpf_enc"?: string,"cpf_hmac"?: string,"cpf_masked"?: string,"created_at"?: string,"dek_wrapped"?: string,"deleted_at"?: string | null,"display_name"?: string,"email_enc"?: string,"id"?: string,"kek_version"?: number,"phone_enc"?: string | null,"updated_at"?: string
+                    "council"?: string,"council_number"?: string,"council_status"?: string | null,"council_uf"?: string,"council_verified_at"?: string | null,"cpf_enc"?: string,"cpf_hmac"?: string,"cpf_masked"?: string,"created_at"?: string,"dek_wrapped"?: string,"deleted_at"?: string | null,"display_name"?: string,"email_enc"?: string,"email_hmac"?: string | null,"id"?: string,"kek_version"?: number,"phone_enc"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     
