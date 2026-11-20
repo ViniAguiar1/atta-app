@@ -2,11 +2,12 @@ import "server-only";
 import type { Resultado } from "@/lib/errors";
 import { portaConfiguracoesSimulada } from "./simulado";
 
-// Contrato entre Configurações (MIG-42, Frontend) e a cascata do MIG-10/10b (Backend 2; aprovação do Tech Lead).
-// Leitura: atta_in.settings_screen (valor efetivo, origem, padrão e limites de cada chave). Escrita: atta_in.set_setting
-// no nível da unidade, com a sessão do usuário (nunca a secret key). Erros do banco viram Resultado:
-// ATTA-AUTH-0004 → SEM_PERMISSAO; ATTA-IN-0001 → VALIDACAO (fora do limite); ATTA-IN-0003 → CONFLITO, com a regra em
-// fields[0].campo (ex.: lembrete_2_min); ATTA-CORE-0005 → NAO_ENCONTRADO. Até o MIG-10b entrar, a implementação é a simulada.
+// Contrato entre Configurações (MIG-42, Frontend) e a cascata do MIG-10/10b (Backend 2; ✅ do Backend 2 e do Tech Lead no
+// #41). Leitura: atta_in.settings_screen (valor efetivo, origem, padrão e limites de cada chave); chave que a tela não
+// conhece é ignorada. Escrita: atta_in.set_setting no nível da unidade, com a sessão do usuário (nunca a secret key), e
+// a chave relida no settings_screen para devolver o Parametro completo. Erros pelo falhaDoBanco (ADR 0001 §5, #37):
+// ATTA-AUTH-0004 → SEM_PERMISSAO; ATTA-IN-0001 → VALIDACAO; ATTA-IN-0003 → CONFLITO com a regra no reason
+// ("ATTA-IN-0003:lembrete_2_min"); ATTA-CORE-0005 → NAO_ENCONTRADO. Até o MIG-10b entrar, a implementação é a simulada.
 export type ChaveDeParametro =
   | "link_envio_antecedencia_h"
   | "link_validade_apos_h"
