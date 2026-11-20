@@ -17,6 +17,7 @@ export function CaixaDeParametro({ parametro, rotulo, ajuda, aoSalvar }: Props) 
   const [salvando, executar] = useTransition();
 
   function mudar(valor: boolean) {
+    if (salvando) return; // aria-disabled em vez de disabled: o foco de quem usa teclado fica na caixa
     setMarcado(valor);
     setSalvo(false);
     executar(async () => {
@@ -33,25 +34,27 @@ export function CaixaDeParametro({ parametro, rotulo, ajuda, aoSalvar }: Props) 
 
   return (
     <div>
-      <div className="flex items-start gap-3 rounded-md border border-border-functional bg-surface-card p-3">
+      {/* o label envolve a linha inteira: o alvo de clique vai além da caixa de 20 px (Guia §3, 44 px) */}
+      <label htmlFor={id} className="flex cursor-pointer items-start gap-3 rounded-md border border-border-functional bg-surface-card p-3">
         <input
           id={id}
           type="checkbox"
           checked={marcado}
-          disabled={salvando}
+          aria-disabled={salvando || undefined}
           onChange={(e) => mudar(e.target.checked)}
+          aria-labelledby={`${id}-rotulo`}
           aria-describedby={`${id}-ajuda ${id}-situacao`}
           className="mt-0.5 size-5 shrink-0 accent-brand"
         />
-        <div>
-          <label htmlFor={id} className="font-semibold">
+        <span>
+          <span id={`${id}-rotulo`} className="block font-semibold">
             {rotulo}
-          </label>
-          <p id={`${id}-ajuda`} className="text-xs text-text-secondary">
+          </span>
+          <span id={`${id}-ajuda`} className="block text-xs text-text-secondary">
             {ajuda}
-          </p>
-        </div>
-      </div>
+          </span>
+        </span>
+      </label>
       <p id={`${id}-situacao`} aria-live="polite" className={erro ? "mt-1 text-status-negative" : "mt-1 text-xs text-text-secondary"}>
         {erro ?? (salvando ? t.salvando : salvo ? t.salvo : "")}
       </p>
