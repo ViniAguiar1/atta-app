@@ -12,6 +12,11 @@
 -- mascarado e o selo, sem contato nem envelope, e a edição mexe só nesses campos locais. O 'granted' vem do check-in
 -- (MIG-13), com o consentimento de portabilidade do Backend 3.
 
+-- CRNM é o cartão do mesmo RNM, com o mesmo número: grava 'rnm' (a tela pode oferecer "CRNM"). Com dois tipos, a
+-- mesma pessoa duplicaria no unique (foreign_doc_type, foreign_doc_hmac) (Tech Lead e Backend 3, rne.ts no #24).
+alter table network.person drop constraint person_foreign_doc_type_check,
+  add constraint person_foreign_doc_type_check check (foreign_doc_type in ('rne', 'rnm'));
+
 -- ações deste item no catálogo fechado da auditoria (ADR 0003): leitura é access; mudança é change
 insert into audit.action (action, kind) values
   ('patient.search', 'access'),

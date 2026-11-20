@@ -1,6 +1,6 @@
 -- MIG-12 (a): schema network fechado, RLS forçada e as regras de identidade (dados fictícios: hmacs de texto inventado).
 begin;
-select plan(30);
+select plan(31);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -32,8 +32,8 @@ select lives_ok($$ insert into network.person (full_name, is_incomplete) values 
                 'sem CPF, marcado como incompleto, é aceito (RN-PAC-02)');
 select lives_ok($$ insert into network.person (foreign_doc_type, foreign_doc_hmac, foreign_doc_masked, foreign_doc_enc,
                                               full_name, dek_wrapped, kek_version)
-                   values ('crnm', sha256('crnm-ficticio-1'), '****-**1', '\x01aa', 'João Simulado Estrangeiro', '\x01bb', 1) $$,
-                'estrangeiro com CRNM é aceito (RN-PAC-02; RNE, RNM ou CRNM)');
+                   values ('rnm', sha256('crnm-ficticio-1'), '****-**1', '\x01aa', 'João Simulado Estrangeiro', '\x01bb', 1) $$,
+                'estrangeiro com RNM (ou o cartão CRNM, gravado como rnm) é aceito (RN-PAC-02)');
 select throws_ok($$ insert into network.person (cpf_hmac, full_name) values (sha256('cpf-ficticio-2'), 'Ana Exemplar') $$,
                  '23514', null, 'CPF sem a forma mascarada e o cifrado é recusado');
 select throws_ok($$ insert into network.person (cpf_hmac, cpf_masked, cpf_enc, full_name, dek_wrapped, kek_version)
@@ -46,11 +46,16 @@ select throws_ok($$ insert into network.person (cpf_hmac, cpf_masked, cpf_enc, f
 select lives_ok($$ insert into network.person (foreign_doc_type, foreign_doc_hmac, foreign_doc_masked, foreign_doc_enc,
                                               full_name, dek_wrapped, kek_version)
                    values ('rne', sha256('crnm-ficticio-1'), '****-**1', '\x01aa', 'Lia Simulada Estrangeira', '\x01bb', 1) $$,
-                'o mesmo número em outro tipo (RNE x CRNM) é outro documento');
+                'o mesmo número em outro tipo (RNE x RNM) é outro documento');
 select throws_ok($$ insert into network.person (foreign_doc_type, foreign_doc_hmac, foreign_doc_masked, foreign_doc_enc,
                                                full_name, dek_wrapped, kek_version)
-                    values ('crnm', sha256('crnm-ficticio-1'), '****-**1', '\x01aa', 'Outro Nome', '\x01bb', 1) $$,
-                 '23505', null, 'o mesmo CRNM duas vezes é recusado');
+                    values ('rnm', sha256('crnm-ficticio-1'), '****-**1', '\x01aa', 'Outro Nome', '\x01bb', 1) $$,
+                 '23505', null, 'o mesmo RNM duas vezes é recusado');
+
+select throws_ok($$ insert into network.person (foreign_doc_type, foreign_doc_hmac, foreign_doc_masked, foreign_doc_enc,
+                                               full_name, dek_wrapped, kek_version)
+                    values ('crnm', sha256('crnm-ficticio-2'), '****-**2', '\x01aa', 'Outra Pessoa', '\x01bb', 1) $$,
+                 '23514', null, 'o tipo crnm não existe: o cartão CRNM grava rnm');
 
 -- vínculo: um cadastro ativo por pessoa na clínica; a mesma pessoa em duas clínicas
 insert into network.person_tenant_link (tenant_id, person_id) values
