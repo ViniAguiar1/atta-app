@@ -1,6 +1,6 @@
 import { isIP } from "node:net";
 import { describe, expect, it } from "vitest";
-import { cabecalhosParaOSupabase, prepararCabecalhosDaRequisicao } from "./correlacao";
+import { cabecalhosParaOSupabase, ipDoCliente, prepararCabecalhosDaRequisicao } from "./correlacao";
 
 const ID = "11111111-2222-4333-8444-555555555555";
 const ehIp = (v: string) => isIP(v) !== 0;
@@ -33,5 +33,12 @@ describe("correlação e IP do usuário (S2-4)", () => {
   it("um x-atta-client-ip que chegue ao servidor é ignorado: o IP sai só do x-forwarded-for", () => {
     const saida = cabecalhosParaOSupabase(new Headers({ "x-atta-client-ip": "203.0.113.9" }), () => ID, ehIp);
     expect(saida["x-atta-client-ip"]).toBeUndefined();
+  });
+  it("ipDoCliente: o 1º do x-forwarded-for, só se for IP; nunca x-real-ip nem x-atta-client-ip do navegador", () => {
+    expect(ipDoCliente(new Headers({ "x-forwarded-for": "198.51.100.4, 10.0.0.1" }), ehIp)).toBe("198.51.100.4");
+    expect(ipDoCliente(new Headers({ "x-forwarded-for": "2001:db8::1" }), ehIp)).toBe("2001:db8::1");
+    expect(ipDoCliente(new Headers({ "x-forwarded-for": "nao-ip" }), ehIp)).toBeNull();
+    expect(ipDoCliente(new Headers({ "x-real-ip": "203.0.113.1", "x-atta-client-ip": "203.0.113.9" }), ehIp)).toBeNull();
+    expect(ipDoCliente(new Headers(), ehIp)).toBeNull();
   });
 });
