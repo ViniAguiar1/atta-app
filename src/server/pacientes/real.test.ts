@@ -94,6 +94,17 @@ describe("porta real de Pacientes (MIG-43)", () => {
     expect(rpc).toHaveBeenLastCalledWith("patient_search", { p_name: "juli" });
   });
 
+  it("sem o pepper, a busca por CPF é INTERNO (não 500), sem ir ao banco nem ecoar o CPF", async () => {
+    vi.resetModules();
+    vi.stubEnv("ATTA_CPF_PEPPER", "");
+    const { portaPacientesReal: semPepper } = await import("./real");
+    const r = await semPepper.buscar("529.982.247-25");
+    expect(r).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+    expect(JSON.stringify(r)).not.toContain("529");
+    expect(rpc).not.toHaveBeenCalled();
+    vi.stubEnv("ATTA_CPF_PEPPER", CI_TEST_CPF_PEPPER_HEX);
+  });
+
   it("termo curto ou CPF incompleto é VALIDACAO, sem ir ao banco", async () => {
     for (const termo of ["j", "5299822"]) expect((await porta.buscar(termo)).ok).toBe(false);
     expect(rpc).not.toHaveBeenCalled();

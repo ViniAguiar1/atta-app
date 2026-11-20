@@ -159,10 +159,13 @@ export const portaPacientesReal: PortaPacientes = {
     if (!porCpf && (termo.trim().length < 2 || /^[\d.\-\s/]+$/.test(termo.trim()))) {
       return falha("VALIDACAO", "Busca curta.", [{ campo: "termo", code: "VALIDACAO" }]);
     }
-    const { data, error } = await api.rpc(
-      "patient_search",
-      porCpf ? { p_doc_hmac: paraBytea(cpfHmac(cpf)) } : { p_name: termo.trim() },
-    );
+    let filtro: { p_doc_hmac: string } | { p_name: string };
+    try {
+      filtro = porCpf ? { p_doc_hmac: paraBytea(cpfHmac(cpf)) } : { p_name: termo.trim() };
+    } catch {
+      return malFormado("pacientes.hmac_indisponivel"); // pepper ausente ou recusado: INTERNO, sem o termo no log
+    }
+    const { data, error } = await api.rpc("patient_search", filtro);
     if (error) return falhaDoBanco(error);
     const r = await paraLinhas(data, tenantId, "pacientes.busca");
     return "erro" in r ? r.erro! : ok(r.itens);
