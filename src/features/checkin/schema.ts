@@ -3,28 +3,9 @@ import { z } from "zod";
 // Bordas do check-in pelo celular (MIG-50; PDD v206 §11.4). O CPF só trafega no corpo da server action, nunca em
 // rota ou query string (ADR 0001 §5).
 
-export const soDigitos = (valor: string) => valor.replace(/\D/g, "");
-
-function digitoVerificador(base: string): number {
-  let soma = 0;
-  for (let i = 0; i < base.length; i++) soma += Number(base[i]) * (base.length + 1 - i);
-  const resto = (soma * 10) % 11;
-  return resto === 10 ? 0 : resto;
-}
-
-export function cpfValido(valor: string): boolean {
-  const cpf = soDigitos(valor);
-  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-  const d1 = digitoVerificador(cpf.slice(0, 9));
-  const d2 = digitoVerificador(cpf.slice(0, 9) + d1);
-  return cpf.endsWith(`${d1}${d2}`);
-}
-
-/** Máscara de digitação: 000.000.000-00, aceitando colagem com ou sem pontuação. */
-export function mascararCpf(valor: string): string {
-  const d = soDigitos(valor).slice(0, 11);
-  return [d.slice(0, 3), d.slice(3, 6), d.slice(6, 9)].filter(Boolean).join(".") + (d.length > 9 ? `-${d.slice(9)}` : "");
-}
+// CPF: lib comum (também usada pelo PROpass); reexportado para os imports do check-in não mudarem.
+import { cpfValido, soDigitos } from "@/lib/brasil/documentos";
+export { cpfValido, mascararCpf, soDigitos } from "@/lib/brasil/documentos";
 
 /** Identificador da placa QR da clínica: opaco e não pessoal (PDD §14.2). */
 export const portalSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{1,62}$/);
