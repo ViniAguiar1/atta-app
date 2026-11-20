@@ -44,10 +44,17 @@ export function cpfHmac(cpf: string): Buffer {
   return cpfHmacWith(pepperFromEnv("ATTA_CPF_PEPPER"), cpf);
 }
 
-/** `12345678901` → `***.***.789-01` (o `masked` do ADR 0006 §3). */
+/** Ponto médio (U+00B7), a máscara única do simulador (decisão do Tech Lead, ADR 0002 §6). */
+export const MASK_CHAR = "\u00b7";
+
+/**
+ * `12345678901` → `···.···.789-01`: só os 5 últimos dígitos à mostra. O servidor gera, o banco guarda em cpf_masked e a
+ * tela mostra como vem, sem remascarar.
+ */
 export function maskCpf(cpf: string): string {
   if (!CANONICAL.test(cpf)) throw new RangeError("CPF fora da forma canônica de 11 dígitos");
-  return `***.***.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
+  const tres = MASK_CHAR.repeat(3);
+  return `${tres}.${tres}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
 }
 
 // RNE e RNM/CRNM fazem parte do mesmo contrato da ADR 0002 §6; o pepper deles é o ATTA_RNE_PEPPER, não o do CPF.
