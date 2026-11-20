@@ -122,6 +122,61 @@ begin
 end;
 $$;
 
+-- As mesmas regras valem para escrita direta na tabela e para todos os escopos da clínica (revisão do Backend 4 no #57):
+-- gatilho de restrição adiado para o fim da transação, que confere o efetivo da unidade, de cada tipo de atendimento e
+-- de cada Serviço com valor próprio (cada um cai na unidade e depois no padrão do sistema).
+create function atta_in.link_rules_effective(p_tenant uuid)
+returns table (level text, appointment_type text, clinic_service_id uuid, key text, v bigint)
+language sql stable security definer set search_path = ''
+as $$
+  with scopes as (
+    select 'unidade'::text as level, null::text as appointment_type, null::uuid as clinic_service_id
+    union
+    select distinct s.level, s.appointment_type, s.clinic_service_id from atta_in.setting s
+    where s.tenant_id = p_tenant and s.level <> 'unidade'
+      and s.key in ('link_envio_antecedencia_h', 'lembrete_1_min', 'lembrete_2_min')
+  )
+  select sc.level, sc.appointment_type, sc.clinic_service_id, d.key,
+         coalesce((select s.value_int from atta_in.setting s
+                   where s.tenant_id = p_tenant and s.key = d.key and sc.level <> 'unidade' and s.level = sc.level
+                     and s.appointment_type is not distinct from sc.appointment_type
+                     and s.clinic_service_id is not distinct from sc.clinic_service_id),
+                  (select s.value_int from atta_in.setting s
+                   where s.tenant_id = p_tenant and s.key = d.key and s.level = 'unidade'),
+                  d.default_int)
+  from scopes sc
+  cross join atta_in.setting_definition d
+  where d.key in ('link_envio_antecedencia_h', 'lembrete_1_min', 'lembrete_2_min')
+$$;
+revoke all on function atta_in.link_rules_effective(uuid) from public, anon, authenticated;
+
+create function atta_in.setting_link_rules_guard() returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if exists (select 1 from atta_in.link_rules_effective(new.tenant_id) l2
+             join atta_in.link_rules_effective(new.tenant_id) l1
+               on l1.level = l2.level and l1.appointment_type is not distinct from l2.appointment_type
+              and l1.clinic_service_id is not distinct from l2.clinic_service_id
+             where l2.key = 'lembrete_2_min' and l1.key = 'lembrete_1_min' and l2.v >= l1.v) then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'lembrete_2_min';
+  end if;
+  if exists (select 1 from atta_in.link_rules_effective(new.tenant_id) l1
+             join atta_in.link_rules_effective(new.tenant_id) e
+               on e.level = l1.level and e.appointment_type is not distinct from l1.appointment_type
+              and e.clinic_service_id is not distinct from l1.clinic_service_id
+             where l1.key = 'lembrete_1_min' and e.key = 'link_envio_antecedencia_h' and l1.v > e.v * 60) then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'lembrete_1_min';
+  end if;
+  return null;
+end;
+$$;
+revoke all on function atta_in.setting_link_rules_guard() from public, anon, authenticated;
+create constraint trigger setting_link_rules after insert or update on atta_in.setting
+  deferrable initially deferred
+  for each row when (new.key in ('link_envio_antecedencia_h', 'lembrete_1_min', 'lembrete_2_min'))
+  execute function atta_in.setting_link_rules_guard();
+
 -- ---------------------------------------------------------------------------------------------------------------
 -- Leitura da tela: valor efetivo, origem, padrão e limites, uma linha por chave
 -- ---------------------------------------------------------------------------------------------------------------
@@ -180,9 +235,10 @@ begin
   end if;
   perform audit.record_event('setting.change', 'atta_in.setting', new.id,
     jsonb_build_object('key', new.key, 'level', new.level, 'op', lower(tg_op)),
-    case when tg_op = 'UPDATE' then jsonb_build_object('value', coalesce(to_jsonb(old.value_int), to_jsonb(old.value_bool)))
+    -- a chave do before/after é o nome da configuração (nunca 'value', reservado à resposta de saúde, #48)
+    case when tg_op = 'UPDATE' then jsonb_build_object(new.key, coalesce(to_jsonb(old.value_int), to_jsonb(old.value_bool)))
          else '{}'::jsonb end,
-    jsonb_build_object('value', coalesce(to_jsonb(new.value_int), to_jsonb(new.value_bool))),
+    jsonb_build_object(new.key, coalesce(to_jsonb(new.value_int), to_jsonb(new.value_bool))),
     new.tenant_id);
   return new;
 end;
