@@ -40,7 +40,7 @@ jobs:
           arquivos="$(git diff --name-only "$BASE...$HEAD")"
           marcar() { if echo "$arquivos" | grep -qE "$2"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
           marcar banco '^(supabase/|src/lib/supabase/database\.types\.ts$|scripts/supabase-local\.sh$|\.github/workflows/)'
-          marcar web '^(src/|e2e/|public/|eslint-rules/|supabase/|package\.json$|pnpm-lock\.yaml$|next\.config\.ts$|playwright\.config\.ts$|\.github/workflows/)'
+          marcar web '^(src/|e2e/|public/|eslint-rules/|supabase/|scripts/supabase-local\.sh$|package\.json$|pnpm-lock\.yaml$|next\.config\.ts$|playwright\.config\.ts$|\.github/workflows/)'
 
   vetores:
     name: vetores do ATTA Sign imutáveis

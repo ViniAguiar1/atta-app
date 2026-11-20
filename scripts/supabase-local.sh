@@ -49,11 +49,12 @@ case "$cmd" in
   test) supabase test db "$@" ;;
   types) supabase gen types typescript --local --schema platform,documents,atta_in,api "$@" ;;
   env)
-    # as linhas do .env.local desta instância (chaves locais do CLI, nunca as da nuvem)
+    # as linhas do .env.local desta instância (chaves locais do CLI, nunca as da nuvem), sem aspas: servem também ao
+    # $GITHUB_ENV do CI, que não tira aspas
     supabase status -o env | sed -n -E \
-      -e 's/^API_URL=/NEXT_PUBLIC_SUPABASE_URL=/p' \
-      -e 's/^PUBLISHABLE_KEY=/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/p' \
-      -e 's/^SECRET_KEY=/SUPABASE_SECRET_KEY=/p'
+      -e 's/^API_URL="?([^"]*)"?$/NEXT_PUBLIC_SUPABASE_URL=\1/p' \
+      -e 's/^PUBLISHABLE_KEY="?([^"]*)"?$/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=\1/p' \
+      -e 's/^SECRET_KEY="?([^"]*)"?$/SUPABASE_SECRET_KEY=\1/p'
     ;;
   run) [ "${1:-}" = "--" ] && shift; supabase "$@" ;;
   *) echo "comando desconhecido: $cmd" >&2; exit 2 ;;
