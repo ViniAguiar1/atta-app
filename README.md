@@ -59,6 +59,14 @@ pnpm db stop                          # para sem apagar os dados
 ```
 Nunca use a base local de outro agente sem combinar.
 
+## CI: o que roda em cada caso (`scripts/ci-filtro.sh`)
+
+- **Todo PR:** lint, typecheck, vitest, checagem de migrations e vetores do ATTA Sign.
+- **Banco (pgTAP + tipos):** no PR que mexe em `supabase/`, nos tipos gerados ou no CI.
+- **e2e com axe:** no PR que mexe em tela (`src/app/`, `src/features/`, `src/components/`, `src/lib/` fora dos tipos gerados, `e2e/`, `public/`, `src/proxy.ts`, configs do Next e do Playwright, dependências ou CI). Para forçar, ponha a etiqueta `e2e` e rode o CI de novo (`gh run rerun <id>`) ou faça o próximo push.
+- **Lote da fila (`lote/*`):** suíte inteira, sempre. Nada chega à `main` sem ela.
+- **Push na `main`:** pula banco e e2e quando a árvore é a mesma de um lote verde (o resumo do job traz o link); senão, roda tudo.
+
 ## Trem de merge (`scripts/trem.sh`)
 
 A regra continua a do PLANO: rebase na `main` atual, CI verde nesse estado e um merge por vez. O trem faz isso por todos, sem disputa, testando até 3 PRs em cascata ao mesmo tempo:

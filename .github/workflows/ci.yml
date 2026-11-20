@@ -1,5 +1,6 @@
-# CI do atta-app (MIG-01; ADR 0001). A cota do Actions é da conta pessoal do dono: um run por ref (o novo cancela o
-# anterior) e os jobs pesados (banco e e2e) só rodam quando o PR mexe no que eles testam. Na main, roda tudo.
+# CI do atta-app (MIG-01; ADR 0001). Um run por ref (o novo cancela o anterior). Jobs pesados (scripts/ci-filtro.sh):
+# no PR, o banco roda quando o PR mexe no banco e o e2e quando mexe em tela (ou tem a etiqueta `e2e`); o lote da fila
+# (lote/*) roda tudo; o push na main pula banco e e2e quando a árvore é a de um lote verde.
 # Segurança: só leitura, actions por SHA, nada de ${{ }} dentro de `run`, nenhum segredo (o e2e usa valores fictícios).
 # PR em rascunho não roda (cota): o CI começa quando o PR fica pronto para revisão. Passo de rede tem tempo-limite,
 # para um espelho lento virar falha rápida e visível, nunca 13 min de espera (medição do DevEx em 20/11).
@@ -24,6 +25,11 @@ jobs:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # só leitura: o filtro lê as etiquetas do PR e os runs verdes dos lotes (token automático do run, sem segredo)
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
     outputs:
       banco: ${{ steps.filtro.outputs.banco }}
       web: ${{ steps.filtro.outputs.web }}
@@ -35,17 +41,16 @@ jobs:
       - id: filtro
         env:
           EVENTO: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          RAMO_PR: ${{ github.head_ref }}
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
-        run: |
-          if [ "$EVENTO" != pull_request ]; then
-            { echo "banco=true"; echo "web=true"; } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          arquivos="$(git diff --name-only "$BASE...$HEAD")"
-          marcar() { if echo "$arquivos" | grep -qE "$2"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
-          marcar banco '^(supabase/|src/lib/supabase/database\.types\.ts$|scripts/supabase-local\.sh$|\.github/workflows/)'
-          marcar web '^(src/|e2e/|public/|eslint-rules/|supabase/|scripts/supabase-local\.sh$|package\.json$|pnpm-lock\.yaml$|next\.config\.ts$|playwright\.config\.ts$|\.github/workflows/)'
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: sh scripts/ci-filtro.sh
+      - name: testes do filtro do CI
+        run: sh scripts/ci-filtro.test.sh
       # versões das migrations, sem Supabase (pedido do TL em 20/11; ADR 0001 §3): nada repetido e, no PR (e no vagão do
       # trem), toda migration nova maior que a última da main. No PR, a árvore é a do PR já juntado com a main.
       - name: versões das migrations (únicas e maiores que a última da main)
