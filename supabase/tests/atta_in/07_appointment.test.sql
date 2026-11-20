@@ -1,6 +1,6 @@
 -- MIG-11b: agendamento, estados e regras (PDD v206 §10.2.1 e §10.2.2; ADR 0005 §4). Dados fictícios.
 begin;
-select plan(45);
+select plan(46);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'), ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
 -- paciente da rede com vínculo na A e um provisório da importação da A
@@ -193,6 +193,8 @@ select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-80
 select throws_ok($$ update atta_in.appointment set starts_at = starts_at + interval '1 hour', ends_at = ends_at + interval '1 hour'
                     where id = '00000000-0000-4000-8000-00000000a001' $$,
                  'P0001', 'ATTA-IN-0003', 'fora de Agendado não remarca');
+select throws_ok($$ update atta_in.appointment set modality = 'online' where id = '00000000-0000-4000-8000-00000000a003' $$,
+                 'P0001', 'ATTA-IN-0003', 'a modalidade de um Cancelado também não muda');
 select throws_ok($$ delete from atta_in.appointment_clinic_service where appointment_id = '00000000-0000-4000-8000-00000000a001' $$,
                  'P0001', 'ATTA-IN-0003', 'fora de Agendado não troca Serviço');
 -- remarcar um Agendado: auditado só com o que mudou
