@@ -56,6 +56,7 @@ export const textos = {
     exemploDeNome: "Celular da recepção", // simulador (README: "ex.: Celular da recepção")
     remover: "Remover", // simulador
     removerFalado: (nome: string) => `Remover ${nome}`, // provisório (rótulo para leitor de tela)
+    numeroFalado: (final: string) => `celular terminado em ${final}`, // provisório (o leitor de tela não lê a máscara)
     adicionar: "+ Adicionar celular", // simulador
     salvarCelular: "Salvar celular", // provisório (o número volta mascarado: o novo celular é salvo de uma vez)
     cancelar: "Cancelar", // provisório

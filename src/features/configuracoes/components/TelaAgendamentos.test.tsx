@@ -113,7 +113,8 @@ describe("Configurações › Agendamentos", () => {
       .mockResolvedValueOnce({ ok: true, data: { id: "00000000-0000-4000-8000-0000000000c2", nome: "Tablet", numeroMascarado: "(11) ·····-5678" } });
     abrir();
     const fluxo = screen.getByRole("region", { name: "Fluxo alternativo" });
-    expect(within(fluxo).getByText("(48) ·····-0001")).toBeInTheDocument();
+    expect(within(fluxo).getByText("(48) ·····-0001")).toHaveAttribute("aria-hidden", "true");
+    expect(within(fluxo).getByText("celular terminado em 0001")).toBeInTheDocument();
     await userEvent.click(within(fluxo).getByRole("button", { name: "Remover Celular da recepção" }));
     expect(await within(fluxo).findByText("Nenhum celular cadastrado.")).toBeInTheDocument();
     await userEvent.click(within(fluxo).getByRole("button", { name: "+ Adicionar celular" }));
