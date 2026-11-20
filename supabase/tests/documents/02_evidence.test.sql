@@ -2,7 +2,7 @@
 -- sha256 e Código ATTA congelados), então os CHECKs são provados contra o algoritmo. Só dados fictícios; rollback.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(40);
 
 insert into platform.tenant (id, name) values ('aaaaaaaa-0000-4000-8000-000000000001', 'Clínica Alfa Ficticia');
 insert into platform.tenant (id, name) values ('bbbbbbbb-0000-4000-8000-000000000002', 'Clínica Beta Ficticia');
@@ -55,6 +55,10 @@ select lives_ok($$ update documents.document set status = 'assinado_definitivo' 
 select throws_ok($$ update documents.document set folder_section = 'docs_clinicos' where id = 'eeeeeeee-0000-4000-8000-0000000000e1' $$, 'P0001', 'ATTA-IN-0002', 'divisória não se troca');
 select throws_ok($$ update documents.document set status = 'cancelado', cancel_reason = 'no_show', cancelled_at = now() where id = 'eeeeeeee-0000-4000-8000-0000000000e1' $$, 'P0001', 'ATTA-IN-0002', 'definitivo é final');
 select throws_ok($$ delete from documents.document where id = 'eeeeeeee-0000-4000-8000-0000000000e1' $$, 'P0001', 'ATTA-IN-0002', 'documento não se apaga');
+-- substituição: não aponta para si mesmo; o substituto não muda depois
+select throws_ok($$ update documents.document set status = 'substituido', replaced_by_document_id = 'eeeeeeee-0000-4000-8000-0000000000e1' where id = 'eeeeeeee-0000-4000-8000-0000000000e1' $$, '23514', null, 'documento não substitui a si mesmo');
+select lives_ok($$ update documents.document set status = 'substituido', replaced_by_document_id = (select id from documents.document where folder_section = 'docs_clinicos') where id = 'eeeeeeee-0000-4000-8000-0000000000e1' $$, 'definitivo → substituído com o documento novo');
+select throws_ok($$ update documents.document set replaced_by_document_id = (select id from documents.document where folder_section = 'termos' and status = 'aguardando_assinatura' limit 1) where id = 'eeeeeeee-0000-4000-8000-0000000000e1' $$, 'P0001', 'ATTA-IN-0002', 'o substituto não muda depois');
 
 -- ---------------------------------------------------------------- evidência (vetor caso-01)
 select lives_ok($$ insert into documents.evidence (tenant_id, document_id, atta_sign_version, payload_canonical, evidence_sha256, atta_code, signed_at)
