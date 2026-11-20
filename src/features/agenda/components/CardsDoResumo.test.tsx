@@ -80,4 +80,21 @@ describe("cards do resumo", () => {
     expect(ativo.className).toContain("ring-inset");
     expect(ativo.className).not.toContain("ring-focus-ring");
   });
+
+  it("sem leitura real (totais nulos), os números aparecem como —, sem inventar zero", () => {
+    const nulo: ResumoDaAgenda = {
+      hojeFaltam: null,
+      hojeConcluidos: null,
+      mesConcluidos: null,
+      mesHorariosLivres: null,
+      checkin: { emPreenchimento: null, pronto: null, emAtendimento: null },
+      confirmacao: { agendados: null, aConfirmar: null, confirmados: null },
+      semDocumento: null,
+    };
+    render(<CardsDoResumo resumo={nulo} filtro={null} aoFiltrar={vi.fn()} />);
+    const regiao = screen.getByRole("region", { name: textos.cards.rotulo });
+    expect(within(regiao).queryByText("0")).toBeNull();
+    expect(within(regiao).getAllByText("—").length).toBeGreaterThanOrEqual(6);
+    expect(screen.getByRole("button", { name: "Pronto: —. Filtrar a lista" })).toBeDefined();
+  });
 });
