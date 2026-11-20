@@ -60,8 +60,9 @@ create function pg_temp.envelhecer(p_segredo text, p_idade interval) returns voi
   update platform.access_grant set created_at = now() - p_idade, expires_at = now() - p_idade + interval '7 days'
   where secret_hash = sha256(p_segredo::bytea)
 $$;
+-- conta só os do teste: o seed local (ids eeee, supabase/seed.sql) já traz uma profissional
 create function pg_temp.profissionais() returns int language sql security definer as $$
-  select count(*)::int from platform.professional
+  select count(*)::int from platform.professional where id::text not like 'eeee%'
 $$;
 create function pg_temp.nome_global(p_numero text) returns text language sql security definer as $$
   select display_name from platform.professional where council_number = p_numero

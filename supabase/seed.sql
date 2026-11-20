@@ -79,3 +79,75 @@ insert into network.person_tenant_link (tenant_id, person_id, origin) values
   ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-000000000104', 'importacao'),
   ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-000000000105', 'recepcao'),
   ('eeee0000-0000-4000-8000-000000000002', 'eeee0000-0000-4000-8000-000000000106', 'recepcao');
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- MIG-11: agenda de HOJE da Clínica Alfa, para a tela da Agenda e o e2e com a porta real (pedido do Frontend 4).
+-- Horários relativos à hora do reset, presos ao dia de hoje no fuso da clínica (a agenda nunca abre vazia; perto da
+-- meia-noite eles se apertam no começo ou no fim do dia). Reaproveita os pacientes do MIG-43; o provisório da importação
+-- e a profissional são novos, com CPF gerado e cifrados com a KEK e o pepper de TESTE (tests/fixtures/cofre-ci.ts),
+-- pela ADR 0002 §6: provisório com DEK (clínica, network.person_import_provisional, dek, id); profissional, dado de rede,
+-- com DEK ('', platform.professional, dek, id); vínculo com DEK (clínica, platform.professional_tenant_link, dek,
+-- envelope_id). Nenhum documento vinculado: todos aparecem sem documento.
+--   Juliana Prates (CPF 529.982.247-25, para a busca pelo CPF inteiro) Agendado atrasado  · Cancelado mais tarde
+--   Carlos Siqueira                                                   Agendado, procedimento sem documento
+--   Beatriz Lima (provisória, CPF 353.798.388-39)                     Em preenchimento
+--   Eduardo Lima                                                      Pronto
+--   Alana Duarte                                                      Em atendimento
+--   Fábio Moreira (cadastro incompleto)                               Ausente
+-- ---------------------------------------------------------------------------------------------------------------
+insert into network.person_import_provisional (id, tenant_id, import_batch_id, cpf_hmac, cpf_masked, cpf_enc, full_name,
+  dek_wrapped, kek_version) values
+  ('eeee0000-0000-4000-8000-000000000201', 'eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-000000000200', '\x661d86ae5c01c44623d5053b1bf37142d6f9511071d411273d10f5cf0606eaf7', '···.···.388-39', '\x01000161eaa934950115420f257611cf7bb71a7ce85fce3ef177c5e7a53a759edad1752c327759bebf6f', 'Beatriz Lima', '\x010001dd2dba77fdbecd9006413bc081f354ccddf6cd9c4c07f211f7c58ed315eb6ea56fbcd619d284af94c45bef7a0aa6616b20025126f75680a55c222da5', 1);
+
+insert into platform.professional (id, display_name, council, council_uf, council_number, cpf_hmac, cpf_masked, cpf_enc,
+  email_enc, email_hmac, dek_wrapped, kek_version, council_status, council_verified_at) values
+  ('eeee0000-0000-4000-8000-000000000301', 'Dra. Renata Albuquerque', 'crm', 'SP', '000123', '\xe6bfaf1c454a826d64825bc48c40d5d4306a3eea436dd3bbf03468c2b1f356b6', '···.···.938-60', '\x0100017cf703884814b18372c7dfffcf92a4525cec678cfa560037e95de996c05d66ef229299c5530564', '\x010001139014a515fe36ee33bef9473d837399283f777b5f59389178241f6a3710eb5588a53504241c8924a5047b784c7a8a2a1b4b7541916169f538a2be', '\x77c4c915fadc4a17c69d8328e75ceb3425bd0ff543f3bd751cf0e925f670b799', '\x0100016c3b0715c06fde07e9e1113db2dd43d634c7c67963515e001ffde33efb27d6f7a27364bb2dbcd47453f3572c3f31fad60be3064a450c5787eb53d73e', 1, 'regularizado', now());
+
+insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
+  envelope_id, dek_wrapped, kek_version, propass_completed_at, privacy_notice_version, privacy_notice_ack_at) values
+  ('eeee0000-0000-4000-8000-000000000311', 'eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-000000000301', '\x77c4c915fadc4a17c69d8328e75ceb3425bd0ff543f3bd751cf0e925f670b799', '\x01000138ed5014978c72cd2e74fa7261685b47bdceb58a1b23823a5ad9addfda072b5f6186313db8fab9cac51c6f65ef8b58e2dcd6ef3d328bf0cb918ffe', 'eeee0000-0000-4000-8000-000000000312', '\x010001cf0b4ed20f4e3e090d709044dc6d5c2afbb45a4f3008850cb55bec9cf949113a058d7b8ac0adf3da0e7d08da4e9cfbecc23ee8957b3b1ff987ddcdcb', 1, now(), 'v1', now());
+
+insert into atta_in.clinic_service (id, tenant_id, name, duration_min) values
+  ('eeee0000-0000-4000-8000-000000000401', 'eeee0000-0000-4000-8000-000000000001', 'Limpeza de pele', 60);
+insert into atta_in.professional_service (tenant_id, professional_link_id, clinic_service_id) values
+  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-000000000311', 'eeee0000-0000-4000-8000-000000000401');
+
+do $$
+declare
+  v_tenant constant uuid := 'eeee0000-0000-4000-8000-000000000001';
+  v_link constant uuid := 'eeee0000-0000-4000-8000-000000000311';
+  v_inicio timestamptz;
+  v_fim timestamptz;
+  r record;
+begin
+  select date_trunc('day', now() at time zone t.timezone) at time zone t.timezone into v_inicio
+  from platform.tenant t where t.id = v_tenant;
+  v_fim := v_inicio + interval '1 day' - interval '5 minutes';
+  for r in select * from (values
+    ('eeee0000-0000-4000-8000-000000000501'::uuid, 'eeee0000-0000-4000-8000-000000000101'::uuid, null::uuid, 'consulta', interval '-40 minutes'),
+    ('eeee0000-0000-4000-8000-000000000502', 'eeee0000-0000-4000-8000-000000000102', null, 'procedimento', interval '30 minutes'),
+    ('eeee0000-0000-4000-8000-000000000503', null, 'eeee0000-0000-4000-8000-000000000201', 'consulta', interval '-10 minutes'),
+    ('eeee0000-0000-4000-8000-000000000504', 'eeee0000-0000-4000-8000-000000000103', null, 'consulta', interval '-20 minutes'),
+    ('eeee0000-0000-4000-8000-000000000505', 'eeee0000-0000-4000-8000-000000000104', null, 'avaliacao', interval '-30 minutes'),
+    ('eeee0000-0000-4000-8000-000000000506', 'eeee0000-0000-4000-8000-000000000105', null, 'consulta', interval '-60 minutes'),
+    ('eeee0000-0000-4000-8000-000000000507', 'eeee0000-0000-4000-8000-000000000101', null, 'consulta', interval '60 minutes')
+  ) a (id, person_id, provisional_id, tipo, desvio)
+  loop
+    insert into atta_in.appointment (id, tenant_id, person_id, provisional_patient_id, professional_link_id,
+      appointment_type, starts_at, ends_at)
+    values (r.id, v_tenant, r.person_id, r.provisional_id, v_link, r.tipo,
+      least(greatest(now() + r.desvio, v_inicio), v_fim), least(greatest(now() + r.desvio, v_inicio), v_fim) + interval '1 hour');
+  end loop;
+  insert into atta_in.appointment_clinic_service (tenant_id, appointment_id, clinic_service_id)
+  values (v_tenant, 'eeee0000-0000-4000-8000-000000000502', 'eeee0000-0000-4000-8000-000000000401');
+
+  -- os estados pela máquina de estados (a mesma função das ações da recepção e do check-in)
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000503', v_tenant, 'em_preenchimento');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000504', v_tenant, 'em_preenchimento');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000504', v_tenant, 'pronto');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000505', v_tenant, 'em_preenchimento');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000505', v_tenant, 'pronto');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000505', v_tenant, 'em_atendimento');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000506', v_tenant, 'ausente', null, false, 'manual');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000507', v_tenant, 'cancelado', 'cancelado_pelo_paciente');
+end $$;
