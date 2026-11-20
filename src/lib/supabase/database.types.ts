@@ -11,7 +11,13 @@ export type Database = {
             [_ in never]: never
           }
           Functions: {
-            "atta_code_verify":
+            "agenda_day":
+{ Args: { "p_cpf_hmac"?: string,"p_cursor"?: string,"p_local_date"?: string,"p_no_document"?: boolean,"p_professional_link_id"?: string,"p_search"?: string,"p_status"?: (string)[] }; Returns: Json
+                           },
+"agenda_summary":
+{ Args: { "p_professional_link_id"?: string }; Returns: Json
+                           },
+"atta_code_verify":
 { Args: { "p_code": string }; Returns: {
               "document_type": string,"evidence_sha256": string,"exists": boolean,"level": string,"signed_at": string,"status": string,"template_version": number,"tenant_trade_name": string
             }[]
@@ -205,14 +211,14 @@ export type Database = {
                   ]
                 },"appointment": {
                   Row: {
-                    "absent_at": string | null,"absent_mode": string | null,"appointment_type": string,"cancel_reason": string | null,"cancelled_at": string | null,"checkin_started_at": string | null,"concluded_at": string | null,"concluded_by_reception": boolean,"created_at": string,"created_by": string | null,"ends_at": string,"id": string,"in_service_at": string | null,"modality": string,"person_id": string | null,"professional_link_id": string,"provisional_patient_id": string | null,"ready_at": string | null,"return_of_appointment_id": string | null,"starts_at": string,"status": string,"tenant_id": string,"updated_at": string
+                    "absent_at": string | null,"absent_mode": string | null,"appointment_type": string,"cancel_reason": string | null,"cancelled_at": string | null,"checkin_started_at": string | null,"concluded_at": string | null,"concluded_by_reception": boolean,"confirmed_at": string | null,"created_at": string,"created_by": string | null,"ends_at": string,"id": string,"in_service_at": string | null,"modality": string,"person_id": string | null,"professional_link_id": string,"provisional_patient_id": string | null,"ready_at": string | null,"return_of_appointment_id": string | null,"starts_at": string,"status": string,"tenant_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "absent_at"?: string | null,"absent_mode"?: string | null,"appointment_type": string,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"checkin_started_at"?: string | null,"concluded_at"?: string | null,"concluded_by_reception"?: boolean,"created_at"?: string,"created_by"?: string | null,"ends_at": string,"id"?: string,"in_service_at"?: string | null,"modality"?: string,"person_id"?: string | null,"professional_link_id": string,"provisional_patient_id"?: string | null,"ready_at"?: string | null,"return_of_appointment_id"?: string | null,"starts_at": string,"status"?: string,"tenant_id": string,"updated_at"?: string
+                    "absent_at"?: string | null,"absent_mode"?: string | null,"appointment_type": string,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"checkin_started_at"?: string | null,"concluded_at"?: string | null,"concluded_by_reception"?: boolean,"confirmed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at": string,"id"?: string,"in_service_at"?: string | null,"modality"?: string,"person_id"?: string | null,"professional_link_id": string,"provisional_patient_id"?: string | null,"ready_at"?: string | null,"return_of_appointment_id"?: string | null,"starts_at": string,"status"?: string,"tenant_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "absent_at"?: string | null,"absent_mode"?: string | null,"appointment_type"?: string,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"checkin_started_at"?: string | null,"concluded_at"?: string | null,"concluded_by_reception"?: boolean,"created_at"?: string,"created_by"?: string | null,"ends_at"?: string,"id"?: string,"in_service_at"?: string | null,"modality"?: string,"person_id"?: string | null,"professional_link_id"?: string,"provisional_patient_id"?: string | null,"ready_at"?: string | null,"return_of_appointment_id"?: string | null,"starts_at"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string
+                    "absent_at"?: string | null,"absent_mode"?: string | null,"appointment_type"?: string,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"checkin_started_at"?: string | null,"concluded_at"?: string | null,"concluded_by_reception"?: boolean,"confirmed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at"?: string,"id"?: string,"in_service_at"?: string | null,"modality"?: string,"person_id"?: string | null,"professional_link_id"?: string,"provisional_patient_id"?: string | null,"ready_at"?: string | null,"return_of_appointment_id"?: string | null,"starts_at"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -430,6 +436,9 @@ isOneToOne: false
                            },
 "check_link_rules":
 { Args: { "p_appointment_type": string,"p_clinic_service_id": string }; Returns: undefined
+                           },
+"confirm_appointment":
+{ Args: { "p_id": string }; Returns: undefined
                            },
 "effective_settings":
 { Args: { "p_appointment_type"?: string,"p_clinic_service_id"?: string }; Returns: {
