@@ -12,6 +12,7 @@ export const textos = {
     rotulo: "Buscar paciente por nome ou CPF", // simulador, captura 09 (rótulo acessível)
     placeholder: "Buscar por nome ou CPF", // simulador, captura 09
     curta: "Digite ao menos 2 letras do nome ou o CPF completo.", // provisório
+    achados: (n: number) => (n === 1 ? "1 paciente encontrado" : `${n} pacientes encontrados`), // provisório (só leitor de tela)
   },
   colunas: {
     paciente: "Paciente", // PDD §10, "Pacientes, lista"
@@ -28,6 +29,7 @@ export const textos = {
     estrangeiroFalado: (final: string) => `RNE ou RNM terminado em ${final}`, // provisório
     semDocumento: "Sem documento", // provisório (RN-PAC-02)
     nascimento: (aaaaMmDd: string | null) => `Nasc. ${aaaaMmDd ? data(aaaaMmDd) : "—"}`, // simulador, captura 09
+    semNascimentoFalado: "Nascimento não informado", // provisório (o "Nasc. —" dito ao leitor de tela)
   },
   semCelular: "Sem celular", // simulador, captura 09
   semEmail: "Sem e-mail", // simulador, captura 09
