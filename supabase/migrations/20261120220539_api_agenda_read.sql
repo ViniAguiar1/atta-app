@@ -170,8 +170,10 @@ as $$
                (5, 'marcar_ausente', r.is_today and r.status = 'agendado'),
                (6, 'fluxo_alternativo', not r.is_past and r.modality = 'presencial' and r.alt_flow
                                         and ((r.status = 'agendado' and r.is_today) or r.status = 'em_preenchimento')),
-               (7, 'fluxo_impresso', not r.is_past and r.modality = 'presencial' and not r.alt_flow
-                                     and r.status = 'em_preenchimento'),
+               -- o Fluxo impresso fica sempre disponível nos mesmos estados (§11.3, decisão do CTO); o alternativo só
+               -- quando a clínica o habilita
+               (7, 'fluxo_impresso', not r.is_past and r.modality = 'presencial'
+                                     and ((r.status = 'agendado' and r.is_today) or r.status = 'em_preenchimento')),
                (8, 'reenviar_boarding_check', not r.is_past and r.status in ('pronto', 'em_atendimento')),
                (9, 'concluir_pela_recepcao', not r.is_past and r.status in ('pronto', 'em_atendimento')),
                (10, 'envios_dos_links', r.status in ('pronto', 'em_atendimento', 'concluido') or r.is_past),

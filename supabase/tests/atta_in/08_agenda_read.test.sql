@@ -1,6 +1,6 @@
 -- MIG-11c: leitura da Agenda (api.agenda_day e api.agenda_summary) e "Confirmar agendamento". Dados fictícios.
 begin;
-select plan(27);
+select plan(29);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'), ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
 insert into network.person (id, full_name, social_name, cpf_hmac, cpf_masked, cpf_enc, dek_wrapped, kek_version)
@@ -75,6 +75,10 @@ create function pg_temp.janela_consulta(p_h int) returns void language sql secur
   insert into atta_in.setting (tenant_id, key, level, appointment_type, value_int)
   values ('00000000-0000-4000-8000-00000000000a', 'janela_de_confirmacao_h', 'tipo_de_atendimento', 'consulta', p_h)
 $$;
+create function pg_temp.desligar_alternativo() returns void language sql security definer as $$
+  insert into atta_in.setting (tenant_id, key, level, value_bool)
+  values ('00000000-0000-4000-8000-00000000000a', 'fluxo_alternativo_habilitado', 'unidade', false)
+$$;
 create function pg_temp.transitar(p_id uuid, p_to text, p_reason text default null) returns void
 language sql security definer as $$
   select atta_in.apply_transition(p_id, '00000000-0000-4000-8000-00000000000a', p_to, p_reason)
@@ -127,6 +131,16 @@ select ok((select e -> 'allowed_actions' @> '[{"action": "marcar_ausente"}, {"ac
 select ok((select e -> 'allowed_actions' = '[{"action": "envios_dos_links", "disabled_reason": null}, {"action": "enviar_termos", "disabled_reason": null}, {"action": "detalhes", "disabled_reason": null}]'::jsonb
            from jsonb_array_elements(api.agenda_day() -> 'data') e
            where e ->> 'id' = '00000000-0000-4000-8000-00000000a003'), 'ações do Concluído: envios, enviar termos e detalhes');
+select ok((select e -> 'allowed_actions' @> '[{"action": "fluxo_alternativo"}, {"action": "fluxo_impresso"}]'::jsonb
+           from jsonb_array_elements(api.agenda_day() -> 'data') e
+           where e ->> 'id' = '00000000-0000-4000-8000-00000000a002'),
+          'Em preenchimento, alternativo habilitado: os dois fluxos aparecem');
+select pg_temp.desligar_alternativo();
+select ok((select e -> 'allowed_actions' @> '[{"action": "fluxo_impresso"}]'::jsonb
+                  and not e -> 'allowed_actions' @> '[{"action": "fluxo_alternativo"}]'::jsonb
+           from jsonb_array_elements(api.agenda_day() -> 'data') e
+           where e ->> 'id' = '00000000-0000-4000-8000-00000000a002'),
+          'alternativo desligado: só o Fluxo impresso, que fica sempre disponível (§11.3)');
 select is((select jsonb_array_length(api.agenda_day(p_status => array['em_preenchimento']) -> 'data')), 1,
           'filtro por estado (card Check-in)');
 select is((select jsonb_array_length(api.agenda_day(p_search => 'Provis') -> 'data')), 1, 'busca por nome');
