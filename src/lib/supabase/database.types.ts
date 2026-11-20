@@ -11,7 +11,18 @@ export type Database = {
             [_ in never]: never
           }
           Functions: {
-            "patient_get":
+            "grant_issue":
+{ Args: { "p_appointment_id": string,"p_person_id"?: string,"p_professional_id"?: string,"p_purpose": string,"p_secret_hash": string,"p_tenant_id": string }; Returns: string
+                           },
+"grant_resolve":
+{ Args: { "p_purpose": string,"p_secret_hash": string }; Returns: {
+              "appointment_id": string,"expires_at": string,"grant_id": string,"person_id": string,"professional_id": string,"tenant_id": string
+            }[]
+                           },
+"grant_revoke":
+{ Args: { "p_secret_hash": string }; Returns: undefined
+                           },
+"patient_get":
 { Args: { "p_person_id": string }; Returns: {
               "birth_date": string,"cpf_masked": string,"dek_wrapped": string,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"foreign_doc_type": string,"full_name": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"linked_at": string,"network_access": string,"origin": string,"person_id": string,"phone_enc": string,"social_name": string,"verified_until": string
             }[]
@@ -121,7 +132,27 @@ isOneToOne: false
           }
         },"platform": {
           Tables: {
-            "membership": {
+            "access_grant": {
+                  Row: {
+                    "appointment_id": string,"created_at": string,"expires_at": string,"id": string,"last_used_at": string | null,"person_id": string | null,"professional_id": string | null,"purpose": string,"revoked_at": string | null,"secret_hash": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "appointment_id": string,"created_at"?: string,"expires_at": string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_id"?: string | null,"purpose": string,"revoked_at"?: string | null,"secret_hash": string,"tenant_id": string
+                  }
+                  Update: {
+                    "appointment_id"?: string,"created_at"?: string,"expires_at"?: string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_id"?: string | null,"purpose"?: string,"revoked_at"?: string | null,"secret_hash"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "access_grant_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenant"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"membership": {
                   Row: {
                     "app_role": string,"created_at": string,"deleted_at": string | null,"id": string,"status": string,"tenant_id": string,"updated_at": string,"user_id": string
                   }
