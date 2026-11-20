@@ -65,7 +65,12 @@ test("o menu da pessoa tem Sair / trocar usuário, que encerra a sessão e volta
   await menu.click();
   await expect(menu).toHaveAttribute("aria-expanded", "true");
   expect((await axe(page)).violations).toEqual([]);
-  await page.getByRole("button", { name: "Sair / trocar usuário" }).click();
+  // na barra escura, o anel do item do painel (fundo branco) é o focus-ring, não o branco da barra (2.4.7)
+  const sair = page.getByRole("button", { name: "Sair / trocar usuário" });
+  await page.keyboard.press("Tab");
+  await expect(sair).toBeFocused();
+  expect(await sair.evaluate((el) => getComputedStyle(el).outlineColor)).toBe("rgb(44, 49, 40)");
+  await sair.click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/painel");
   await expect(page).toHaveURL(/\/login\?volta=%2Fpainel$/);

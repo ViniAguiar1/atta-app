@@ -63,6 +63,16 @@ describe("barra do painel (MIG-40)", () => {
     expect(menu).toHaveFocus();
   });
 
+  it("Tab para fora do menu fecha o painel", async () => {
+    render(<BarraDoPainel sessao={sessao} />);
+    const menu = screen.getByRole("button", { name: "Menu de Ana Exemplo" });
+    await userEvent.click(menu);
+    await userEvent.tab(); // vai para "Sair / trocar usuário"
+    expect(screen.getByRole("button", { name: "Sair / trocar usuário" })).toHaveFocus();
+    await userEvent.tab(); // sai do menu
+    expect(menu).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("contador da aba aparece só quando há número, com texto para leitor de tela", () => {
     render(<BarraDoPainel sessao={sessao} contadores={{ "/painel/agenda": 1 }} />);
     expect(modulos().getByRole("link", { name: /Agendamentos/ })).toHaveTextContent("1 pendente");
