@@ -1,0 +1,92 @@
+{
+  "atta_sign_version": "1",
+  "document": {
+    "id": "019a2b40-0000-7000-8000-000000000003",
+    "type": "tcle",
+    "template_id": "019a2b40-0000-7000-8000-0000000000a3",
+    "template_version": 2,
+    "body_sha256": "54b06a65293565e96c4ffc2a9f5366befc9919b7daa319d8f066140f2d53a059",
+    "body_normalization": "nfc+lf+trim",
+    "body_pdf_sha256": "77e779656d2eef5aed6a9713213b01df8ab920e57a723152190abaa1d4207b11"
+  },
+  "tenant": {
+    "legal_name": "Saúde & Sorriso Odontologia Ltda.",
+    "trade_name": "Clínica Saúde & Sorriso",
+    "cnpj": "11.222.333/0001-81",
+    "technical_responsible": {
+      "name": "Mônica Gonçalves",
+      "council": "CRO-RJ 11223",
+      "identity_document": null
+    }
+  },
+  "parties": [
+    {
+      "ref": "p1",
+      "role": "patient",
+      "capacity": "titular",
+      "acting_for": null,
+      "name": "Joana D'Ávila Conceição",
+      "identity_document": {
+        "type": "cpf",
+        "masked": "***.***.456-78"
+      },
+      "identity_verification_level": 1
+    },
+    {
+      "ref": "p2",
+      "role": "professional",
+      "capacity": "titular",
+      "acting_for": null,
+      "name": "Antônio Müller Araújo",
+      "council": "CRO-RJ 44556",
+      "authorization_term_id": "019a2b40-0000-7000-8000-0000000000e3",
+      "establishment_signature": {
+        "signed_at": "2026-11-03T08:30:00.000Z",
+        "stroke_sha256": "c03f68fa57fa0d5e9dee8f907cbaed52e1526fc1953f4081e031effef38430d4"
+      }
+    },
+    {
+      "ref": "p3",
+      "role": "technical_responsible",
+      "capacity": "titular",
+      "acting_for": null,
+      "name": "Mônica Gonçalves",
+      "council": "CRO-RJ 11223",
+      "establishment_signature": {
+        "signed_at": "2026-11-03T08:30:00.000Z",
+        "stroke_sha256": "a57ceac12784257b25be4f83aae6fa3ea34a09d1b8fd507959664191a7f0ce97"
+      }
+    }
+  ],
+  "signature": {
+    "signer": "p1",
+    "level": "atta_sign",
+    "signed_at": "2027-01-18T16:20:45.000Z",
+    "stroke_sha256": "67121dd469b02ebd0706f577efbe297f1d2a28d9b158d7701961d2e5056de0b7",
+    "ip": "2001:db8::1f",
+    "user_agent_sha256": "26457604293db14034319621521aef057acf3f5801114d927ed34606ae48015c",
+    "device_hint": "tablet/ipad",
+    "exposure": {
+      "opened_at": "2027-01-18T16:15:02.250Z",
+      "scroll_completed_at": "2027-01-18T16:19:58.001Z",
+      "accepted_at": "2027-01-18T16:20:45.000Z",
+      "exposure_ms": 342750,
+      "scroll_complete": true
+    },
+    "auth_factors": [
+      "cpf",
+      "birth_date"
+    ],
+    "assisted_by": {
+      "staff_ref": "019a2b40-0000-7000-8000-0000000000f3",
+      "name": "Luís Cândido"
+    }
+  },
+  "context": {
+    "product": "atta_in",
+    "context_type": "appointment",
+    "context_id": "019a2b40-0000-7000-8000-0000000000c3",
+    "consent_purpose": "tratamento_odontológico"
+  },
+  "extensions": {}
+}
