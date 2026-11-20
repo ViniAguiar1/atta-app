@@ -28,4 +28,9 @@ describe("seções de Configurações", () => {
     expect(primeiraSecaoDisponivel(false, [...GRUPOS_DE_TESTE])?.caminho).toBe("b");
     expect(primeiraSecaoDisponivel(true, [GRUPOS_DE_TESTE[0]])).toBeUndefined();
   });
+
+  it("Agendamentos aparece fora da produção enquanto a porta é a simulada", () => {
+    expect(primeiraSecaoDisponivel(false)?.caminho).toBe("agendamentos");
+    expect(primeiraSecaoDisponivel(true)).toBeUndefined();
+  });
 });
