@@ -1,5 +1,6 @@
 -- Os 10 schemas da ADR 0001 §1: os expostos com USAGE para anon e authenticated; os fechados sem USAGE para anon,
--- authenticated nem service_role (cada item concede o mínimo na própria migration).
+-- authenticated nem service_role (cada item concede o mínimo na própria migration). Exceção: private dá USAGE a
+-- authenticated desde o MIG-02, porque a policy roda com a role de quem consulta (ADR 0001 §1).
 begin;
 create extension if not exists pgtap with schema extensions;
 select plan(36);
@@ -38,7 +39,7 @@ select ok(not has_schema_privilege('authenticated', 'billing', 'USAGE'), 'authen
 select ok(not has_schema_privilege('service_role', 'billing', 'USAGE'), 'service_role não entra no schema fechado billing');
 select has_schema('private');
 select ok(not has_schema_privilege('anon', 'private', 'USAGE'), 'anon não entra no schema fechado private');
-select ok(not has_schema_privilege('authenticated', 'private', 'USAGE'), 'authenticated não entra no schema fechado private');
+select ok(has_schema_privilege('authenticated', 'private', 'USAGE'), 'authenticated usa o private, exceção da ADR 0001 §1 (a policy precisa; MIG-02)');
 select ok(not has_schema_privilege('service_role', 'private', 'USAGE'), 'service_role não entra no schema fechado private');
 
 select * from finish();
