@@ -98,7 +98,8 @@ begin
     raise exception using errcode = '42501', message = 'ATTA-AUTH-0004';
   end if;
   select t.kind, t.current_version into v_kind, v_version
-  from documents.template t where t.id = p_template_id and t.tenant_id = v_tenant;
+  from documents.template t where t.id = p_template_id and t.tenant_id = v_tenant
+  for update;   -- em fila com o template_set_services, que trava a mesma linha: o vínculo conferido não some antes de publicar
   if not found then
     raise exception using errcode = 'P0002', message = 'ATTA-CORE-0005', detail = 'template_id';
   end if;
