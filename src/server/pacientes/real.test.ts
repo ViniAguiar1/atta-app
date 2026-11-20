@@ -147,6 +147,10 @@ describe("porta real de Pacientes (MIG-43)", () => {
     expect(celularMascarado("11987654321")).toBe("(11) ·····-4321");
     expect(celularMascarado("1133334444")).toBe("(11) ····-4444");
     expect(celularMascarado(null)).toBe(null);
+    // fora de 10/11 dígitos, nunca o valor cru
+    expect(celularMascarado("+55 11 98765-4321")).toBe("·····-4321");
+    expect(celularMascarado("98765432")).toBe("·····-5432");
+    expect(celularMascarado("ligar na recepção")).toBe("···");
     expect(emailMascarado("juliana.prates@exemplo.test")).toBe("ju···@exemplo.test");
     expect(emailMascarado("a@exemplo.test")).toBe("a···@exemplo.test");
   });

@@ -17,25 +17,34 @@ describe("pepperFromEnv", () => {
     }
   });
 
-  it("na produção recusa o pepper de teste, sem pôr o valor na mensagem", async () => {
-    vi.stubEnv("VERCEL_ENV", "production");
-    vi.stubEnv("ATTA_CPF_PEPPER", CI_TEST_CPF_PEPPER_HEX);
-    const { pepperFromEnv } = await carregar();
-    expect(() => pepperFromEnv("ATTA_CPF_PEPPER")).toThrow("ATTA_CPF_PEPPER usa pepper de teste");
-    try {
-      pepperFromEnv("ATTA_CPF_PEPPER");
-    } catch (e) {
-      expect(String(e)).not.toContain(CI_TEST_CPF_PEPPER_HEX);
-    }
-  });
+  for (const ambiente of ["production", "preview"]) {
+    it(`em ${ambiente} recusa os dois peppers de teste, sem pôr o valor na mensagem`, async () => {
+      vi.stubEnv("VERCEL_ENV", ambiente);
+      vi.stubEnv("ATTA_CPF_PEPPER", CI_TEST_CPF_PEPPER_HEX);
+      vi.stubEnv("ATTA_RNE_PEPPER", CI_TEST_RNE_PEPPER_HEX);
+      const { pepperFromEnv } = await carregar();
+      expect(() => pepperFromEnv("ATTA_CPF_PEPPER")).toThrow("ATTA_CPF_PEPPER usa pepper de teste");
+      expect(() => pepperFromEnv("ATTA_RNE_PEPPER")).toThrow("ATTA_RNE_PEPPER usa pepper de teste");
+      try {
+        pepperFromEnv("ATTA_CPF_PEPPER");
+      } catch (e) {
+        expect(String(e)).not.toContain(CI_TEST_CPF_PEPPER_HEX);
+      }
+    });
 
-  it("na produção aceita outro pepper; fora dela aceita o de teste (CI, local e prévia)", async () => {
-    vi.stubEnv("VERCEL_ENV", "production");
-    vi.stubEnv("ATTA_RNE_PEPPER", randomBytes(32).toString("hex"));
-    expect((await carregar()).pepperFromEnv("ATTA_RNE_PEPPER")).toHaveLength(32);
-    vi.stubEnv("VERCEL_ENV", "preview");
-    vi.stubEnv("ATTA_RNE_PEPPER", CI_TEST_RNE_PEPPER_HEX);
-    expect((await carregar()).pepperFromEnv("ATTA_RNE_PEPPER")).toHaveLength(32);
+    it(`em ${ambiente} aceita outro pepper`, async () => {
+      vi.stubEnv("VERCEL_ENV", ambiente);
+      vi.stubEnv("ATTA_RNE_PEPPER", randomBytes(32).toString("hex"));
+      expect((await carregar()).pepperFromEnv("ATTA_RNE_PEPPER")).toHaveLength(32);
+    });
+  }
+
+  it("no CI e no local (VERCEL_ENV vazio ou development) aceita o pepper de teste", async () => {
+    for (const ambiente of ["", "development"]) {
+      vi.stubEnv("VERCEL_ENV", ambiente);
+      vi.stubEnv("ATTA_CPF_PEPPER", CI_TEST_CPF_PEPPER_HEX);
+      expect((await carregar()).pepperFromEnv("ATTA_CPF_PEPPER")).toHaveLength(32);
+    }
   });
 
   it("ausente ou malformado continua recusado", async () => {

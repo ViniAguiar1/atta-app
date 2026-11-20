@@ -81,11 +81,18 @@ export function celularParaTela(valor: string | null): string | null {
 
 const PONTO = "\u00b7"; // o ponto médio da máscara única (ADR 0002 §6)
 
-/** "11987654321" → "(11) ·····-4321": só o DDD e os 4 últimos dígitos (PDD §19.8). */
+/**
+ * "11987654321" → "(11) ·····-4321": só o DDD e os 4 últimos dígitos (PDD §19.8). Fora de 10 ou 11 dígitos (+55…, curto,
+ * texto), só os 4 últimos dígitos ("·····-4321") ou "···": a máscara nunca cai no valor cru (Tech Lead, #91).
+ */
 export function celularMascarado(valor: string | null): string | null {
-  const tela = celularParaTela(valor);
-  if (!tela) return null;
-  return tela.replace(/(\(\d{2}\) )(\d{4,5})-(\d{4})$/, (_, ddd: string, meio: string, fim: string) => `${ddd}${PONTO.repeat(meio.length)}-${fim}`);
+  if (!valor) return null;
+  const d = valor.replace(/\D/g, "");
+  if (d.length === 11 || d.length === 10) {
+    const meio = d.length - 6;
+    return `(${d.slice(0, 2)}) ${PONTO.repeat(meio)}-${d.slice(-4)}`;
+  }
+  return d.length >= 4 ? `${PONTO.repeat(5)}-${d.slice(-4)}` : PONTO.repeat(3);
 }
 
 /** "juliana.prates@exemplo.test" → "ju···@exemplo.test": as 2 primeiras letras e o domínio (PDD §19.8). */
