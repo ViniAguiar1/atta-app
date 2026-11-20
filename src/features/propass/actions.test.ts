@@ -22,8 +22,8 @@ describe("conferirDados (action)", () => {
   });
 
   it("passa à porta só o hash e o registro no conselho, sem CPF nem WhatsApp", async () => {
-    mocks.conferirConselho.mockResolvedValue({ ok: true, data: { situacao: "regularizado", consultadoEm: "16:24" } });
-    expect(await conferirDados(DADOS)).toEqual({ ok: true, data: { situacao: "regularizado", consultadoEm: "16:24" } });
+    mocks.conferirConselho.mockResolvedValue({ ok: true, data: { situacao: "regularizado", consultadoEm: "2026-11-20T19:24:00.000Z" } });
+    expect(await conferirDados(DADOS)).toEqual({ ok: true, data: { situacao: "regularizado", consultadoEm: "2026-11-20T19:24:00.000Z" } });
     expect(mocks.conferirConselho).toHaveBeenCalledWith(HASH, { conselho: "crm", numero: "201577", uf: "SP", nome: "Bruna Reis" });
   });
 

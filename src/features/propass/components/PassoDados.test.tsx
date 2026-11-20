@@ -19,7 +19,7 @@ async function preencher() {
 describe("PROpass, passos 1 e 2", () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(cleanup);
-  const abrir = () => render(<FluxoPropass clinica="Clínica Aurora Estética" email="bruna.reis@exemplo.test" conviteEm="2026-11-20 16:20" />);
+  const abrir = () => render(<FluxoPropass clinica="Clínica Aurora Estética" email="bruna.reis@exemplo.test" conviteEm="2026-11-20T19:20:00.000Z" fuso="America/Sao_Paulo" />);
 
   it("mostra o e-mail travado e não chama o servidor com campo inválido", async () => {
     abrir();
@@ -31,13 +31,15 @@ describe("PROpass, passos 1 e 2", () => {
   });
 
   it("com o conselho regularizado, vai ao passo 2 com a situação do backend", async () => {
-    acoes.conferirDados.mockResolvedValue({ ok: true, data: { situacao: "regularizado", consultadoEm: "16:24" } });
+    acoes.conferirDados.mockResolvedValue({ ok: true, data: { situacao: "regularizado", consultadoEm: "2026-11-20T19:24:00.000Z" } });
     abrir();
+    expect(screen.getByText("Convite de 20/11/2026 16:20")).toBeInTheDocument(); // fuso da clínica, não o do navegador
     await preencher();
     expect(screen.getByLabelText("CPF")).toHaveValue("529.982.247-25");
     await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
     expect(await screen.findByRole("heading", { name: "Camada 1 — Validação ATTA (Conselho)" })).toHaveFocus();
     expect(screen.getByText("Regularizado (Conselho Ativo)")).toBeInTheDocument();
+    expect(screen.getByText("consultado às 16:24")).toBeInTheDocument();
     expect(screen.getByText("201577-SP")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Bruna Reis");
@@ -58,5 +60,14 @@ describe("PROpass, passos 1 e 2", () => {
     await preencher();
     await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Não conseguimos continuar agora");
+  });
+
+  it("sem consulta real (R20), o passo 2 não afirma a regularidade", async () => {
+    acoes.conferirDados.mockResolvedValue({ ok: true, data: { situacao: "nao_consultado" } });
+    abrir();
+    await preencher();
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByText(/ainda não foi feita/)).toBeInTheDocument();
+    expect(screen.queryByText("Regularizado (Conselho Ativo)")).toBeNull();
   });
 });
