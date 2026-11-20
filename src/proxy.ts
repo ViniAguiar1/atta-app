@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { decidirGuarda } from "@/lib/auth/rotas";
 import { agoraEmSegundos, COOKIE_ATIVIDADE, sessaoVencida } from "@/lib/auth/sessao";
 import { envPublico } from "@/lib/env";
+import { prepararCabecalhosDaRequisicao } from "@/lib/http/correlacao";
 import { opcoesDoCookieDeAtividade, opcoesDoCookieDeSessao } from "@/lib/supabase/cookies";
 
 // Proxy do Next 16 (o antigo middleware): renova a sessão do Supabase no cookie a cada requisição e guarda as rotas.
@@ -11,13 +12,16 @@ export async function proxy(request: NextRequest) {
   const env = envPublico();
   const https = request.nextUrl.protocol === "https:";
   const cookieDaSessao = opcoesDoCookieDeSessao(https);
-  let resposta = NextResponse.next({ request });
+  // id da requisição gerado aqui (o do navegador é descartado) e sem IP vindo do navegador (src/lib/http/correlacao.ts)
+  const idDaRequisicao = crypto.randomUUID();
+  const seguir = () => NextResponse.next({ request: { headers: prepararCabecalhosDaRequisicao(request.headers, idDaRequisicao) } });
+  let resposta = seguir();
   const supabase = createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (lista) => {
         for (const { name, value } of lista) request.cookies.set(name, value);
-        resposta = NextResponse.next({ request });
+        resposta = seguir();
         for (const { name, value, options } of lista) resposta.cookies.set(name, value, { ...options, ...cookieDaSessao });
       },
     },
