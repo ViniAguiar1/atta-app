@@ -255,10 +255,15 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# E-mails do Auth (MIG-03c): o link leva ao /auth/confirm com o token_hash, que o servidor confere (verifyOtp) e abre a
+# sessão no cookie, sem token na URL do navegador. Texto provisório: o PDD e o simulador não têm o e-mail.
+[auth.email.template.recovery]
+subject = "Criar nova senha · ATTA-in"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.invite]
+subject = "Convite para o painel da clínica · ATTA-in"
+content_path = "./supabase/templates/invite.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
@@ -452,6 +457,21 @@ additional_redirect_urls = [
 enable_confirmations = true
 max_frequency = "1m0s"
 otp_length = 8
+
+# E-mail do Auth na nuvem pelo SMTP do Resend (o SMTP padrão do Supabase só entrega ao time do projeto). Valores só por
+# variável de ambiente, lidas do cofre no comando do config push; nunca no arquivo. O local usa o Mailpit.
+[remotes.nuvem.auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(ATTA_SMTP_RESEND_API_KEY)"
+admin_email = "env(ATTA_SMTP_REMETENTE)"
+sender_name = "ATTA-in"
+
+# Com SMTP próprio, até 30 e-mails do Auth por hora (convite e recuperação); o padrão de 2 é do SMTP do Supabase.
+[remotes.nuvem.auth.rate_limit]
+email_sent = 30
 
 [remotes.nuvem.auth.sms]
 enable_confirmations = true

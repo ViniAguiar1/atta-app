@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ROTA_ESQUECI } from "@/lib/auth/rotas";
 import { Monograma } from "@/components/ui/Monograma";
 import { FormularioDeEntrada } from "./FormularioDeEntrada";
 import { textos as t } from "./textos";
@@ -22,6 +24,11 @@ export default function Pagina() {
         <div className="mt-5">
           <FormularioDeEntrada />
         </div>
+        <p className="mt-5 text-center">
+          <Link href={ROTA_ESQUECI} className="underline underline-offset-2">
+            Esqueci a senha
+          </Link>
+        </p>
       </div>
     </main>
   );

@@ -4,6 +4,10 @@ export const PREFIXO_PAINEL = "/painel";
 export const ROTA_LOGIN = "/login"; // PDD v206 §10.4.9: "Acesse a plataforma" leva ao /login
 export const ROTA_SEM_CLINICA = "/sem-clinica";
 export const ROTA_CALLBACK = "/auth/callback";
+// "Esqueci a senha" e convite (MIG-03c): o link do e-mail vai ao /auth/confirm, que abre a sessão e leva à nova senha
+export const ROTA_ESQUECI = "/login/esqueci";
+export const ROTA_CONFIRMAR = "/auth/confirm";
+export const ROTA_DEFINIR_SENHA = "/definir-senha";
 // Segundo fator: obrigatório para o ADMIN, opcional para o COLABORADOR (decisão do dono, 20/11; PLANO). A trava de
 // verdade é o has_permission no banco (sem aal2, o ADMIN não tem permissão); a guarda aqui só leva à tela certa.
 export const ROTA_2FA = "/painel/seguranca/2fa";
