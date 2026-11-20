@@ -27,7 +27,8 @@ begin
   -- o Colaborador da clínica vê a agenda (matriz do PDD §10.4.3), mas não Configurações
   if p_role = 'COLABORADOR' then
     insert into platform.membership_permission (tenant_id, membership_id, module, action)
-    values (p_tenant, v_membership, 'appointments', 'view');
+    values (p_tenant, v_membership, 'appointments', 'view')
+    on conflict do nothing;   -- o convite já pode trazer o padrão sugerido (PDD §10.4.3)
   end if;
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims',
