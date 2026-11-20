@@ -1,0 +1,179 @@
+import "server-only";
+import { falhaDeValidacao, ok } from "@/lib/errors";
+import { iniciais } from "@/lib/texto/iniciais";
+import { maskCpf } from "@/server/crypto/cpf";
+import {
+  filtroDoDiaSchema,
+  type Acao,
+  type AvisoDaAgenda,
+  type LinhaDaAgenda,
+  type ResumoDaAgenda,
+} from "@/features/agenda/schema";
+import type { PortaAgenda } from "./porta";
+
+// Agenda simulada, para a tela andar antes do MIG-11. Só dado fictício: CPFs gerados (dígito verificador válido,
+// ninguém real), nomes e clínica do Simulador ATTA-in (captura 01 e 06). Sem dica na tela (regra do stage).
+// O "hoje" é o da clínica (America/Sao_Paulo, o padrão de platform.tenant.timezone), nunca o do navegador.
+// Dia que não é hoje volta vazio. As ações seguem a tabela "Ações por estado" do §10.2.2, como o banco vai calcular.
+
+const FUSO = "America/Sao_Paulo";
+const OFFSET = "-03:00"; // São Paulo sem horário de verão desde 2019
+
+export const hojeNaClinica = (agora = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: FUSO, year: "numeric", month: "2-digit", day: "2-digit" }).format(agora);
+
+const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const em = (dataLocal: string, hora: string) => `${dataLocal}T${hora}:00${OFFSET}`;
+
+const HELENA = { vinculoId: id(901), nomeExibicao: "Dra. Helena Prado" };
+const CAIO = { vinculoId: id(902), nomeExibicao: "Dr. Caio Andrade" };
+
+const acoes = (...lista: Acao[]) => lista.map((acao) => ({ acao }));
+// Editar fica à vista e desabilitado depois que o check-in começa (§10.2.2; simulador, captura 06).
+const editarDesabilitado = { acao: "editar" as const, desabilitadaPor: "edit_after_checkin" };
+
+type Semente = Omit<LinhaDaAgenda, "inicio" | "paciente" | "boardingCheckEnviadoEm"> & {
+  hora: string;
+  nome: string;
+  cpf: string | null;
+  boardingCheckAs?: string;
+};
+
+const SEMENTES: Semente[] = [
+  {
+    id: id(1), hora: "09:30", nome: "Mariana Costa Albuquerque", cpf: "65326948435",
+    duracaoMin: 60, tipo: "procedimento", modalidade: "presencial",
+    servicos: [{ id: id(101), nome: "Toxina botulínica" }], profissional: HELENA,
+    documentos: [
+      { id: id(201), nome: "Consentimento: toxina botulínica", opcional: false, estado: "vinculado" },
+      { id: id(202), nome: "Autorização de uso de imagem", opcional: true, estado: "vinculado" },
+    ],
+    status: "agendado", atrasado: true, confirmacao: "confirmado",
+    acoes: acoes("editar", "remarcar", "marcar_ausente", "fluxo_alternativo", "fluxo_impresso", "detalhes", "cancelar"),
+  },
+  {
+    id: id(2), hora: "10:00", nome: "Rafael Menezes", cpf: "69030722509",
+    duracaoMin: 60, tipo: "procedimento", modalidade: "presencial",
+    servicos: [{ id: id(102), nome: "Preenchimento com ácido hialurônico" }], profissional: HELENA,
+    documentos: [{ id: id(203), nome: "Consentimento: ácido hialurônico", opcional: false, estado: "vinculado" }],
+    status: "em_preenchimento", atrasado: false, confirmacao: "confirmado",
+    acoes: [editarDesabilitado, ...acoes("fluxo_alternativo", "fluxo_impresso", "detalhes", "cancelar")],
+  },
+  {
+    id: id(3), hora: "10:30", nome: "Beatriz Nogueira", cpf: "24990190696",
+    duracaoMin: 30, tipo: "consulta", modalidade: "presencial",
+    servicos: [{ id: id(103), nome: "Consulta de avaliação facial" }], profissional: CAIO,
+    documentos: [],
+    status: "pronto", atrasado: false, confirmacao: "confirmado", boardingCheckAs: "10:41",
+    acoes: [editarDesabilitado, ...acoes("reenviar_boarding_check", "concluir_pela_recepcao", "envios_dos_links", "detalhes", "cancelar")],
+  },
+  {
+    id: id(4), hora: "11:00", nome: "Juliana Prates", cpf: "43157280120",
+    duracaoMin: 60, tipo: "procedimento", modalidade: "presencial",
+    servicos: [{ id: id(104), nome: "Bioestimulador de colágeno" }], profissional: HELENA,
+    documentos: [
+      { id: id(204), nome: "Consentimento: bioestimulador", opcional: false, estado: "assinado" },
+      { id: id(205), nome: "Autorização de uso de imagem", opcional: true, estado: "recusado" },
+    ],
+    status: "em_atendimento", atrasado: false, confirmacao: "confirmado", boardingCheckAs: "10:44",
+    acoes: [editarDesabilitado, ...acoes("reenviar_boarding_check", "concluir_pela_recepcao", "envios_dos_links", "detalhes", "cancelar")],
+  },
+  {
+    id: id(5), hora: "14:00", nome: "Carla Siqueira", cpf: "12204539007",
+    duracaoMin: 60, tipo: "procedimento", modalidade: "presencial",
+    servicos: [{ id: id(105), nome: "Peeling químico médio" }], profissional: CAIO,
+    documentos: [{ id: id(206), nome: "Consentimento: peeling químico", opcional: false, estado: "vinculado" }],
+    status: "ausente", atrasado: false, confirmacao: "confirmado",
+    acoes: [{ acao: "editar", desabilitadaPor: "edit_not_scheduled" }, ...acoes("reabrir_preenchimento", "detalhes", "cancelar")],
+  },
+  {
+    id: id(6), hora: "15:00", nome: "Paulo Teixeira", cpf: "99260462150",
+    duracaoMin: 30, tipo: "avaliacao", modalidade: "presencial",
+    servicos: [{ id: id(106), nome: "Avaliação corporal" }], profissional: CAIO,
+    documentos: [],
+    status: "cancelado", atrasado: false, confirmacao: "fora_da_janela",
+    acoes: acoes("detalhes"),
+  },
+  {
+    id: id(7), hora: "16:30", nome: "Eduardo Lima", cpf: "16076301252",
+    duracaoMin: 60, tipo: "procedimento", modalidade: "presencial",
+    servicos: [{ id: id(107), nome: "Preenchimento labial" }], profissional: CAIO,
+    documentos: [],
+    status: "agendado", atrasado: false, confirmacao: "a_confirmar",
+    acoes: acoes("editar", "confirmar", "remarcar", "marcar_ausente", "fluxo_alternativo", "fluxo_impresso", "detalhes", "cancelar"),
+  },
+];
+
+function linhasDe(dataLocal: string): LinhaDaAgenda[] {
+  return SEMENTES.map(({ hora, nome, cpf, boardingCheckAs, ...resto }) => ({
+    ...resto,
+    inicio: em(dataLocal, hora),
+    paciente: { pessoaId: id(300 + Number(resto.id.slice(-3))), nomeExibicao: nome, cpfMascarado: cpf ? maskCpf(cpf) : null, iniciais: iniciais(nome) },
+    boardingCheckEnviadoEm: boardingCheckAs ? em(dataLocal, boardingCheckAs) : null,
+  }));
+}
+
+const semAcento = (texto: string) => texto.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
+
+/** Busca como a do banco: nome por trecho (sem acento) ou CPF completo (no banco, pelo HMAC). */
+function casa(busca: string, semente: Semente): boolean {
+  const digitos = busca.replace(/\D/g, "");
+  if (digitos.length === 11) return semente.cpf === digitos;
+  return semAcento(semente.nome).includes(semAcento(busca));
+}
+
+export const portaAgendaSimulada: PortaAgenda = {
+  async dia(filtro) {
+    const lido = filtroDoDiaSchema.safeParse(filtro);
+    if (!lido.success) return falhaDeValidacao(lido.error.issues);
+    const { dataLocal: pedido, vinculoProfissionalId, busca } = lido.data;
+    const hojeLocal = hojeNaClinica();
+    const dataLocal = pedido ?? hojeLocal;
+    const linhas =
+      dataLocal !== hojeLocal
+        ? []
+        : linhasDe(dataLocal).filter((linha, i) => {
+            const semente = SEMENTES[i];
+            if (!semente) return false;
+            if (vinculoProfissionalId && linha.profissional.vinculoId !== vinculoProfissionalId) return false;
+            return !busca || casa(busca, semente);
+          });
+    return ok({ dataLocal, hojeLocal, fuso: FUSO, linhas, proximoCursor: null });
+  },
+
+  async resumo({ vinculoProfissionalId }) {
+    const linhas = linhasDe(hojeNaClinica()).filter(
+      (l) => !vinculoProfissionalId || l.profissional.vinculoId === vinculoProfissionalId,
+    );
+    const conta = (status: LinhaDaAgenda["status"]) => linhas.filter((l) => l.status === status).length;
+    const resumo: ResumoDaAgenda = {
+      hojeFaltam: linhas.filter((l) => l.status !== "cancelado" && l.status !== "concluido").length,
+      hojeConcluidos: 1,
+      mesConcluidos: 2,
+      mesHorariosLivres: 175,
+      checkin: { emPreenchimento: conta("em_preenchimento"), pronto: conta("pronto"), emAtendimento: conta("em_atendimento") },
+      confirmacao: { agendados: 6, aConfirmar: 2, confirmados: 4 },
+      semDocumento: linhas.filter((l) => l.tipo === "procedimento" && l.documentos.length === 0 && l.status === "agendado").length,
+    };
+    return ok(resumo);
+  },
+
+  async avisos() {
+    const linhas = linhasDe(hojeNaClinica());
+    const item = (l: LinhaDaAgenda, desde: string | null = null) => ({
+      atendimentoId: l.id,
+      nomeExibicao: l.paciente.nomeExibicao,
+      inicio: l.inicio,
+      desde,
+    });
+    const avisos: AvisoDaAgenda[] = [
+      { tipo: "sem_documento", itens: linhas.filter((l) => l.tipo === "procedimento" && l.documentos.length === 0 && l.status === "agendado").map((l) => item(l)) },
+      { tipo: "atrasado", itens: linhas.filter((l) => l.atrasado).map((l) => item(l)) },
+      { tipo: "pronto_sem_boarding_check", itens: linhas.filter((l) => l.status === "pronto").map((l) => item(l, l.boardingCheckEnviadoEm)) },
+      { tipo: "ausentes", itens: linhas.filter((l) => l.status === "ausente").map((l) => item(l)) },
+    ]
+      .filter((aviso) => aviso.itens.length > 0)
+      .map((aviso) => ({ ...aviso, impressao: aviso.itens.map((i) => i.atendimentoId).join(",") }) as AvisoDaAgenda);
+    return ok(avisos);
+  },
+};
