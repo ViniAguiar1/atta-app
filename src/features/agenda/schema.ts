@@ -117,22 +117,16 @@ export function termoPronto(termo: string): boolean {
 }
 
 /** Cards do topo (§10.2.2). Sempre contam o dia de hoje, menos a Confirmação (agendamentos futuros). */
+/** Total do card: número do banco, ou null quando ainda não existe (porta vazia): a tela mostra "—". */
+const total = z.number().int().nonnegative().nullable();
 export const resumoSchema = z.object({
-  hojeFaltam: z.number().int().nonnegative(),
-  hojeConcluidos: z.number().int().nonnegative(),
-  mesConcluidos: z.number().int().nonnegative(),
-  mesHorariosLivres: z.number().int().nonnegative(),
-  checkin: z.object({
-    emPreenchimento: z.number().int().nonnegative(),
-    pronto: z.number().int().nonnegative(),
-    emAtendimento: z.number().int().nonnegative(),
-  }),
-  confirmacao: z.object({
-    agendados: z.number().int().nonnegative(),
-    aConfirmar: z.number().int().nonnegative(),
-    confirmados: z.number().int().nonnegative(),
-  }),
-  semDocumento: z.number().int().nonnegative(),
+  hojeFaltam: total,
+  hojeConcluidos: total,
+  mesConcluidos: total,
+  mesHorariosLivres: total,
+  checkin: z.object({ emPreenchimento: total, pronto: total, emAtendimento: total }),
+  confirmacao: z.object({ agendados: total, aConfirmar: total, confirmados: total }),
+  semDocumento: total,
 });
 export type ResumoDaAgenda = z.infer<typeof resumoSchema>;
 

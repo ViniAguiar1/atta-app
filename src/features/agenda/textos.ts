@@ -2,6 +2,9 @@ import type { EstadoDoDocumento, Status } from "./schema";
 
 // Textos da Agenda (MIG-41). Cada linha diz a origem: // PDD §x.y, // simulador (PDD omisso; captura 01 ou 06) ou
 // // provisório (nem PDD nem simulador; listado ao CTO para o textos-para-a-po.md).
+/** Número que ainda não existe (porta vazia, sem leitura real): o traço do design (ORDEM do Tech Lead Frontend). */
+export const SEM_NUMERO = "—";
+
 export const textos = {
   titulo: "Agendamentos", // PDD §10.2 (h1 só para o leitor de tela; a aba já mostra o nome)
   rotuloDaLista: "Agendamentos de hoje", // provisório (nome da região para o leitor de tela)
@@ -18,7 +21,7 @@ export const textos = {
     rotulo: "Resumo do dia", // provisório (nome da região para o leitor de tela)
     hoje: {
       titulo: "Agendamentos hoje", // PDD §10.2.2
-      concluidos: (n: number) => `${n} ${n === 1 ? "concluído" : "concluídos"}`, // simulador, captura 01 ("1 concluído"); plural provisório
+      concluidos: (n: number | null) => `${n ?? SEM_NUMERO} ${n === 1 ? "concluído" : "concluídos"}`, // simulador, captura 01 ("1 concluído"); plural provisório
     },
     mes: {
       titulo: "Agendamentos no mês", // PDD §10.2.2
@@ -27,12 +30,12 @@ export const textos = {
     },
     checkin: {
       titulo: "Check-in", // PDD §10.2.2
-      filtrar: (estado: string, n: number) => `${estado}: ${n}. Filtrar a lista`, // provisório (leitor de tela)
+      filtrar: (estado: string, n: number | null) => `${estado}: ${n ?? SEM_NUMERO}. Filtrar a lista`, // provisório (leitor de tela)
     },
     semDocumento: {
       titulo: "Sem documento vinculado", // PDD §10.2.2
       texto: "Vincule antes do horário", // simulador, captura 01 (PDD omisso)
-      filtrar: (n: number) => `Sem documento vinculado: ${n}. Filtrar a lista`, // provisório (leitor de tela)
+      filtrar: (n: number | null) => `Sem documento vinculado: ${n ?? SEM_NUMERO}. Filtrar a lista`, // provisório (leitor de tela)
     },
   },
   colunas: {
