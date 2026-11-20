@@ -6,6 +6,7 @@ export const TEXTOS = {
   semAtendimento: "Não encontramos atendimento hoje para este CPF", // PDD §11.9
   codigoNaoConfere: "Não conseguimos confirmar o código. Confira o WhatsApp ou procure a recepção.", // PDD §11.4
   naoRecebeu: "Não recebeu o código? Procure a recepção.", // PDD §11.4
+  codigoCancelado: "Este código não vale mais. Peça um novo código ou procure a recepção.",
   indisponivel: "Não conseguimos continuar agora. Tente de novo em instantes.",
   cadastroNovo: "Não encontramos seu cadastro — vamos criar um novo, é rápido.", // PDD §11.4
   concluido: "Check-in concluído para este CPF", // PDD §11.9

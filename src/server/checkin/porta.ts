@@ -18,5 +18,5 @@ export type PortaCheckin = {
 };
 
 export const portaCheckin: PortaCheckin = portaSimulada;
-/** Mostra na tela o código da simulação; some quando a porta real entrar. */
-export const MODO_SIMULADO = true;
+/** Mostra na tela o código da simulação; desliga sozinho quando a porta real entrar. */
+export const MODO_SIMULADO = portaCheckin === portaSimulada;

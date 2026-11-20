@@ -54,4 +54,16 @@ describe("FluxoCheckin", () => {
     await userEvent.click(screen.getByRole("button", { name: "Enviar código" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Não encontramos atendimento hoje para este CPF. Procure a recepção.");
   });
+
+  it("no 5º erro o código cai: pede um novo e trava o Confirmar", async () => {
+    acoes.iniciarCheckin.mockResolvedValue({ ok: true, data: { desafio: DESAFIO, finalCelular: "4321" } });
+    acoes.confirmarCodigo.mockResolvedValue({ ok: false, error: { code: "LIMITE", message: "x" } });
+    render(<FluxoCheckin portal="aurora" clinica="Clínica Aurora Estética" />);
+    await userEvent.type(screen.getByLabelText("CPF"), "52998224725");
+    await userEvent.click(screen.getByRole("button", { name: "Enviar código" }));
+    await userEvent.type(await screen.findByLabelText("Código"), "999999");
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Este código não vale mais.");
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeDisabled();
+  });
 });

@@ -25,6 +25,7 @@ export function PassoCodigo({ desafio, finalCelular, dica, aoConfirmar, aoCorrig
   const [aviso, setAviso] = useState<string | null>(null);
   const [espera, setEspera] = useState(ESPERA_S);
   const [reenvios, setReenvios] = useState(0);
+  const [cancelado, setCancelado] = useState(false); // 5º erro: o código caiu e só um novo vale (PDD §11.4)
   const [ocupado, executar] = useTransition();
 
   useEffect(() => {
@@ -40,15 +41,23 @@ export function PassoCodigo({ desafio, finalCelular, dica, aoConfirmar, aoCorrig
       const r = await confirmarCodigo({ desafio, codigo });
       if (r.ok) return aoConfirmar(r.data.situacao);
       setCodigo("");
-      setErro(r.error.code === "INDISPONIVEL" || r.error.code === "INTERNO" ? TEXTOS.indisponivel : TEXTOS.codigoNaoConfere);
+      setCancelado(r.error.code === "LIMITE");
+      setErro(
+        r.error.code === "LIMITE"
+          ? TEXTOS.codigoCancelado
+          : r.error.code === "INDISPONIVEL" || r.error.code === "INTERNO"
+            ? TEXTOS.indisponivel
+            : TEXTOS.codigoNaoConfere,
+      );
     });
   }
 
   function reenviar() {
     executar(async () => {
       const r = await reenviarCodigo({ desafio });
-      setErro(r.ok ? null : TEXTOS.codigoNaoConfere);
-      if (!r.ok) return;
+      if (!r.ok) return setErro(r.error.code === "LIMITE" ? TEXTOS.naoRecebeu : TEXTOS.indisponivel);
+      setErro(null);
+      setCancelado(false);
       setReenvios((n) => n + 1);
       setEspera(ESPERA_S);
       setAviso(`Enviamos um novo código para o celular terminado em ${r.data.finalCelular}.`);
@@ -87,7 +96,7 @@ export function PassoCodigo({ desafio, finalCelular, dica, aoConfirmar, aoCorrig
         </p>
         {dica && <p className="text-text-secondary">{dica}</p>}
       </div>
-      <Botao type="submit" disabled={ocupado}>
+      <Botao type="submit" disabled={ocupado || cancelado}>
         {ocupado ? "Confirmando…" : "Confirmar"}
       </Botao>
       <Botao variante="secundario" onClick={reenviar} disabled={!podeReenviar}>
