@@ -87,3 +87,16 @@ async function apagarFatores(page: Page, usuario: string) {
     await page.request.delete(`${url}/auth/v1/admin/users/${usuario}/factors/${fator.id}`, { headers: cabecalhos });
   }
 }
+
+// Sem cadastro público (auditoria de segurança S2-3): com a chave pública, o signup do Auth é recusado. Conta só por convite.
+test("cadastro público com a chave publicável é recusado", async ({ request }) => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const chave = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  test.skip(!url || !chave, "sem Supabase local no ambiente");
+  const resposta = await request.post(`${url}/auth/v1/signup`, {
+    headers: { apikey: chave ?? "", "content-type": "application/json" },
+    data: { email: "cadastro.aberto@exemplo.test", password: "SenhaLonga123456" },
+  });
+  expect(resposta.status()).toBeGreaterThanOrEqual(400);
+  expect(((await resposta.json()) as { error_code?: string }).error_code).toBe("signup_disabled");
+});
