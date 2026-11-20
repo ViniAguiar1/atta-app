@@ -1,12 +1,13 @@
 -- Matriz papel × tabela × operação de platform.tenant e platform.membership (MIG-02; ADR 0001 §2). As policies rodam
 -- como authenticated com claims simulados: provam que avaliam (sem "permission denied for schema private"), que uma
--- clínica não vê a outra, que o papel que vale é o do banco e que vínculo removido ou suspenso perde o acesso.
+-- clínica não vê a outra, que o papel que vale é o do banco, que vínculo removido ou suspenso perde o acesso na hora
+-- (inclusive à clínica) e que ninguém escreve vínculo direto pela tabela (convite e papel: funções do MIG-06).
 -- Só dados fictícios.
 begin;
 create extension if not exists pgtap with schema extensions;
 -- a migration base tira o EXECUTE de public das funções novas; aqui, só nesta transação, o pgTAP volta a ser chamável
 grant execute on all functions in schema extensions to authenticated, anon;
-select plan(32);
+select plan(34);
 
 insert into auth.users (id, email, aud, role) values
   ('a1a1a1a1-0000-4000-8000-0000000000a1', 'admina@exemplo.test', 'authenticated', 'authenticated'),
@@ -42,15 +43,15 @@ select throws_ok($$ delete from platform.tenant where id = 'aaaaaaaa-0000-4000-8
 
 select is((select count(*)::int from platform.membership), 3, 'ADMIN vê a equipe viva da clínica (o suspenso aparece; o removido, não)');
 
-select lives_ok($$ insert into platform.membership (tenant_id, user_id, app_role) values ('aaaaaaaa-0000-4000-8000-000000000001', 'f5f5f5f5-0000-4000-8000-0000000000f5', 'COLABORADOR') $$, 'ADMIN convida para a própria clínica');
+select throws_ok($$ insert into platform.membership (tenant_id, user_id, app_role) values ('aaaaaaaa-0000-4000-8000-000000000001', 'f5f5f5f5-0000-4000-8000-0000000000f5', 'COLABORADOR') $$, '42501', null, 'ADMIN não escreve vínculo direto pela tabela: convite é função do MIG-06');
 
 select throws_ok($$ insert into platform.membership (tenant_id, user_id, app_role) values ('bbbbbbbb-0000-4000-8000-000000000002', 'c1c1c1c1-0000-4000-8000-0000000000c1', 'ADMIN') $$, '42501', null, 'ADMIN não cria vínculo em outra clínica');
 
-select lives_ok($$ update platform.membership set app_role = 'ADMIN' where user_id = 'c1c1c1c1-0000-4000-8000-0000000000c1' and tenant_id = 'aaaaaaaa-0000-4000-8000-000000000001' $$, 'ADMIN muda o papel na própria clínica');
+select throws_ok($$ update platform.membership set app_role = 'ADMIN' where user_id = 'c1c1c1c1-0000-4000-8000-0000000000c1' and tenant_id = 'aaaaaaaa-0000-4000-8000-000000000001' $$, '42501', null, 'ADMIN não troca papel direto pela tabela (limite de 2 ADMIN: MIG-06)');
 
 select throws_ok($$ delete from platform.membership $$, '42501', null, 'vínculo não se apaga (exclusão é lógica)');
 
-select throws_ok($$ update platform.membership set user_id = 'b2b2b2b2-0000-4000-8000-0000000000b2' $$, '42501', null, 'user_id do vínculo não se troca');
+select throws_ok($$ update platform.membership set status = 'suspended' $$, '42501', null, 'ADMIN não suspende nem remove direto pela tabela');
 
 reset role;
 select set_config('request.jwt.claims', '', true);
@@ -59,9 +60,8 @@ select is((select name from platform.tenant where id = 'aaaaaaaa-0000-4000-8000-
 
 select is((select name from platform.tenant where id = 'bbbbbbbb-0000-4000-8000-000000000002'), 'Clínica Beta Ficticia', 'a clínica B ficou intacta');
 
-select is((select app_role from platform.membership where user_id = 'c1c1c1c1-0000-4000-8000-0000000000c1' and tenant_id = 'aaaaaaaa-0000-4000-8000-000000000001'), 'ADMIN', 'o papel mudou');
+select is((select app_role from platform.membership where user_id = 'c1c1c1c1-0000-4000-8000-0000000000c1' and tenant_id = 'aaaaaaaa-0000-4000-8000-000000000001'), 'COLABORADOR', 'o papel não mudou');
 
-update platform.membership set app_role = 'COLABORADOR' where user_id = 'c1c1c1c1-0000-4000-8000-0000000000c1';
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"c1c1c1c1-0000-4000-8000-0000000000c1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"COLABORADOR"}', true);
@@ -109,6 +109,7 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"d3d3d3d3-0000-4000-8000-0000000000d3","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN"}', true);
 
 select is((select count(*)::int from platform.membership), 0, 'vínculo removido: o token ainda válido não vê a equipe');
+select is((select count(*)::int from platform.tenant), 0, 'vínculo removido: o token ainda válido não vê nem a clínica');
 
 select throws_ok($$ insert into platform.membership (tenant_id, user_id, app_role) values ('aaaaaaaa-0000-4000-8000-000000000001', 'f5f5f5f5-0000-4000-8000-0000000000f5', 'ADMIN') $$, '42501', null, 'vínculo removido não convida');
 
@@ -118,7 +119,8 @@ select set_config('request.jwt.claims', '', true);
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"e4e4e4e4-0000-4000-8000-0000000000e4","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN"}', true);
 
-select is((select count(*)::int from platform.membership), 1, 'vínculo suspenso vê só o próprio, sem a equipe');
+select is((select count(*)::int from platform.membership), 0, 'vínculo suspenso: nenhum vínculo, nem o próprio');
+select is((select count(*)::int from platform.tenant), 0, 'vínculo suspenso: nem a clínica');
 
 reset role;
 select set_config('request.jwt.claims', '', true);

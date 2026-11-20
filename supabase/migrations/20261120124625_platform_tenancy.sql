@@ -71,7 +71,7 @@ create trigger tenant_set_updated_at before update on platform.tenant
 create table platform.membership (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references platform.tenant (id),
-  user_id uuid not null references auth.users (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete restrict, -- excluir usuário é rotina do MIG-06, sem perder o histórico
   app_role text not null check (app_role in ('ADMIN', 'COLABORADOR')),
   status text not null default 'active' check (status in ('active', 'suspended')),
   created_at timestamptz not null default now(),
@@ -123,28 +123,36 @@ revoke all on platform.tenant, platform.membership from public, anon, authentica
 -- tenant: ler a própria clínica; o ADMIN muda o nome e o fuso. Criar clínica é do onboarding (MIG-17), por função.
 grant select on platform.tenant to authenticated;
 grant update (name, timezone) on platform.tenant to authenticated;
--- membership: ler; o ADMIN convida (insert) e muda papel e status. Excluir é lógico (update de deleted_at).
-grant select, insert on platform.membership to authenticated;
-grant update (app_role, status, deleted_at) on platform.membership to authenticated;
+-- membership: só leitura pela tabela. Convite, troca de papel, suspensão e remoção entram por função em `api` no MIG-06,
+-- com as regras que a tabela não garante (no máximo 2 ADMIN, titular protegido, PDD §10.4.3).
+grant select on platform.membership to authenticated;
 
+-- Toda policy de staff confere o vínculo ativo (ADR 0001 §2): removido ou suspenso perde o acesso na hora, mesmo
+-- com o token ainda válido.
 create policy tenant_select on platform.tenant for select to authenticated
-  using (id = (select private.current_tenant_id()) and deleted_at is null);
+  using (
+    id = (select private.current_tenant_id())
+    and deleted_at is null
+    and exists (
+      select 1 from platform.membership m
+       where m.tenant_id = tenant.id and m.user_id = (select auth.uid()) and m.status = 'active' and m.deleted_at is null
+    )
+  );
 create policy tenant_update on platform.tenant for update to authenticated
   using (id = (select private.current_tenant_id()) and (select private.has_permission('settings', 'edit')))
   with check (id = (select private.current_tenant_id()));
 
--- O próprio vínculo todos veem (a tela sabe o papel); a equipe inteira, só quem tem o módulo team (ADMIN).
+-- O próprio vínculo ativo todos veem (a tela sabe o papel); a equipe inteira, só quem tem o módulo team (ADMIN).
+-- has_permission já confere o vínculo ativo; o caminho do "próprio" confere pelo status e pelo deleted_at da linha.
 create policy membership_select on platform.membership for select to authenticated
   using (
     tenant_id = (select private.current_tenant_id())
     and deleted_at is null
-    and (user_id = (select auth.uid()) or (select private.has_permission('team', 'view')))
+    and (
+      (user_id = (select auth.uid()) and status = 'active')
+      or (select private.has_permission('team', 'view'))
+    )
   );
-create policy membership_insert on platform.membership for insert to authenticated
-  with check (tenant_id = (select private.current_tenant_id()) and (select private.has_permission('team', 'create')));
-create policy membership_update on platform.membership for update to authenticated
-  using (tenant_id = (select private.current_tenant_id()) and (select private.has_permission('team', 'edit')))
-  with check (tenant_id = (select private.current_tenant_id()));
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- private: USAGE para authenticated (a policy precisa), EXECUTE só nas três funções das policies.

@@ -45,6 +45,8 @@ Regras:
 - `platform.tenant.timezone text not null default 'America/Sao_Paulo'` (MIG-02). Data local da clínica (`p_local_date`) é sempre interpretada nesse fuso.
 - Função SECURITY DEFINER fora de `api` (ex.: a transição de estado em `atta_in`) segue as mesmas regras: `search_path = ''`, `EXECUTE` revogado de `public` e `anon`, e tenant e permissão conferidos dentro.
 - **No Supabase, o `postgres` tem BYPASSRLS:** FORCE não protege nada que rode como ele. Por isso os schemas mais sensíveis têm dona própria, **sem login e sem BYPASSRLS**: `health` (MIG-22) e `audit` (MIG-04). As funções SECURITY DEFINER que tocam esses schemas pertencem a essa role, e não ao `postgres`, e a RLS forçada vale também para elas.
+- **Toda policy de staff**, além de `tenant_id = (select private.current_tenant_id())`, chama `(select private.has_permission(<módulo>, <ação>))` ou confere o vínculo ativo em `platform.membership`. Só o claim não basta.
+- Vínculo e papel (`platform.membership`) só mudam por função em `api` (MIG-06), que garante no máximo 2 ADMIN e protege o titular (PDD §10.4.3). Não há escrita direta pela tabela.
 - `has_permission` confere no banco o vínculo ativo e o papel em `platform` (não só o claim): tirar alguém da clínica corta o acesso na hora, sem esperar o token vencer. O claim `app_role` serve para a interface e para o atalho de leitura; a decisão de acesso é do banco.
 - Claims que o Custom Access Token Hook põe no token (MIG-03): `tenant_id` (clínica ativa) e `app_role` (`ADMIN` | `COLABORADOR`, PDD §10.4.3). **Nunca sobrescrever o claim `role`**, que é a role do Postgres. Entitlements não viajam no token (ADR 0012).
 - Exclusão pelo usuário é lógica (`deleted_at timestamptz`, PDD §9.6); a eliminação definitiva é rotina própria e auditada (§19.9).
@@ -77,6 +79,13 @@ supabase/  config.toml  migrations/  tests/  seed.sql
 e2e/                    Playwright + axe
 docs/decisoes/          ADRs curtas, numeradas
 ```
+- **Rotas (contrato com o Frontend; listas só em `src/lib/auth/rotas.ts`):**
+  - Painel da clínica: tudo sob `/painel/**` (grupo `(clinica)`), por exemplo `/painel/agenda` e `/painel/configuracoes`. O `proxy.ts` exige sessão: sem sessão, vai para `/entrar?volta=<caminho>`; sem clínica no token, para `/sem-clinica`.
+  - Públicas, fora da guarda de staff: `/entrar`, `/auth/callback`, `/recuperar-senha`, `/sem-clinica` e `/api/health`. Também as rotas de link (grant, nunca sessão de staff): `/checkin/**`, `/ficha/**`, `/boarding/**` (link do profissional), `/propass/**` e `/verificar/**`. Esses prefixos viram hosts separados no MIG-09.
+  - `volta` e o `next` do callback só aceitam caminho relativo que comece com `/painel/` (sem `//`, sem esquema, sem host). Qualquer outra coisa vai para `/painel`. Isso evita redirecionamento aberto.
+  - A guarda do proxy só redireciona; quem autoriza é a RLS. As páginas só do ADMIN (configurações, equipe, auditoria) checam também no Server Component, só para a tela.
+  - Nenhum dado pessoal em rota ou query string (§5). Id opaco (uuid) pode.
+  - 2º fator obrigatório: `/painel/seguranca/2fa`, ligado por constante quando o dono decidir quem é obrigado.
 - Feature não importa de outra feature; o que é comum sobe para `components/` ou `lib/`.
 - `lib/supabase/admin.ts` e `lib/env.server.ts` começam com `import 'server-only'` e o ESLint proíbe importá-los fora de `src/server/**`, `**/actions.ts` e `app/**/route.ts`. Toda chamada com a secret key confere o papel antes.
 
