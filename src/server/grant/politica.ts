@@ -6,7 +6,7 @@ import { createHash, randomBytes } from "node:crypto";
  * de verdade (`private.grant_is_valid`): aqui eles servem para o `Max-Age` do cookie e para a tela. Se o PDD ou a PO
  * mudarem a validade, muda aqui e na migration, nos dois lugares, com o teste de paridade abaixo.
  */
-export const FINALIDADES = ["patient_checkin", "professional_boarding"] as const;
+export const FINALIDADES = ["patient_checkin", "professional_boarding", "professional_propass"] as const;
 export type Finalidade = (typeof FINALIDADES)[number];
 
 export const POLITICA: Readonly<Record<Finalidade, { inatividadeSeg: number | null; tetoSeg: number }>> = {
@@ -14,6 +14,8 @@ export const POLITICA: Readonly<Record<Finalidade, { inatividadeSeg: number | nu
   patient_checkin: { inatividadeSeg: 30 * 60, tetoSeg: 2 * 60 * 60 },
   // profissional: 8 h a partir do envio do link pelo WhatsApp, ou a conclusão, ou o cancelamento (PDD RN-FIC-07)
   professional_boarding: { inatividadeSeg: null, tetoSeg: 8 * 60 * 60 },
+  // PROpass: o link do convite vale 7 dias da emissão; o reenvio invalida o anterior (PDD v206 §10.4.3)
+  professional_propass: { inatividadeSeg: null, tetoSeg: 7 * 24 * 60 * 60 },
 };
 
 export const COOKIE_GRANT = "atta_grant";
