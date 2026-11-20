@@ -1,7 +1,7 @@
 -- MIG-20 (parte 3): no ATTA-in, modelo só se publica com procedimento vivo vinculado (PDD v206 §10.3.1; ADR 0001
 -- §1, decisão do Tech Lead no #67). Lista com allowed_actions do servidor. Só dado fictício.
 begin;
-select plan(25);
+select plan(26);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-0000000000f1', 'Clínica Fictícia Publicação A'),
@@ -97,6 +97,12 @@ select is(pg_temp.acoes('TCLE fictício A'), 'editar,vincular_procedimentos,publ
 select is((select status || ' ' || current_version || ' ' || array_to_string(clinic_service_ids, ',')
            from api.atta_in_template_list() where title = 'TCLE fictício A'),
           'ativo 1 00000000-0000-4000-8000-00000000c001', 'a lista traz estado, versão e procedimentos');
+select set_config('role', 'postgres', true);   -- vínculo antigo com Serviço que depois foi apagado
+insert into atta_in.service_document_template (tenant_id, clinic_service_id, template_id)
+values ('00000000-0000-4000-8000-0000000000f1', '00000000-0000-4000-8000-00000000c002', pg_temp.modelo('TCLE fictício A'));
+select pg_temp.entrar('00000000-0000-4000-8000-0000000000f1', 'ADMIN');
+select is((select array_to_string(clinic_service_ids, ',') from api.atta_in_template_list() where title = 'TCLE fictício A'),
+          '00000000-0000-4000-8000-00000000c001', 'com um vivo e um apagado, a lista traz só o Serviço vivo');
 select set_config('role', 'postgres', true);   -- a trilha só se lê como dono
 select is((select count(*)::int from audit.event e join documents.template_version v on v.id = e.entity_id
            where e.action = 'template.publish' and v.template_id = pg_temp.modelo('TCLE fictício A')), 1,

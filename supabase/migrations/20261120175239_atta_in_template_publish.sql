@@ -157,7 +157,7 @@ begin
           ) a (ord, obj) where a.obj is not null), '[]'::jsonb)
   from documents.template t
   cross join lateral (
-    select coalesce(array_agg(l.clinic_service_id order by l.clinic_service_id), '{}') as ids,
+    select coalesce(array_agg(l.clinic_service_id order by l.clinic_service_id) filter (where c.deleted_at is null), '{}') as ids,
            count(*) filter (where c.deleted_at is null) as vivos
     from atta_in.service_document_template l
     join atta_in.clinic_service c on c.tenant_id = l.tenant_id and c.id = l.clinic_service_id
