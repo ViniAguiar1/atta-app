@@ -1,0 +1,78 @@
+/**
+ * Limitador de tentativas único (ADR 0004 §2; proposta do Backend 6, aceita pelo Tech Lead em 20/11).
+ * O contador fica no banco (`api.rate_limit_hit`, só service_role), porque a Vercel não garante a mesma instância.
+ * A chave nunca é o valor cru: HMAC-SHA256 com ATTA_CPF_PEPPER e o rótulo `atta.ratelimit.v1|<bucket>|<valor>`.
+ * sha256 simples não serve (IPv4 se reverte por força bruta). Trocar o pepper só zera contadores de janela curta.
+ *
+ * Uso numa server action ou route handler, antes de qualquer outra coisa:
+ *   const limite = await consumirLimite(LIMITES.verificacaoPublicaPorIp, ip);
+ *   if (!limite.ok) return limite;   // LIMITE (429)
+ * Sem IP (desenvolvimento local), os pedidos dividem um contador só, "sem-valor": o limite continua valendo.
+ * Erro do banco também nega (falha fechada): o limite não some quando o banco oscila.
+ */
+import "server-only";
+import { createHmac } from "node:crypto";
+import { falha, falhaDoBanco, MENSAGENS, ok, type Resultado } from "@/lib/errors";
+import { criarClienteAdmin } from "@/lib/supabase/admin";
+import { pepperFromEnv } from "@/server/crypto/pepper";
+
+export type PoliticaDeLimite = Readonly<{ bucket: string; limite: number; janelaSegundos: number }>;
+
+/** As políticas, num lugar só. Mudou o PDD ou a ADR, muda aqui. */
+export const LIMITES = {
+  /** Verificação pública do Código ATTA: 30 por minuto por IP (ADR 0006 §6 do atta-platform; PDD v206 §18.6). */
+  verificacaoPublicaPorIp: { bucket: "verify.ip", limite: 30, janelaSegundos: 60 },
+  /** Check-in, `iniciar`: 10 por IP a cada 10 min (ADR 0004 §2). */
+  checkinIniciarPorIp: { bucket: "checkin.start.ip", limite: 10, janelaSegundos: 600 },
+  /** Check-in, `iniciar`: 100 por portal a cada 10 min (ADR 0004 §2). */
+  checkinIniciarPorPortal: { bucket: "checkin.start.portal", limite: 100, janelaSegundos: 600 },
+} as const satisfies Record<string, PoliticaDeLimite>;
+
+const ROTULO = "atta.ratelimit.v1|";
+const BUCKET = /^[a-z][a-z0-9_.]{2,63}$/;
+const SEM_VALOR = "sem-valor";
+
+/** HMAC da chave com pepper explícito (testes e rotação). */
+export function chaveDoLimiteWith(pepper: Uint8Array, bucket: string, valor: string | null | undefined): Buffer {
+  if (!BUCKET.test(bucket)) throw new RangeError("bucket fora do formato");
+  if (pepper.length < 32) throw new RangeError("pepper precisa de pelo menos 32 bytes");
+  const v = typeof valor === "string" && valor.trim() !== "" ? valor.trim() : SEM_VALOR;
+  return createHmac("sha256", pepper).update(`${ROTULO}${bucket}|${v}`, "utf8").digest();
+}
+
+export function chaveDoLimite(bucket: string, valor: string | null | undefined): Buffer {
+  return chaveDoLimiteWith(pepperFromEnv("ATTA_CPF_PEPPER"), bucket, valor);
+}
+
+/** O mínimo do cliente que o limitador usa: permite testar sem o Supabase. */
+export type ClienteDoLimite = {
+  schema(nome: "api"): {
+    rpc(
+      fn: "rate_limit_hit",
+      args: { p_bucket: string; p_key_hash: string; p_limit: number; p_window_seconds: number },
+    ): PromiseLike<{ data: boolean | null; error: { code?: string; message?: string; details?: string } | null }>;
+  };
+};
+
+/** Conta um pedido. `ok` dentro do limite; `LIMITE` quando passa; erro do banco também nega. */
+export async function consumirLimite(
+  politica: PoliticaDeLimite,
+  valor: string | null | undefined,
+  cliente?: ClienteDoLimite,
+): Promise<Resultado<null>> {
+  let chave: Buffer;
+  try {
+    chave = chaveDoLimite(politica.bucket, valor);
+  } catch {
+    return falha("INTERNO", MENSAGENS.INTERNO);
+  }
+  const c = cliente ?? (criarClienteAdmin() as unknown as ClienteDoLimite);
+  const { data, error } = await c.schema("api").rpc("rate_limit_hit", {
+    p_bucket: politica.bucket,
+    p_key_hash: `\\x${chave.toString("hex")}`, // bytea pelo PostgREST: hex com \x
+    p_limit: politica.limite,
+    p_window_seconds: politica.janelaSegundos,
+  });
+  if (error) return falhaDoBanco(error);
+  return data === true ? ok(null) : falha("LIMITE", MENSAGENS.LIMITE);
+}
