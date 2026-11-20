@@ -31,8 +31,6 @@ const PROIBIDOS: ReadonlyArray<readonly [nome: string, padrao: RegExp]> = [
 const EXCECOES: ReadonlyArray<{ arquivo: string; termo: string; dono: string }> = [
   { arquivo: "src/app/page.tsx", termo: "ambiente de validação", dono: "Frontend (tela de entrar, / redireciona)" },
   { arquivo: "src/app/page.tsx", termo: "fictício", dono: "Frontend (tela de entrar, / redireciona)" },
-  { arquivo: "src/app/(paciente)/checkin/[portal]/page.tsx", termo: "ambiente de validação", dono: "Frontend 2" },
-  { arquivo: "src/app/(paciente)/checkin/[portal]/page.tsx", termo: "dica de código", dono: "Frontend 2" },
   { arquivo: "src/features/casca/sessao.ts", termo: "demo / demonstração", dono: "Frontend (sessão real, MIG-03)" },
   { arquivo: "src/features/casca/textos.ts", termo: "página-marcador", dono: "Frontend (aba só com módulo pronto)" },
 ];
