@@ -31,6 +31,10 @@
   --color-status-negative: var(--ref-negativo);
   /* Turquesa do Guia v21 §1.2. Como texto: 4.96:1 no fundo, 5.26:1 no branco e 4.54:1 no card; branco sobre ele, 5.26:1. */
   --color-status-info: var(--ref-info);
+  /* Status "Pronto" na lista de agendamentos: "tom claro do verde do ATTA-in" (PDD §10.2.2, cores do status). O Guia v21
+     não dá hex; é o #6c7563 (aba ativa, §4.1) a 30 % sobre o branco (#d3d6d0), como as opacidades da barra clara. Texto
+     text-primary por cima: 10.58:1. O chip tem rótulo: a cor não é o único sinal (WCAG 1.4.1). */
+  --color-status-ready: color-mix(in srgb, var(--ref-atta-in-aba-ativa) 30%, var(--ref-branco));
   /* Pré-assinado, em análise (DG 1.2). */
   --color-status-pending: var(--ref-atencao);
   /* Só na tag "Externo" (DG 1.6), sobre surface-app ou surface-raised: sobre surface-card o texto dá 4.16:1. */
