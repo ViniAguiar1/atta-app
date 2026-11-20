@@ -1,12 +1,17 @@
 -- MIG-13a: grant de sessão (ADR 0004 §3). Dados fictícios: hashes de texto inventado, ids inventados.
 begin;
-select plan(32);
+select plan(33);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
   ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
 insert into network.person (id, full_name, is_incomplete)
 values ('00000000-0000-4000-8000-0000000000e1', 'Paciente Fictício', true);
+-- vínculo fictício do profissional com a clínica A (nasce no convite)
+insert into platform.professional_tenant_link (id, tenant_id, invite_email_hmac, invite_email_enc, envelope_id,
+                                               dek_wrapped, kek_version)
+values ('00000000-0000-4000-8000-0000000000c1', '00000000-0000-4000-8000-00000000000a', sha256('dra@a.test'::bytea),
+        '\x01', gen_random_uuid(), '\x01', 1);
 
 -- relógio: envelhece o grant (como postgres), para testar inatividade e teto sem esperar
 create function pg_temp.envelhecer(p_hash bytea, p_criado interval, p_uso interval) returns void
@@ -74,8 +79,12 @@ select throws_ok($$ select api.grant_issue('patient_checkin', sha256('segredo-p1
                     '00000000-0000-4000-8000-0000000000d9', p_person_id => '00000000-0000-4000-8000-0000000000e1') $$,
                  '23505', null, 'o mesmo segredo não vale para outra clínica');
 select throws_ok($$ select api.grant_issue('patient_checkin', sha256('segredo-p2'::bytea), '00000000-0000-4000-8000-00000000000a',
-                    '00000000-0000-4000-8000-0000000000d1', p_professional_id => gen_random_uuid()) $$,
+                    '00000000-0000-4000-8000-0000000000d1', p_professional_link_id => '00000000-0000-4000-8000-0000000000c1') $$,
                  '23514', null, 'grant do paciente exige a pessoa, e só ela');
+select throws_ok($$ select api.grant_issue('professional_boarding', sha256('segredo-b9'::bytea),
+                    '00000000-0000-4000-8000-00000000000b', '00000000-0000-4000-8000-0000000000d9',
+                    p_professional_link_id => '00000000-0000-4000-8000-0000000000c1') $$,
+                 '23503', null, 'grant do profissional só com o vínculo da mesma clínica (FK)');
 select throws_ok($$ select api.grant_issue('outra_coisa', sha256('segredo-p3'::bytea), '00000000-0000-4000-8000-00000000000a',
                     '00000000-0000-4000-8000-0000000000d1', p_person_id => '00000000-0000-4000-8000-0000000000e1') $$,
                  'P0001', 'ATTA-IN-0001', 'finalidade fora da lista é recusada');
@@ -105,7 +114,7 @@ select lives_ok($$ select api.grant_revoke(sha256('segredo-desconhecido'::bytea)
 
 -- profissional: só depois do envio do link, e até 8 h dele (PDD RN-FIC-07)
 select api.grant_issue('professional_boarding', sha256('segredo-b1'::bytea), '00000000-0000-4000-8000-00000000000a',
-                       '00000000-0000-4000-8000-0000000000d1', p_professional_id => '00000000-0000-4000-8000-0000000000f1');
+                       '00000000-0000-4000-8000-0000000000d1', p_professional_link_id => '00000000-0000-4000-8000-0000000000c1');
 select throws_ok($$ select * from api.grant_resolve(sha256('segredo-b1'::bytea), 'professional_boarding') $$,
                  '42501', 'ATTA-AUTH-0004', 'profissional: antes de a fila confirmar o envio, o link não vale');
 select lives_ok($$ select api.grant_mark_sent(pg_temp.id_do(sha256('segredo-b1'::bytea))) $$, 'a fila confirma o envio');

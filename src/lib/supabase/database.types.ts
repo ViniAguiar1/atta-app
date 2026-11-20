@@ -15,14 +15,14 @@ export type Database = {
 { Args: { "p_action": string,"p_details"?: Json,"p_user_id"?: string }; Returns: string
                            },
 "grant_issue":
-{ Args: { "p_appointment_id": string,"p_person_id"?: string,"p_professional_id"?: string,"p_purpose": string,"p_secret_hash": string,"p_tenant_id": string }; Returns: string
+{ Args: { "p_appointment_id": string,"p_person_id"?: string,"p_professional_link_id"?: string,"p_purpose": string,"p_secret_hash": string,"p_tenant_id": string }; Returns: string
                            },
 "grant_mark_sent":
 { Args: { "p_grant_id": string }; Returns: undefined
                            },
 "grant_resolve":
 { Args: { "p_purpose": string,"p_secret_hash": string }; Returns: {
-              "appointment_id": string,"expires_at": string,"grant_id": string,"person_id": string,"professional_id": string,"tenant_id": string
+              "appointment_id": string,"expires_at": string,"grant_id": string,"person_id": string,"professional_link_id": string,"tenant_id": string
             }[]
                            },
 "grant_revoke":
@@ -499,17 +499,23 @@ isOneToOne: false
           Tables: {
             "access_grant": {
                   Row: {
-                    "appointment_id": string,"created_at": string,"expires_at": string,"id": string,"last_used_at": string | null,"person_id": string | null,"professional_id": string | null,"purpose": string,"revoked_at": string | null,"secret_hash": string,"sent_at": string | null,"tenant_id": string
+                    "appointment_id": string,"created_at": string,"expires_at": string,"id": string,"last_used_at": string | null,"person_id": string | null,"professional_link_id": string | null,"purpose": string,"revoked_at": string | null,"secret_hash": string,"sent_at": string | null,"tenant_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "appointment_id": string,"created_at"?: string,"expires_at": string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_id"?: string | null,"purpose": string,"revoked_at"?: string | null,"secret_hash": string,"sent_at"?: string | null,"tenant_id": string
+                    "appointment_id": string,"created_at"?: string,"expires_at": string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_link_id"?: string | null,"purpose": string,"revoked_at"?: string | null,"secret_hash": string,"sent_at"?: string | null,"tenant_id": string
                   }
                   Update: {
-                    "appointment_id"?: string,"created_at"?: string,"expires_at"?: string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_id"?: string | null,"purpose"?: string,"revoked_at"?: string | null,"secret_hash"?: string,"sent_at"?: string | null,"tenant_id"?: string
+                    "appointment_id"?: string,"created_at"?: string,"expires_at"?: string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"professional_link_id"?: string | null,"purpose"?: string,"revoked_at"?: string | null,"secret_hash"?: string,"sent_at"?: string | null,"tenant_id"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "access_grant_professional_link_fk"
+      columns: ["tenant_id","professional_link_id"]
+isOneToOne: false
+      referencedRelation: "professional_tenant_link"
+      referencedColumns: ["tenant_id","id"]
+    },{
       foreignKeyName: "access_grant_tenant_id_fkey"
       columns: ["tenant_id"]
 isOneToOne: false
