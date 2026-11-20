@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { falhaDeValidacao, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { type ChaveDeParametro, type Parametro, portaConfiguracoes } from "@/server/configuracoes/porta";
+import { type CelularDoFluxo, type ChaveDeParametro, type Parametro, portaConfiguracoes } from "@/server/configuracoes/porta";
 
 // Escrita de um parâmetro de Configurações (POST). Quem confere papel, limite e regra cruzada é o banco (set_setting);
 // aqui só o formato. Log só com a chave e o desfecho.
@@ -24,5 +24,24 @@ export async function salvarParametro(entrada: unknown): Promise<Resultado<Param
   if (!dados.success) return falhaDeValidacao(dados.error.issues);
   const r = await portaConfiguracoes.salvarParametro(dados.data.chave, dados.data.valor);
   logger.info("configuracoes.parametro_salvo", { chave: dados.data.chave, ok: r.ok, code: r.ok ? undefined : r.error.code });
+  return r;
+}
+
+// Celulares do Fluxo alternativo (PDD §15.3). O número vai só no corpo do POST e nunca no log.
+const celularSchema = z.object({ nome: z.string().max(80), numero: z.string().max(30) });
+
+export async function adicionarCelular(entrada: unknown): Promise<Resultado<CelularDoFluxo>> {
+  const dados = celularSchema.safeParse(entrada);
+  if (!dados.success) return falhaDeValidacao(dados.error.issues);
+  const r = await portaConfiguracoes.adicionarCelular(dados.data.nome, dados.data.numero);
+  logger.info("configuracoes.celular_adicionado", { ok: r.ok, code: r.ok ? undefined : r.error.code });
+  return r;
+}
+
+export async function removerCelular(entrada: unknown): Promise<Resultado<{ id: string }>> {
+  const dados = z.object({ id: z.uuid() }).safeParse(entrada);
+  if (!dados.success) return falhaDeValidacao(dados.error.issues);
+  const r = await portaConfiguracoes.removerCelular(dados.data.id);
+  logger.info("configuracoes.celular_removido", { ok: r.ok, code: r.ok ? undefined : r.error.code });
   return r;
 }

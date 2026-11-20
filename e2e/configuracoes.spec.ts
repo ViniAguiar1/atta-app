@@ -14,7 +14,7 @@ test.describe("ADMIN", () => {
     await expect(page).toHaveURL(/\/painel\/configuracoes\/agendamentos$/);
     const menu = page.getByRole("navigation", { name: "Seções de Configurações" });
     await expect(menu.getByRole("link", { name: "Agendamentos" })).toHaveAttribute("aria-current", "page");
-    for (const cartao of ["Link Check-in Online", "Janela de confirmação", "Ausência automática"])
+    for (const cartao of ["Link Check-in Online", "Janela de confirmação", "Fluxo alternativo", "Ausência automática", "Envio das mensagens"])
       await expect(page.getByRole("region", { name: cartao })).toBeVisible();
     await expect(page.getByText("Validade total do link: 4 h")).toBeVisible();
     expect((await axe(page)).violations).toEqual([]);
@@ -27,6 +27,24 @@ test.describe("ADMIN", () => {
     await janela.fill("900");
     await janela.press("Enter");
     await expect(page.getByText("Use um valor de 1 a 720.")).toBeVisible();
+  });
+});
+
+test.describe("ADMIN, celulares do Fluxo alternativo", () => {
+  test.use({ storageState: SESSAO_DA_GESTORA });
+
+  test("adiciona um celular, que volta mascarado, e remove", async ({ page }) => {
+    await page.goto("/painel/configuracoes/agendamentos");
+    const fluxo = page.getByRole("region", { name: "Fluxo alternativo" });
+    await fluxo.getByRole("button", { name: "+ Adicionar celular" }).click();
+    await fluxo.getByLabel(/^Nome do celular/).fill("Celular da recepção");
+    await fluxo.getByLabel(/^Número do celular/).fill("(48) 99999-0001");
+    await fluxo.getByRole("button", { name: "Salvar celular" }).click();
+    await expect(fluxo.getByText("(48) ·····-0001")).toBeVisible();
+    expect(await page.locator("body").innerText()).not.toContain("99999-0001");
+    expect((await axe(page)).violations).toEqual([]);
+    await fluxo.getByRole("button", { name: "Remover Celular da recepção" }).last().click();
+    await expect(fluxo.getByText("(48) ·····-0001")).toHaveCount(0);
   });
 });
 
