@@ -49,7 +49,7 @@ create function pg_temp.seg_fechado_executavel_por_authenticated() returns setof
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in (select nome from seg_schemas where fechado)
      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
-     and p.oid::regprocedure::text not in (select nome from seg_funcoes_de_policy)
+     and not exists (select 1 from seg_funcoes_de_policy f where to_regprocedure(f.nome) = p.oid)
 $$;
 create function pg_temp.seg_tabela_de_anon() returns setof text language sql as $$
   select format('%s.%s', n.nspname, c.relname)
@@ -63,8 +63,7 @@ create function pg_temp.seg_sequencia_de_anon() returns setof text language sql 
   select format('%s.%s', n.nspname, c.relname)
     from pg_class c join pg_namespace n on n.oid = c.relnamespace
    where n.nspname in (select nome from seg_schemas)
-     and c.relkind = 'S'
-     and has_sequence_privilege('anon', c.oid, 'USAGE, SELECT, UPDATE')
+     and case when c.relkind = 'S' then has_sequence_privilege('anon', c.oid, 'USAGE, SELECT, UPDATE') else false end
 $$;
 -- service_role tem BYPASSRLS no Supabase: grant de tabela para ele é leitura sem RLS. O fluxo de link e a fila usam
 -- funções em `api` (ADR 0004 §1; ADR 0005 §1), nunca tabela.
