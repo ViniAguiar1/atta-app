@@ -49,8 +49,18 @@ export function politicaDeConteudo(opcoes: { desenvolvimento: boolean; supabaseU
     .join("; ");
 }
 
-/** Rotas cujo caminho leva segredo (link do profissional e do PROpass, ADR 0004 §3): nada de Referer, cache ou índice. */
-export const ROTAS_COM_SEGREDO = ["/b/:path*", "/boarding", "/boarding/:path*", "/propass", "/propass/:path*"] as const;
+/**
+ * Rotas que levam segredo no caminho ou na query (link do profissional e do PROpass, ADR 0004 §3; o token_hash do link
+ * de e-mail de "Esqueci a senha" e do convite no /auth/confirm, MIG-03c): nada de Referer, cache ou índice.
+ */
+export const ROTAS_COM_SEGREDO = [
+  "/b/:path*",
+  "/boarding",
+  "/boarding/:path*",
+  "/propass",
+  "/propass/:path*",
+  "/auth/confirm",
+] as const;
 
 export function cabecalhosDeSeguranca(opcoes: { desenvolvimento: boolean; supabaseUrl?: string }): RegraDeCabecalhos[] {
   const gerais: Cabecalho[] = [
