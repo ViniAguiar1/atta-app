@@ -124,9 +124,13 @@ revoke all on integrations.template, integrations.delivery, integrations.deliver
 -- ---------------------------------------------------------------------------------------------------------------
 -- Internas: histórico, apagar segredo e o envio alternativo
 -- ---------------------------------------------------------------------------------------------------------------
-create function private.delivery_log(p_id uuid, p_tenant uuid, p_state text, p_code text default null) returns void
+create function private.delivery_log(p_id uuid, p_tenant uuid, p_state text, p_code text default null,
+                                     p_at timestamptz default null) returns void
 language sql security definer set search_path = ''
-as $$ insert into integrations.delivery_event (delivery_id, tenant_id, state, code) values (p_id, p_tenant, p_state, p_code) $$;
+as $$
+  insert into integrations.delivery_event (delivery_id, tenant_id, state, code, at)
+  values (p_id, p_tenant, p_state, p_code, coalesce(p_at, now()))
+$$;
 
 -- tira os valores das variáveis do modelo com código ou link com segredo (fica só o nome de cada uma)
 create function private.delivery_redact(p_id uuid) returns void
@@ -150,6 +154,7 @@ begin
   select * into v from integrations.delivery d where d.id = p_id;
   v_next := v.alternatives[1];
   if v_next is null or (v.valid_until is not null and v.valid_until <= now())
+     or exists (select 1 from jsonb_each_text(v.variables) e where e.value = '***')   -- segredo já apagado
      or not exists (select 1 from integrations.template t where t.id = v.template_id and v_next = any (t.channels)) then
     return null;
   end if;
@@ -168,7 +173,7 @@ begin
 end;
 $$;
 
-revoke all on function private.delivery_log(uuid, uuid, text, text), private.delivery_redact(uuid),
+revoke all on function private.delivery_log(uuid, uuid, text, text, timestamptz), private.delivery_redact(uuid),
   private.delivery_enqueue_alternative(uuid) from public, anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------------------------------------------------
@@ -298,25 +303,33 @@ end;
 $$;
 
 -- O provedor aceitou: grava o id externo e o destino mascarado. Só vale para a tentativa reivindicada.
+-- Link do Boarding Check: o primeiro envio aceito marca o grant (ADR 0004 §3, RN-FIC-07: os 8 h contam daqui).
 create function api.delivery_mark_sent(p_id uuid, p_attempt smallint, p_external_id text, p_destination_masked text)
 returns boolean
 language plpgsql volatile security definer set search_path = ''
 as $$
 declare
-  v_tenant uuid;
+  v integrations.delivery;
 begin
   update integrations.delivery d
   set state = 'enviado', external_id = p_external_id, destination_masked = left(p_destination_masked, 60), updated_at = now()
   where d.id = p_id and d.state = 'enviando' and d.attempts = p_attempt
-  returning d.tenant_id into v_tenant;
-  if v_tenant is null then return false; end if;
-  perform private.delivery_log(p_id, v_tenant, 'enviado');
+  returning d.* into v;
+  if v.id is null then return false; end if;
+  perform private.delivery_log(p_id, v.tenant_id, 'enviado');
+  if v.template_id = 'link_boarding_check' and v.reference_kind = 'access_grant'
+     and exists (select 1 from platform.access_grant g where g.id = v.reference_id and g.tenant_id = v.tenant_id
+                   and g.purpose = 'professional_boarding' and g.sent_at is null and g.revoked_at is null) then
+    perform api.grant_mark_sent(v.reference_id);
+  end if;
   return true;
 end;
 $$;
 
--- Falha da tentativa: transitória volta à fila (5 s, 30 s, 5 min); permanente, de configuração, bloqueada no stage ou a
--- 4ª tentativa é definitiva e aciona o canal alternativo. Devolve 'reagendado', 'falhou', 'bloqueado_stage' ou 'ignorado'.
+-- Falha da tentativa: transitória volta à fila (5 s, 30 s, 5 min). Permanente, de configuração ou a 4ª tentativa vira
+-- 'falhou' e aciona o canal alternativo (WhatsApp → SMS). Bloqueada no stage (ADR 0005 §1) vira 'bloqueado_stage', também
+-- definitiva, mas SEM alternativo: o destino não está na lista de permitidos em canal nenhum.
+-- Devolve 'reagendado', 'falhou', 'bloqueado_stage' ou 'ignorado'.
 create function api.delivery_mark_failed(p_id uuid, p_attempt smallint, p_kind text, p_code text)
 returns text
 language plpgsql volatile security definer set search_path = ''
@@ -335,6 +348,7 @@ begin
   if p_kind = 'transitoria' and p_attempt < 4 then
     update integrations.delivery d set state = 'pendente', next_attempt_at = now() + v_waits[p_attempt],
       last_error_kind = p_kind, last_error_code = left(p_code, 60), updated_at = now() where d.id = p_id;
+    perform private.delivery_log(p_id, v.tenant_id, 'reagendado', left(p_code, 60));
     return 'reagendado';
   end if;
   v_final := case when p_kind = 'bloqueado_stage' then 'bloqueado_stage' else 'falhou' end;
@@ -367,11 +381,11 @@ begin
                                   or (v_rank ->> p_state)::int <= coalesce((v_rank ->> v.state)::int, 0))) then
     return v.id;   -- atrasado, repetido ou depois do fim: não muda nada
   end if;
-  update integrations.delivery d set state = p_state, updated_at = coalesce(p_at, now()),
+  update integrations.delivery d set state = p_state, updated_at = now(),
     billable = coalesce(p_billable, d.billable),
     last_error_code = case when p_state = 'falhou' then left(p_code, 60) else d.last_error_code end
   where d.id = v.id;
-  perform private.delivery_log(v.id, v.tenant_id, p_state, left(p_code, 60));
+  perform private.delivery_log(v.id, v.tenant_id, p_state, left(p_code, 60), p_at);   -- a hora do provedor fica no evento
   if p_state = 'falhou' then perform private.delivery_enqueue_alternative(v.id); end if;
   if p_state in ('entregue', 'lido', 'falhou') then perform private.delivery_redact(v.id); end if;
   return v.id;
