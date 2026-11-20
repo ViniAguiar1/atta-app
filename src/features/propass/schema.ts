@@ -27,6 +27,7 @@ export type DadosDoProfissional = z.input<typeof dadosSchema>;
 
 /** O que a tela recebe ao conferir o conselho. Só a situação: CPF e WhatsApp não voltam. */
 export type ConferenciaDoConselho =
-  | { situacao: "regularizado"; consultadoEm: string }
+  | { situacao: "regularizado"; consultadoEm: string } // ISO 8601
   | { situacao: "nao_confere" }
+  | { situacao: "nao_consultado" }
   | { situacao: "link_sem_validade" };

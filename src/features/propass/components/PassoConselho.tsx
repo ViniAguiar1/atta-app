@@ -2,15 +2,17 @@
 
 import { Botao } from "@/components/ui/Botao";
 import { TituloDoPasso } from "@/components/ui/TituloDoPasso";
+import { hora } from "../formatos";
 import type { DadosDoProfissional } from "../schema";
 import { NOMES_DOS_CONSELHOS, TEXTOS } from "../textos";
 
 // Passo 2 do PROpass: Camada 1 — Validação ATTA (Conselho) (PDD §10.4.3; simulador, captura 25). Só mostra a situação
 // que o backend devolveu. Sem comprovante: o PDD diz que "não há envio de comprovante do conselho pelo profissional"
 // (o simulador pede um; divergência levada ao CTO). A consulta à base do conselho é externa e espera a PO (R20).
-type Props = { dados: DadosDoProfissional; consultadoEm: string; aoVoltar: () => void };
+// `consultadoEm` só existe com consulta real; sem ela (nao_consultado, R20), a tela não afirma a regularidade.
+type Props = { dados: DadosDoProfissional; consultadoEm: string | null; fuso: string; aoVoltar: () => void };
 
-export function PassoConselho({ dados, consultadoEm, aoVoltar }: Props) {
+export function PassoConselho({ dados, consultadoEm, fuso, aoVoltar }: Props) {
   const conselho = NOMES_DOS_CONSELHOS[dados.conselho as keyof typeof NOMES_DOS_CONSELHOS] ?? dados.conselho;
   return (
     <section className="flex flex-col gap-6">
@@ -27,10 +29,14 @@ export function PassoConselho({ dados, consultadoEm, aoVoltar }: Props) {
         <dt className="text-text-secondary">{TEXTOS.colunaNome}</dt>
         <dd>{dados.nome}</dd>
       </dl>
-      <p className="flex flex-wrap items-center gap-3 rounded-md border border-status-success px-4 py-3">
-        <span className="rounded-full bg-status-success px-3 py-1 font-medium text-text-primary">{TEXTOS.regularizado}</span>
-        <span className="text-text-secondary">{TEXTOS.consultadoEm(consultadoEm)}</span>
-      </p>
+      {consultadoEm ? (
+        <p className="flex flex-wrap items-center gap-3 rounded-md border border-status-success px-4 py-3">
+          <span className="rounded-full bg-status-success px-3 py-1 font-medium text-text-primary">{TEXTOS.regularizado}</span>
+          <span className="text-text-secondary">{TEXTOS.consultadoEm(hora(consultadoEm, fuso))}</span>
+        </p>
+      ) : (
+        <p className="rounded-md border border-border-functional px-4 py-3">{TEXTOS.naoConsultado}</p>
+      )}
       <Botao variante="secundario" onClick={aoVoltar}>
         {TEXTOS.voltar}
       </Botao>

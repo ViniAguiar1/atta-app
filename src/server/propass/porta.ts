@@ -12,15 +12,19 @@ import { portaPropassSimulada } from "./simulado";
 export type ConvitePropass = {
   clinica: string;
   emailDoConvite: string;
-  conviteEm: string; // "AAAA-MM-DD HH:MM", no fuso da clínica (calculado no servidor)
+  conviteEm: string; // ISO 8601: emissão deste link (invited_at; o convite ou o último "Reenviar Link")
+  fuso: string; // fuso da clínica (IANA); a tela formata as horas nele, nunca no relógio do navegador
   etapa: "dados" | "termo";
 };
 
 export type RegistroNoConselho = { conselho: Conselho; numero: string; uf: string; nome: string };
 
-/** Situação do registro que o backend devolve. A consulta à base do conselho é serviço externo e fica fora até a
- * decisão da PO (R20); por ora o backend responde com o que tiver, e a tela só mostra. */
-export type SituacaoDoConselho = { situacao: "regularizado"; consultadoEm: string } | { situacao: "nao_confere" };
+/** Situação do registro (porta do conselho do Backend 4, src/server/conselho/). A consulta à base do conselho é serviço
+ * externo e espera a PO (R20): até lá, a produção só devolve `nao_consultado`, e "Regularizado" só com consulta real. */
+export type SituacaoDoConselho =
+  | { situacao: "regularizado"; consultadoEm: string } // ISO 8601
+  | { situacao: "nao_confere" }
+  | { situacao: "nao_consultado" };
 
 export type PortaPropass = {
   /** NAO_ENCONTRADO: link desconhecido, vencido (7 dias), revogado ou de vínculo excluído (a mesma resposta). */

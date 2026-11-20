@@ -38,5 +38,5 @@ async function Conteudo() {
   const hash = await lerHashDoConvite();
   const r = hash ? await portaPropass.resolver(hash) : null;
   if (!r?.ok) return <SemValidade />;
-  return <FluxoPropass clinica={r.data.clinica} email={r.data.emailDoConvite} conviteEm={r.data.conviteEm} />;
+  return <FluxoPropass clinica={r.data.clinica} email={r.data.emailDoConvite} conviteEm={r.data.conviteEm} fuso={r.data.fuso} />;
 }

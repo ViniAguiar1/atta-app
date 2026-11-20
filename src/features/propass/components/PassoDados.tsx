@@ -5,6 +5,7 @@ import { Botao } from "@/components/ui/Botao";
 import { TituloDoPasso } from "@/components/ui/TituloDoPasso";
 import { mascararCelular, mascararCpf } from "@/lib/brasil/documentos";
 import { conferirDados } from "../actions";
+import { dataHora } from "../formatos";
 import { CONSELHOS, type CampoDosDados, type ConferenciaDoConselho, type DadosDoProfissional, dadosSchema, UFS } from "../schema";
 import { ERROS, NOMES_DOS_CONSELHOS, ROTULOS, TEXTOS } from "../textos";
 
@@ -14,6 +15,7 @@ type Props = {
   clinica: string;
   email: string;
   conviteEm: string;
+  fuso: string;
   inicial: DadosDoProfissional;
   aoConferir: (dados: DadosDoProfissional, r: ConferenciaDoConselho) => void;
 };
@@ -21,7 +23,7 @@ type Props = {
 const MASCARAS: Partial<Record<CampoDosDados, (v: string) => string>> = { cpf: mascararCpf, whatsapp: mascararCelular };
 const classeDoCampo = "min-h-12 w-full rounded-md border border-border-functional bg-surface-raised px-4";
 
-export function PassoDados({ clinica, email, conviteEm, inicial, aoConferir }: Props) {
+export function PassoDados({ clinica, email, conviteEm, fuso, inicial, aoConferir }: Props) {
   const [dados, setDados] = useState(inicial);
   const [erros, setErros] = useState<Partial<Record<CampoDosDados, string>>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -132,7 +134,7 @@ export function PassoDados({ clinica, email, conviteEm, inicial, aoConferir }: P
           {erroGeral}
         </p>
       )}
-      <p className="text-base text-text-secondary">{TEXTOS.conviteEm(conviteEm)}</p>
+      <p className="text-base text-text-secondary">{TEXTOS.conviteEm(dataHora(conviteEm, fuso))}</p>
       <Botao type="submit" disabled={ocupado}>
         {ocupado ? TEXTOS.conferindo : TEXTOS.continuar}
       </Botao>
