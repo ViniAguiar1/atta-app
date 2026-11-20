@@ -52,4 +52,7 @@ test("enviar vai por POST: e-mail e senha nunca na URL, e o erro aparece acima d
   expect(page.url()).not.toContain("senha");
   expect(metodos.length).toBeGreaterThan(0);
   expect(metodos.every((m) => m === "POST")).toBe(true);
+  // o e-mail continua no campo e o foco volta para ele, para corrigir sem digitar tudo de novo
+  await expect(page.getByLabel("E-mail")).toHaveValue("gestora@clinica.example");
+  await expect(page.getByLabel("E-mail")).toBeFocused();
 });

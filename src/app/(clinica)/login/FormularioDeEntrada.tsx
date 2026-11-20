@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { Botao } from "@/components/ui/Botao";
 import { entrarComSenha } from "./actions";
 import { textos as t } from "./textos";
@@ -10,11 +10,18 @@ import { textos as t } from "./textos";
 export function FormularioDeEntrada({ volta = "" }: { volta?: string }) {
   const [estado, enviar, enviando] = useActionState(entrarComSenha, null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  // o React limpa o formulário depois da action: o e-mail fica no estado, para não precisar digitar de novo
+  const [email, setEmail] = useState("");
+  const campoEmail = useRef<HTMLInputElement>(null);
   const idEmail = useId();
   const idSenha = useId();
   const idErro = useId();
   const erro = estado && !estado.ok ? (t.erros[estado.error.code as keyof typeof t.erros] ?? t.erros.OUTRO) : null;
   const descricao = erro ? idErro : undefined;
+  // depois de um erro, o foco volta ao e-mail (o erro é lido pelo role="alert" e pelo aria-describedby)
+  useEffect(() => {
+    if (estado && !estado.ok) campoEmail.current?.focus();
+  }, [estado]);
   const campo = "min-h-12 w-full rounded-md border border-border-functional bg-surface-raised px-4";
 
   return (
@@ -24,7 +31,7 @@ export function FormularioDeEntrada({ volta = "" }: { volta?: string }) {
         <label htmlFor={idEmail} className="text-sm font-medium">
           {t.email}
         </label>
-        <input id={idEmail} name="email" type="email" autoComplete="username" required aria-invalid={erro ? true : undefined} aria-describedby={descricao} className={campo} />
+        <input ref={campoEmail} id={idEmail} name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required aria-invalid={erro ? true : undefined} aria-describedby={descricao} className={campo} />
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor={idSenha} className="text-sm font-medium">
