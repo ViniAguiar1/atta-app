@@ -53,6 +53,7 @@ export function FormularioDeEntrada({ volta = "" }: { volta?: string }) {
             onClick={() => setMostrarSenha((v) => !v)}
             aria-pressed={mostrarSenha}
             aria-controls={idSenha}
+            data-sobre-campo
             className="absolute inset-y-0 right-1 my-auto flex min-h-11 items-center rounded-md px-3 text-sm font-semibold"
           >
             {mostrarSenha ? t.ocultar : t.mostrar}
