@@ -6,8 +6,9 @@
 --
 -- A regra fica no banco, por gatilho no agendamento (ADR 0001 §1): vale para qualquer caminho de transição (recepção,
 -- Boarding Check, check-in), sem depender de quem chama. Quem escolhe os termos é a tela (o modal do agendamento e o
--- "Vincular novo termo"); o banco só confere e grava. O reaproveitamento do termo "Única" está em aberto no PDD
--- (§11.6 × §16.5), com o CTO: aqui nada é pulado nem acrescentado.
+-- "Vincular novo termo"); o banco só confere e grava. O "Única" vigente é reaproveitado (§16.5, RN-V-02, §17.2; a §11.6
+-- vale para o "Por procedimento", CTO em 20/11), mas o início da validade, o escopo (clínica ou rede) e como ele aparece
+-- no modal estão com a PO (R17): até lá, aqui nada é pulado nem acrescentado.
 -- Sempre para a frente.
 
 -- ---------------------------------------------------------------------------------------------------------------
