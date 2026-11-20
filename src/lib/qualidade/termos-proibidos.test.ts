@@ -28,12 +28,7 @@ const PROIBIDOS: ReadonlyArray<readonly [nome: string, padrao: RegExp]> = [
 
 // Exceções que vencem: cada uma tem dono e item. Quando o texto sair, o teste "exceção vencida" obriga a apagar a
 // linha. Não se acrescenta exceção nova sem o ok do Tech Lead.
-const EXCECOES: ReadonlyArray<{ arquivo: string; termo: string; dono: string }> = [
-  { arquivo: "src/app/page.tsx", termo: "ambiente de validação", dono: "Frontend (tela de entrar, / redireciona)" },
-  { arquivo: "src/app/page.tsx", termo: "fictício", dono: "Frontend (tela de entrar, / redireciona)" },
-  { arquivo: "src/features/casca/sessao.ts", termo: "demo / demonstração", dono: "Frontend (sessão real, MIG-03)" },
-  { arquivo: "src/features/casca/textos.ts", termo: "página-marcador", dono: "Frontend (aba só com módulo pronto)" },
-];
+const EXCECOES: ReadonlyArray<{ arquivo: string; termo: string; dono: string }> = [];
 
 function arquivosDeInterface(pasta: string): string[] {
   return readdirSync(join(RAIZ, pasta), { withFileTypes: true, recursive: true })
