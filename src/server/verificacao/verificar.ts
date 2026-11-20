@@ -3,9 +3,9 @@
  * A resposta tem exatamente 8 chaves, sem conteúdo nem dado pessoal. Código inexistente e malformado dão a mesma
  * resposta (exists = false, resto nulo): a rota não vira oráculo.
  *
- * Ordem: (1) limite de 30 por minuto por IP, contado antes de tudo, inclusive para código malformado; (2) normaliza o
- * que a pessoa digitou (normalizeAttaCode: minúscula, espaço, sem hífen); (3) só então o banco (api.atta_code_verify,
- * só service_role), que grava a consulta na trilha.
+ * Ordem: (1) limite de 30 por minuto por IP e (2) teto de 600 por minuto da rota inteira, contados antes de tudo,
+ * inclusive para código malformado; (3) normaliza o que a pessoa digitou (normalizeAttaCode: minúscula, espaço, sem
+ * hífen); (4) só então o banco (api.atta_code_verify, só service_role), que grava na trilha só o que encontrou.
  * Usado pela rota GET /public/v1/verificar/[codigo] e pela página /verificar (Frontend, MIG-54).
  */
 import "server-only";
@@ -66,6 +66,12 @@ export async function verificarCodigo(
   const c = cliente ?? (criarClienteAdmin(recebidos) as unknown as ClienteDaVerificacao);
   const limite = await consumirLimite(LIMITES.verificacaoPublicaPorIp, ipDoCliente(recebidos, (v) => isIP(v) !== 0), c);
   if (!limite.ok) return limite;
+  // teto da rota inteira, contra ataque distribuído (Tech Lead no #114): passou, a rota fica indisponível por um minuto
+  const teto = await consumirLimite(LIMITES.verificacaoPublicaGlobal, "rota", c);
+  if (!teto.ok) {
+    if (teto.error.code === "LIMITE") logger.warn("verificacao.teto_global");
+    return teto.error.code === "LIMITE" ? falha("INDISPONIVEL", MENSAGENS.INDISPONIVEL) : teto;
+  }
 
   let codigo: string;
   try {
@@ -84,5 +90,7 @@ export async function verificarCodigo(
     logger.error("verificacao.resposta_fora_do_contrato", { campos: lida.error.issues.length });
     return falha("INTERNO", MENSAGENS.INTERNO);
   }
+  // o "não encontrado" não vai à trilha do banco (cabeça da cadeia única); fica só aqui, sem o código
+  if (!lida.data.exists) logger.info("verificacao.nao_encontrado");
   return ok(lida.data);
 }

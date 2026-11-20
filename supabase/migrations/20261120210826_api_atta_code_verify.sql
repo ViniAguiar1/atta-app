@@ -9,8 +9,8 @@
 --   da clínica; o momento é evidence.signed_at, o mesmo signature.signed_at do payload (#61, #62).
 -- - status é o do ciclo de vida (§17.6). O que a página mostra para Pré-assinado, Cancelado e Substituído é lacuna
 --   levada ao CTO/PO; por ora, só a existência e o estado, sem conteúdo (combinado com o Backend 3).
--- - Cada consulta deixa atta_code.verify na trilha (log de acesso, escopo de rede), com o tenant do documento quando
---   ele existe; sem o código no detalhe.
+-- - Só a consulta que encontrou o documento deixa atta_code.verify na trilha (log de acesso, escopo de rede), com o
+--   tenant do documento e sem o código no detalhe; a que não encontrou vai só para o log da aplicação.
 -- Sempre para a frente.
 
 insert into audit.action (action, kind, scope) values ('atta_code.verify', 'access', 'network')
@@ -41,13 +41,16 @@ begin
     where e.atta_code = p_code;
   end if;
 
-  perform audit.record_event('atta_code.verify', 'documents.evidence', null,
-    pg_catalog.jsonb_build_object('found', v_tenant is not null), null, null, v_tenant);
-
+  -- não encontrado não vai à trilha: a cabeça da cadeia é uma linha só (audit.chain_head, FOR UPDATE), e uma consulta
+  -- anônima em massa com códigos inexistentes disputaria essa trava com as ações de todas as clínicas (Tech Lead,
+  -- Segurança e Backend 3 no #114). O servidor registra o "não encontrado" no log da aplicação, sem o código.
   if v_tenant is null then
     return query select false, null::text, null::text, null::integer, null::text, null::text, null::text, null::text;
     return;
   end if;
+
+  perform audit.record_event('atta_code.verify', 'documents.evidence', null,
+    pg_catalog.jsonb_build_object('found', true), null, null, v_tenant);
 
   return query select
     true,
