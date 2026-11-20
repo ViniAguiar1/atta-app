@@ -32,12 +32,14 @@ test("pré-visualização repetida não gasta o link; o PIN certo depois abre o 
   await page.getByLabel("Senha").fill("1111");
   await page.getByRole("button", { name: "Ver atendimento" }).click();
   await expect(page.locator("#pin-erro")).toHaveText(/Senha não confere/);
+  await expect(page).toHaveTitle(/Boarding Check/); // a action mexe em cookie e o Next renderiza de novo
   expect((await axe(page)).violations).toEqual([]);
 
   await page.getByLabel("Senha").fill("2468");
   await page.getByRole("button", { name: "Ver atendimento" }).click();
   await expect(page.getByText("Helena Prado Antunes")).toBeVisible();
   expect(page.url()).toMatch(/\/boarding$/);
+  await expect(page).toHaveTitle(/Boarding Check/);
   expect((await axe(page)).violations).toEqual([]);
   const cookies = await page.context().cookies();
   expect(cookies.find((c) => c.name === "atta_boarding_link")).toBeUndefined();
