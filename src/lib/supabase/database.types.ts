@@ -93,7 +93,21 @@ export type Database = {
           }
         },"atta_in": {
           Tables: {
-            "business_hours": {
+            "alt_flow_phone": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"dek_wrapped": string,"id": string,"kek_version": number,"label": string,"phone_enc": string,"phone_masked": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"dek_wrapped": string,"id"?: string,"kek_version": number,"label": string,"phone_enc": string,"phone_masked": string,"tenant_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"dek_wrapped"?: string,"id"?: string,"kek_version"?: number,"label"?: string,"phone_enc"?: string,"phone_masked"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"business_hours": {
                   Row: {
                     "created_at": string,"ends_at": string,"id": string,"starts_at": string,"tenant_id": string,"weekday": number
                   }
@@ -229,7 +243,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "effective_settings":
+            "check_link_rules":
+{ Args: { "p_appointment_type": string,"p_clinic_service_id": string }; Returns: undefined
+                           },
+"effective_settings":
 { Args: { "p_appointment_type"?: string,"p_clinic_service_id"?: string }; Returns: {
               "key": string,"level": string,"value": Json
             }[]
@@ -237,6 +254,11 @@ isOneToOne: false
 "set_setting":
 { Args: { "p_appointment_type"?: string,"p_clinic_service_id"?: string,"p_key": string,"p_value": Json }; Returns: {
               "key": string,"level": string,"value": Json
+            }[]
+                           },
+"settings_screen":
+{ Args: { "p_appointment_type"?: string,"p_clinic_service_id"?: string }; Returns: {
+              "allowed_ints": (number)[],"default_bool": boolean,"default_int": number,"key": string,"max_int": number,"min_int": number,"source": string,"value_bool": boolean,"value_int": number,"value_type": string
             }[]
                            }
           }

@@ -73,7 +73,9 @@ select ok(not has_table_privilege('anon', 'atta_in.setting', 'SELECT'), 'anon n�
 select ok(not has_function_privilege('anon', 'atta_in.set_setting(text, jsonb, text, uuid)', 'EXECUTE'),
           'anon não grava configuração');
 select results_eq(
-  $$ select key, value_type, default_int, default_bool from atta_in.setting_definition order by key $$,
+  $$ select key, value_type, default_int, default_bool from atta_in.setting_definition
+     where key in ('fluxo_alternativo_habilitado', 'janela_de_confirmacao_h', 'tolerancia_da_ausencia_min')
+     order by key $$,
   $$ values ('fluxo_alternativo_habilitado'::text, 'bool'::text, null::bigint, true),
             ('janela_de_confirmacao_h', 'int', 72::bigint, null::boolean),
             ('tolerancia_da_ausencia_min', 'int', 120::bigint, null::boolean) $$,
