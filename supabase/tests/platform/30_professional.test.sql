@@ -38,7 +38,7 @@ end $$;
 
 create function pg_temp.convidar(p_id uuid, p_email text) returns uuid language sql as $$
   select api.professional_invite(p_id, sha256(p_email::bytea), ('\x01' || encode(p_email::bytea, 'hex'))::bytea,
-                                 gen_random_uuid(), '\x01cc', 1::smallint)
+                                 gen_random_uuid(), '\x01cc', 1::smallint, sha256(('link-' || p_id::text)::bytea))
 $$;
 -- simula o PROpass (MIG-14b): o profissional preenche os dados dele e o vínculo é ligado
 create function pg_temp.propass(p_link uuid, p_prof uuid) returns void language plpgsql security definer as $$
@@ -48,7 +48,8 @@ begin
   values (p_prof, 'Dra. Fictícia Silva', 'cro', 'SP', '12345', sha256('cpf-prof-1'::bytea), '***.***.***-00', '\x01aa',
           '\x01a1', '\x01a2', '\x01bb', 1)
   on conflict (id) do nothing;
-  update platform.professional_tenant_link set professional_id = p_prof, propass_completed_at = now() where id = p_link;
+  update platform.professional_tenant_link set professional_id = p_prof, propass_completed_at = now(),
+         privacy_notice_version = 'v1', privacy_notice_ack_at = now() where id = p_link;
 end $$;
 
 do $$ begin
@@ -76,7 +77,7 @@ select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
 select throws_ok($$ select pg_temp.convidar(gen_random_uuid(), 'dra@clinica-ficticia.test') $$, '42501', 'ATTA-AUTH-0004',
                  'Colaborador não convida profissional');
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
-select throws_ok($$ select api.professional_invite(gen_random_uuid(), null, null, null, null, null) $$,
+select throws_ok($$ select api.professional_invite(gen_random_uuid(), null, null, null, null, null, null) $$,
                  'P0001', 'ATTA-IN-0001', 'convite sem e-mail é recusado');
 select is(pg_temp.convidar('00000000-0000-4000-8000-0000000000c1', 'dra@clinica-ficticia.test'), '00000000-0000-4000-8000-0000000000c1'::uuid, 'A convida pelo e-mail');
 select throws_ok($$ select pg_temp.convidar(gen_random_uuid(), 'dra@clinica-ficticia.test') $$, '23505', 'ATTA-IN-0002',
@@ -84,8 +85,8 @@ select throws_ok($$ select pg_temp.convidar(gen_random_uuid(), 'dra@clinica-fict
 select ok((select status = 'convite_enviado' and invite_email_enc is not null and display_name is null
                   and cpf_masked is null and phone_enc is null from api.professional_get('00000000-0000-4000-8000-0000000000c1')),
           'antes do PROpass: só o e-mail do convite, nada do profissional');
-select lives_ok($$ select api.professional_resend_invite('00000000-0000-4000-8000-0000000000c1', sha256('dra.nova@clinica-ficticia.test'::bytea),
-                   '\x01ff') $$, 'antes do PROpass a clínica corrige o e-mail e reenvia');
+select lives_ok($$ select api.professional_resend_invite('00000000-0000-4000-8000-0000000000c1', sha256('link-c1-2'::bytea),
+                   sha256('dra.nova@clinica-ficticia.test'::bytea), '\x01ff') $$, 'antes do PROpass a clínica corrige o e-mail e reenvia');
 select is((select invite_email_enc from api.professional_get('00000000-0000-4000-8000-0000000000c1')), '\x01ff'::bytea, 'o e-mail novo vale');
 
 -- clínica B: não vê o convite da A; convida o mesmo e-mail na clínica dela
@@ -103,9 +104,10 @@ select ok((select status = 'cadastro_concluido' and display_name = 'Dra. Fictíc
            from api.professional_get('00000000-0000-4000-8000-0000000000c1')), 'depois do PROpass: nome, conselho, WhatsApp e CPF só mascarado');
 select ok((select phone_enc = '\x01a1' and email_enc = '\x01a2' from api.professional_list() where link_id = '00000000-0000-4000-8000-0000000000c1'),
           'a lista traz o WhatsApp e o e-mail (clicar copia)');
-select throws_ok($$ select api.professional_resend_invite('00000000-0000-4000-8000-0000000000c1', sha256('outro@x.test'::bytea), '\x01ee') $$,
+select throws_ok($$ select api.professional_resend_invite('00000000-0000-4000-8000-0000000000c1', sha256('link-c1-3'::bytea), sha256('outro@x.test'::bytea), '\x01ee') $$,
                  'P0001', 'ATTA-IN-0001', 'depois do PROpass o e-mail é o do profissional, travado');
-select lives_ok($$ select api.professional_resend_invite('00000000-0000-4000-8000-0000000000c1') $$, 'Reenviar Link sem troca de e-mail');
+select throws_ok($$ select api.professional_resend_invite('00000000-0000-4000-8000-0000000000c1', sha256('link-c1-4'::bytea)) $$,
+                 'P0001', 'ATTA-IN-0001', 'depois do PROpass não há link do PROpass a reenviar (MIG-14b)');
 select throws_ok($$ select cpf_masked from platform.professional $$, '42501', null, 'select direto do CPF é negado');
 select is((select count(*)::int from platform.professional), 1, 'a A vê o profissional ligado a ela');
 
