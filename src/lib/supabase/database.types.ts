@@ -11,7 +11,17 @@ export type Database = {
             [_ in never]: never
           }
           Functions: {
-            "audit_auth_event":
+            "atta_in_template_list":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "allowed_actions": Json,"clinic_service_ids": (string)[],"current_version": number,"frequency": string,"id": string,"kind": string,"required": boolean,"status": string,"title": string,"updated_at": string,"validity_months": number
+            }[]
+                           },
+"atta_in_template_publish":
+{ Args: { "p_template_id": string }; Returns: {
+              "body_sha256": string,"template_version_id": string,"version": number
+            }[]
+                           },
+"audit_auth_event":
 { Args: { "p_action": string,"p_details"?: Json,"p_user_id"?: string }; Returns: string
                            },
 "grant_issue":
