@@ -18,8 +18,8 @@ type Props = {
 function mensagem(erro: Erro, p: Props["parametro"]): string {
   if (erro.code === "VALIDACAO") return t.erros.limite(p.min, p.max);
   if (erro.code === "CONFLITO") {
-    // a regra vem no reason ("ATTA-IN-0003:lembrete_2_min", ADR 0001 §5); o Erro da main ganha o campo com o #37
-    const regra = (erro as Erro & { reason?: string }).reason?.split(":")[1];
+    // a regra vem no reason ("ATTA-IN-0003:lembrete_2_min", ADR 0001 §5)
+    const regra = erro.reason?.split(":")[1];
     return regra === "lembrete_1_min" || regra === "lembrete_2_min" ? t.erros[regra] : t.erros.conflito;
   }
   return erro.code === "SEM_PERMISSAO" ? t.erros.SEM_PERMISSAO : t.erros.outro;
