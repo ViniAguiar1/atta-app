@@ -18,7 +18,7 @@ type Props = {
 export function Subabas({ rotulo, itens, ativa }: Props) {
   return (
     <nav aria-label={rotulo} className="border-b border-border">
-      <ul className="flex gap-2 overflow-x-auto">
+      <ul className="flex gap-2 overflow-x-auto pb-px">
         {itens.map((item) => {
           const atual = item.href === ativa;
           return (
