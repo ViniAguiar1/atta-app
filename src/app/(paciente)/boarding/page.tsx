@@ -3,8 +3,9 @@ import { Suspense } from "react";
 import { Cabecalho } from "@/features/boarding/components/Cabecalho";
 import { TelaPin } from "@/features/boarding/components/TelaPin";
 import { TEXTOS } from "@/features/boarding/textos";
-import { lerLink, lerSessao } from "@/server/boarding/cookies";
+import { lerHashDoLink } from "@/server/boarding/cookies";
 import { portaBoarding } from "@/server/boarding/porta";
+import { lerHash } from "@/server/grant/cookie";
 
 // Boarding Check do profissional (PDD v206 §10.2.3; ADR 0004 §3). Sem login: com a sessão do PIN, mostra o
 // atendimento; sem ela, pede o PIN do link guardado pelo /b/<segredo>. Nada de dado pessoal na URL. Headers
@@ -31,10 +32,10 @@ export default function Pagina() {
 }
 
 async function Conteudo() {
-  const sessao = await lerSessao();
+  const sessao = await lerHash();
   if (sessao) {
     const r = await portaBoarding.abrir(sessao);
     if (r.ok) return <Cabecalho resumo={r.data} />;
   }
-  return <TelaPin temLink={Boolean(await lerLink())} />;
+  return <TelaPin temLink={Boolean(await lerHashDoLink())} />;
 }

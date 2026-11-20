@@ -33,7 +33,7 @@ export function TelaPin({ temLink }: { temLink: boolean }) {
   function mostrarErro(texto: string) {
     setPin("");
     setErro(texto);
-    campo.current?.focus(); // volta ao campo; o erro é lido pelo aria-describedby e pelo role=alert
+    campo.current?.focus(); // volta ao campo; o erro é lido pelo aria-describedby (uma vez só)
   }
 
   if (semValidade) {
@@ -68,7 +68,7 @@ export function TelaPin({ temLink }: { temLink: boolean }) {
           className="min-h-12 w-40 rounded-md border border-border-functional bg-surface-raised px-4 text-2xl tracking-[0.5em]"
         />
         {erro && (
-          <p id="pin-erro" role="alert" className="text-status-negative">
+          <p id="pin-erro" className="text-status-negative">
             {erro}
           </p>
         )}

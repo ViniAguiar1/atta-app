@@ -1,45 +1,61 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ lerLink: vi.fn(), trocarLinkPorSessao: vi.fn(), confirmarPin: vi.fn() }));
-vi.mock("@/server/boarding/cookies", () => ({ lerLink: mocks.lerLink, trocarLinkPorSessao: mocks.trocarLinkPorSessao }));
+const mocks = vi.hoisted(() => ({
+  lerHashDoLink: vi.fn(),
+  apagarLink: vi.fn(),
+  gravarGrant: vi.fn(),
+  apagarGrant: vi.fn(),
+  confirmarPin: vi.fn(),
+}));
+vi.mock("@/server/boarding/cookies", () => ({ lerHashDoLink: mocks.lerHashDoLink, apagarLink: mocks.apagarLink }));
+vi.mock("@/server/grant/cookie", () => ({ gravarGrant: mocks.gravarGrant, apagarGrant: mocks.apagarGrant }));
 vi.mock("@/server/boarding/porta", () => ({ portaBoarding: { confirmarPin: mocks.confirmarPin } }));
 
 import { confirmarPin } from "./actions";
 
-const LINK = "vale".padEnd(43, "A");
+const HASH_LINK = Buffer.alloc(32, 1);
+const HASH_SESSAO = Buffer.alloc(32, 2);
 
 describe("confirmarPin (action)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.lerLink.mockResolvedValue(LINK);
+    mocks.lerHashDoLink.mockResolvedValue(HASH_LINK);
+    mocks.gravarGrant.mockResolvedValue(HASH_SESSAO);
   });
 
-  it("recusa PIN fora do formato sem chamar a porta", async () => {
+  it("recusa PIN fora do formato sem chamar a porta nem gravar sessão", async () => {
     const r = await confirmarPin({ pin: "12a4" });
     expect(r).toMatchObject({ ok: false, error: { code: "VALIDACAO" } });
     expect(mocks.confirmarPin).not.toHaveBeenCalled();
+    expect(mocks.gravarGrant).not.toHaveBeenCalled();
   });
 
   it("sem o cookie do link responde como link vencido", async () => {
-    mocks.lerLink.mockResolvedValue(null);
+    mocks.lerHashDoLink.mockResolvedValue(null);
     expect(await confirmarPin({ pin: "2468" })).toEqual({ ok: true, data: { status: "indisponivel" } });
     expect(mocks.confirmarPin).not.toHaveBeenCalled();
+    expect(mocks.gravarGrant).not.toHaveBeenCalled();
   });
 
-  it("PIN certo troca o link pela sessão e não devolve o segredo à tela", async () => {
-    mocks.confirmarPin.mockResolvedValue({ ok: true, data: { status: "ok", segredoDaSessao: "sess".padEnd(43, "B") } });
+  it("PIN certo: a porta recebe só hashes, o grant fica e o link sai", async () => {
+    mocks.confirmarPin.mockResolvedValue({ ok: true, data: { status: "ok" } });
     const r = await confirmarPin({ pin: "2468" });
-    expect(mocks.confirmarPin).toHaveBeenCalledWith(LINK, "2468");
-    expect(mocks.trocarLinkPorSessao).toHaveBeenCalledWith("sess".padEnd(43, "B"));
+    expect(mocks.gravarGrant).toHaveBeenCalledWith("professional_boarding");
+    expect(mocks.confirmarPin).toHaveBeenCalledWith(HASH_LINK, "2468", HASH_SESSAO);
+    expect(mocks.apagarLink).toHaveBeenCalled();
+    expect(mocks.apagarGrant).not.toHaveBeenCalled();
     expect(r).toEqual({ ok: true, data: { status: "ok" } });
   });
 
-  it("repassa o desfecho do servidor sem contar tentativas", async () => {
+  it("PIN que não vale apaga a sessão e repassa o desfecho sem contar tentativas", async () => {
     mocks.confirmarPin.mockResolvedValue({ ok: true, data: { status: "pin_incorreto" } });
     expect(await confirmarPin({ pin: "1111" })).toEqual({ ok: true, data: { status: "pin_incorreto" } });
     const ate = new Date(Date.now() + 15 * 60_000).toISOString();
     mocks.confirmarPin.mockResolvedValue({ ok: true, data: { status: "bloqueado", bloqueadoAte: ate } });
     expect(await confirmarPin({ pin: "1111" })).toEqual({ ok: true, data: { status: "bloqueado", minutos: 15 } });
-    expect(mocks.trocarLinkPorSessao).not.toHaveBeenCalled();
+    mocks.confirmarPin.mockResolvedValue({ ok: false, error: { code: "INDISPONIVEL", message: "fora do ar" } });
+    expect(await confirmarPin({ pin: "1111" })).toMatchObject({ ok: false, error: { code: "INDISPONIVEL" } });
+    expect(mocks.apagarGrant).toHaveBeenCalledTimes(3);
+    expect(mocks.apagarLink).not.toHaveBeenCalled();
   });
 });
