@@ -4,6 +4,7 @@
 #   (a) duas migrations da árvore atual têm a mesma versão;
 #   (b) com BASE: uma migration nova ou renomeada em BASE...HEAD tem versão menor ou igual à maior versão de BASE.
 #       O `supabase db push` recusa migration anterior à última aplicada, e duas trilhas acabam disputando o número.
+#       A versão nova também tem de ser uma hora UTC válida (ex.: 20261120174560, com 60 s, é recusada).
 #   (c) com BASE: uma linha nova de migration usa `errcode`/`sqlstate`/condição fora da lista que o src/lib/errors
 #       mapeia (ADR 0001 §5): código fora dela vira INTERNO na tela.
 #
@@ -33,10 +34,18 @@ else
   de_epoch() { date -u -r "$1" +%Y%m%d%H%M%S; }
 fi
 
-# texto com a versão a usar (ADR 0001 §3), a partir da última versão conhecida
+# a versão é uma hora UTC válida se a volta pelo date devolve o mesmo número (o date normaliza 60 s em silêncio)
+hora_valida() {
+  case "$1" in [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;; *) return 1 ;; esac
+  e="$(para_epoch "$1" 2>/dev/null)" || return 1
+  [ "$(de_epoch "$e")" = "$1" ]
+}
+
+# texto com a versão a usar (ADR 0001 §3), a partir da última versão conhecida. ATTA_AGORA só para os testes.
 sugestao() {
-  agora="$(date -u +%Y%m%d%H%M%S)"
+  agora="${ATTA_AGORA:-$(date -u +%Y%m%d%H%M%S)}"
   pr="${ATTA_PR:-}"
+  case "$pr" in *[!0-9]*) pr="" ;; esac
   if [ -n "$1" ] && [ -n "$pr" ] && e="$(para_epoch "$1" 2>/dev/null)"; then
     alvo="$(de_epoch $((e + pr)))"
     [ "$alvo" -gt "$agora" ] || alvo="$agora"
@@ -67,6 +76,9 @@ if [ -n "$base" ]; then
     v="$(versao "$f")"
     if [ -z "$v" ]; then
       echo "::error::$f: nome sem versão; use <versão>_<nome>.sql: $(sugestao "$ultima")."
+      erro=1
+    elif ! hora_valida "$v"; then
+      echo "::error::$f: a versão $v não é uma hora UTC válida (AAAAMMDDhhmmss; segundos e minutos vão de 00 a 59, sem somar em decimal). Renomeie o arquivo: $(sugestao "$ultima")."
       erro=1
     elif [ -n "$ultima" ] && [ "$v" -le "$ultima" ]; then
       echo "::error::$f: a versão $v não é maior que a última da main ($ultima). Renomeie o arquivo: $(sugestao "$ultima")."
