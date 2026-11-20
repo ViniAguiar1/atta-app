@@ -39,6 +39,14 @@ portas próprios por variável de ambiente; o `supabase/config.toml` versionado 
 | BE4 | 44321 | 44322 | 3010 |
 | BE5 | 44421 | 44422 | 3011 |
 | SEC | 44521 | 44522 | 3012 |
+| BE6 | 44621 | 44622 | 3013 |
+| INT2 | 44721 | 44722 | 3014 |
+| FE4 | 44821 | 44822 | 3015 |
+| FE5 | 44921 | 44922 | 3016 |
+| FE6 | 45021 | 45022 | 3017 |
+| QA2 | 45121 | 45122 | 3018 |
+| TLF | 45221 | 45222 | 3019 |
+| DEVEX | 45321 | 45322 | 3020 |
 
 ```bash
 export ATTA_SIGLA=BE1                 # a sua
