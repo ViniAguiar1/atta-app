@@ -1,5 +1,5 @@
 import "server-only";
-import { falha, ok } from "@/lib/errors";
+import { type Erro, falha, ok, type Resultado } from "@/lib/errors";
 import type { ChaveDeParametro, Parametro, PortaConfiguracoes } from "./porta";
 
 // Simulada de Configurações até o MIG-10b (Backend 2): os padrões e limites do contrato, e as regras cruzadas do banco
@@ -22,6 +22,12 @@ const atual = (): Parametro[] =>
 
 const inteiro = (lista: Parametro[], chave: ChaveDeParametro) => Number(lista.find((p) => p.chave === chave)?.valor);
 
+// Conflito como o falhaDoBanco do #37 devolve: a regra no reason (ADR 0001 §5). O Erro da main ainda não tem o campo.
+const conflito = (regra: ChaveDeParametro): Resultado<never> => {
+  const error: Erro & { reason: string } = { code: "CONFLITO", message: "Regra cruzada.", reason: `ATTA-IN-0003:${regra}` };
+  return { ok: false, error };
+};
+
 export const portaConfiguracoesSimulada: PortaConfiguracoes = {
   async parametros() {
     return ok(atual());
@@ -36,9 +42,9 @@ export const portaConfiguracoesSimulada: PortaConfiguracoes = {
       if (fora) return falha("VALIDACAO", "Fora do limite.", [{ campo: chave, code: "VALIDACAO" }]);
       const depois = atual().map((x) => (x.chave === chave ? ({ ...x, valor: n } as Parametro) : x));
       if (inteiro(depois, "lembrete_2_min") >= inteiro(depois, "lembrete_1_min"))
-        return falha("CONFLITO", "Regra cruzada.", [{ campo: "lembrete_2_min", code: "CONFLITO" }]);
+        return conflito("lembrete_2_min");
       if (inteiro(depois, "lembrete_1_min") > inteiro(depois, "link_envio_antecedencia_h") * 60)
-        return falha("CONFLITO", "Regra cruzada.", [{ campo: "lembrete_1_min", code: "CONFLITO" }]);
+        return conflito("lembrete_1_min");
     }
     salvos.set(chave, valor);
     return ok(atual().find((x) => x.chave === chave) as Parametro);
