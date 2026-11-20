@@ -48,6 +48,7 @@ jobs:
           EVENTO: ${{ github.event_name }}
           REF: ${{ github.ref }}
           HEAD_PR: ${{ github.event.pull_request.head.sha }}
+          ATTA_PR: ${{ github.event.pull_request.number }}
         run: |
           case "$EVENTO:$REF" in
             pull_request:*) sh scripts/checa-migrations.sh origin/main "$HEAD_PR" ;;
