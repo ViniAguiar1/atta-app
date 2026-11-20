@@ -31,10 +31,45 @@ export function signEvidence(evidence: string, kid: string, privateKeyPem: strin
   return { kid, alg: "Ed25519", sig_b64: sign(null, Buffer.from(evidence, "ascii"), key).toString("base64") };
 }
 
-export function verifySeal(evidence: string, seal: Seal, manifest: readonly SealManifestEntry[]): boolean {
-  if (!HEX_SHA256.test(evidence) || seal.alg !== "Ed25519") return false;
-  const entry = manifest.find((e) => e.kid === seal.kid && e.alg === "Ed25519");
-  if (!entry) return false;
-  const pub = createPublicKey({ key: Buffer.from(entry.public_key_spki_b64, "base64"), format: "der", type: "spki" });
-  return verify(null, Buffer.from(evidence, "ascii"), pub, Buffer.from(seal.sig_b64, "base64"));
+// Data ISO 8601 em UTC (como o manifesto e o payload gravam); outra forma não é aceita
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+
+function instante(valor: unknown): number | null {
+  if (typeof valor !== "string" || !ISO_UTC.test(valor)) return null;
+  const ms = Date.parse(valor);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Confere o selo da evidência pelo manifesto público (MIG-24, revisão do #24 pelo Tech Lead e pelo Backend 1):
+ * - o kid precisa estar no manifesto, e o momento da assinatura (`signedAt`, o `signature.signed_at` da evidência) tem
+ *   de cair dentro da validade da chave: `valid_from` ≤ `signedAt` < `valid_until` (sem `valid_until`, chave vigente).
+ *   Uma chave aposentada não valida selo com data posterior à aposentadoria.
+ * - qualquer entrada malformada (manifesto, chave, assinatura ou data) devolve `false`, nunca lança: a verificação
+ *   pública não pode virar erro 500 nem oráculo.
+ */
+export function verifySeal(
+  evidence: string,
+  seal: Seal,
+  manifest: readonly SealManifestEntry[],
+  signedAt: string,
+): boolean {
+  try {
+    if (!HEX_SHA256.test(evidence) || seal?.alg !== "Ed25519" || typeof seal.sig_b64 !== "string") return false;
+    const quando = instante(signedAt);
+    if (quando === null || !Array.isArray(manifest)) return false;
+    const entry = manifest.find((e) => e?.kid === seal.kid && e?.alg === "Ed25519");
+    if (!entry || typeof entry.public_key_spki_b64 !== "string") return false;
+    const desde = instante(entry.valid_from);
+    if (desde === null || quando < desde) return false;
+    if (entry.valid_until !== null) {
+      const ate = instante(entry.valid_until);
+      if (ate === null || quando >= ate) return false;
+    }
+    const pub = createPublicKey({ key: Buffer.from(entry.public_key_spki_b64, "base64"), format: "der", type: "spki" });
+    if (pub.asymmetricKeyType !== "ed25519") return false;
+    return verify(null, Buffer.from(evidence, "ascii"), pub, Buffer.from(seal.sig_b64, "base64"));
+  } catch {
+    return false;
+  }
 }
