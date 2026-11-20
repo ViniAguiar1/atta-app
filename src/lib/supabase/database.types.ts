@@ -250,22 +250,28 @@ isOneToOne: false
           Tables: {
             "document": {
                   Row: {
-                    "appointment_id": string | null,"cancel_reason": string | null,"cancelled_at": string | null,"cancelled_by": string | null,"created_at": string,"created_by": string | null,"folder_section": string | null,"id": string,"person_id": string | null,"professional_link_id": string | null,"status": string,"template_version_id": string | null,"tenant_id": string,"updated_at": string
+                    "appointment_id": string | null,"cancel_reason": string | null,"cancelled_at": string | null,"cancelled_by": string | null,"created_at": string,"created_by": string | null,"folder_section": string | null,"id": string,"person_id": string | null,"professional_link_id": string | null,"replaced_by_document_id": string | null,"status": string,"template_version_id": string | null,"tenant_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "appointment_id"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id": string,"updated_at"?: string
+                    "appointment_id"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "appointment_id"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id"?: string,"updated_at"?: string
+                    "appointment_id"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
-      foreignKeyName: "document_template_version_id_fkey"
-      columns: ["template_version_id"]
+      foreignKeyName: "document_replaced_by_fk"
+      columns: ["tenant_id","replaced_by_document_id"]
+isOneToOne: false
+      referencedRelation: "document"
+      referencedColumns: ["tenant_id","id"]
+    },{
+      foreignKeyName: "document_template_version_fk"
+      columns: ["tenant_id","template_version_id"]
 isOneToOne: false
       referencedRelation: "template_version"
-      referencedColumns: ["id"]
+      referencedColumns: ["tenant_id","id"]
     }
                   ]
                 },"evidence": {
@@ -301,11 +307,11 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
-      foreignKeyName: "seal_evidence_id_fkey"
-      columns: ["evidence_id"]
+      foreignKeyName: "seal_evidence_fk"
+      columns: ["tenant_id","evidence_id"]
 isOneToOne: false
       referencedRelation: "evidence"
-      referencedColumns: ["id"]
+      referencedColumns: ["tenant_id","id"]
     },{
       foreignKeyName: "seal_kid_fkey"
       columns: ["kid"]
@@ -341,11 +347,11 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
-      foreignKeyName: "seal_timestamp_seal_id_fkey"
-      columns: ["seal_id"]
+      foreignKeyName: "seal_timestamp_seal_fk"
+      columns: ["tenant_id","seal_id"]
 isOneToOne: false
       referencedRelation: "seal"
-      referencedColumns: ["id"]
+      referencedColumns: ["tenant_id","id"]
     }
                   ]
                 },"stored_object": {
