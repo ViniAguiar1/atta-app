@@ -30,3 +30,15 @@ test("portal inexistente mostra a página de não encontrado, sem o formulário"
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/não encontrada|404/i);
   await expect(page.getByLabel("CPF")).toHaveCount(0);
 });
+
+// Regra do dono (PLANO, "O stage é uma réplica exata da produção"): nenhum texto de ambiente nem dica de teste na tela.
+test("nenhum texto de ambiente nem dica do código em nenhum passo", async ({ page }) => {
+  const proibido = /ambiente de valida|fict[ií]ci|\bdemo|\bteste\b|123456/i;
+  await page.goto("/checkin/aurora");
+  await expect(page.getByLabel("CPF")).toBeVisible();
+  expect(await page.locator("body").innerText()).not.toMatch(proibido);
+  await page.getByLabel("CPF").fill("52998224725");
+  await page.getByRole("button", { name: "Enviar código" }).click();
+  await expect(page.getByLabel("Código")).toBeVisible();
+  expect(await page.locator("body").innerText()).not.toMatch(proibido);
+});
