@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { decidirGuarda } from "@/lib/auth/rotas";
-import { agoraEmSegundos, COOKIE_ATIVIDADE, sessaoVencida } from "@/lib/auth/sessao";
+import { agoraEmSegundos, COOKIE_ATIVIDADE, inicioDoLogin, SESSAO_MAXIMA_S, sessaoVencida } from "@/lib/auth/sessao";
+import { registrarAcesso } from "@/server/auditoria/acesso";
 import { envPublico } from "@/lib/env";
 import { prepararCabecalhosDaRequisicao } from "@/lib/http/correlacao";
 import { opcoesDoCookieDeAtividade, opcoesDoCookieDeSessao } from "@/lib/supabase/cookies";
@@ -36,6 +37,11 @@ export async function proxy(request: NextRequest) {
       // 30 min sem atividade ou 12 h desde o login (src/lib/auth/sessao.ts): encerra esta sessão (revoga o refresh)
       await supabase.auth.signOut({ scope: "local" });
       resposta.cookies.delete(COOKIE_ATIVIDADE);
+      // na trilha depois da resposta, sem atrasar o redirecionamento (S3-5)
+      const login = inicioDoLogin(claims);
+      const motivo = login === null || agora - login > SESSAO_MAXIMA_S ? "teto_12h" : "inatividade_30min";
+      const usuario = claims.sub;
+      if (usuario) after(() => registrarAcesso("auth.session_expired", usuario, { reason: motivo }));
       claims = undefined;
     } else {
       resposta.cookies.set(COOKIE_ATIVIDADE, String(agora), opcoesDoCookieDeAtividade(https));

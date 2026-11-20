@@ -11,7 +11,10 @@ export type Database = {
             [_ in never]: never
           }
           Functions: {
-            "grant_issue":
+            "audit_auth_event":
+{ Args: { "p_action": string,"p_details"?: Json,"p_user_id"?: string }; Returns: string
+                           },
+"grant_issue":
 { Args: { "p_appointment_id": string,"p_person_id"?: string,"p_professional_id"?: string,"p_purpose": string,"p_secret_hash": string,"p_tenant_id": string }; Returns: string
                            },
 "grant_mark_sent":
