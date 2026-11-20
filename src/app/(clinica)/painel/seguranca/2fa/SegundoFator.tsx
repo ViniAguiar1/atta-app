@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { Resultado } from "@/lib/errors";
+import { sair } from "../../../login/actions";
 import { type Ativacao, confirmarCodigo, iniciarAtivacao } from "./actions";
 
 export type Passo = { tipo: "ativar" } | { tipo: "confirmar"; factorId: string } | { tipo: "ativo" };
@@ -80,6 +81,12 @@ export function SegundoFator({ passo, volta }: { passo: Passo; volta: string }) 
           {erro}
         </p>
       )}
+      {/* "Voltar" (simulador, captura 08): quem não quer ativar agora sai da sessão e volta à tela de entrar */}
+      <form action={sair}>
+        <button type="submit" className="min-h-11 text-sm font-semibold text-text-primary underline underline-offset-2">
+          Voltar
+        </button>
+      </form>
     </div>
   );
 }

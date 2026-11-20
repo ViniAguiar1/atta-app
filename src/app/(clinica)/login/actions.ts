@@ -1,11 +1,13 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { decidirGuarda, destinoSeguro, ROTA_CALLBACK, ROTA_LOGIN } from "@/lib/auth/rotas";
+import { agoraEmSegundos, COOKIE_ATIVIDADE } from "@/lib/auth/sessao";
 import { falha, falhaDeValidacao, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { opcoesDoCookieDeAtividade } from "@/lib/supabase/cookies";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
 // Entrada com e-mail e senha (PDD v206 §9.4 e §10.4.3; MIG-03). POST pela server action: e-mail e senha nunca vão na
@@ -27,6 +29,7 @@ export async function entrarComSenha(_anterior: Resultado<never> | null, dados: 
     return falha("INDISPONIVEL", "Serviço de entrada indisponível.");
   }
   logger.info("auth.entrada", { ok: true });
+  await marcarAtividade();
   const volta = entrada.data.volta ?? voltaDaTela(await headers());
   redirect(await destinoDepoisDoLogin(supabase, destinoSeguro(volta)));
 }
@@ -73,6 +76,13 @@ export async function entrarComGoogle(dados: FormData): Promise<void> {
 // Sair (POST por server action; o menu da pessoa do Frontend chama esta ação): encerra a sessão e volta ao /login.
 export async function sair(): Promise<void> {
   const supabase = await criarClienteServidor();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
+  (await cookies()).delete(COOKIE_ATIVIDADE);
   redirect(ROTA_LOGIN);
+}
+
+// A sessão nasce ativa: o proxy confere a última atividade (src/lib/auth/sessao.ts) e encerra quem não tem o cookie.
+async function marcarAtividade() {
+  const https = (await headers()).get("x-forwarded-proto") === "https";
+  (await cookies()).set(COOKIE_ATIVIDADE, String(agoraEmSegundos()), opcoesDoCookieDeAtividade(https));
 }

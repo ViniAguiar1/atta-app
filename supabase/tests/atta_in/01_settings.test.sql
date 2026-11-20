@@ -23,7 +23,9 @@ begin
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims',
     json_build_object('sub', v_user, 'role', 'authenticated', 'tenant_id', p_tenant, 'app_role', p_role,
-      'aal', 'aal2')::text, true); -- sessão com o 2º fator: o ADMIN sem aal2 não tem permissão (MIG-03)
+      'aal', 'aal2',
+                      -- hora do login (MIG-03: sessão de no máximo 12 h, has_permission confere)
+                      'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true); -- sessão com o 2º fator: o ADMIN sem aal2 não tem permissão (MIG-03)
 end $$;
 
 create function pg_temp.remover_vinculo() returns void language plpgsql as $$

@@ -19,6 +19,29 @@ test("COLABORADOR entra sem 2º fator e volta para onde ia", async ({ page }) =>
   await expect(page).toHaveURL(/\/painel\/agenda\?dia=2026-11-20$/);
 });
 
+test("31 min sem atividade: a sessão é encerrada e o painel volta à tela de entrar", async ({ page, context, baseURL }) => {
+  await entrar(page, "colaboradora.ficticia@exemplo.test");
+  await expect(page).toHaveURL(/\/painel$/);
+  const host = new URL(baseURL ?? "http://127.0.0.1:3000").hostname;
+  const velho = String(Math.floor(Date.now() / 1000) - 31 * 60);
+  await context.addCookies([{ name: "atta_atividade", value: velho, domain: host, path: "/", httpOnly: true, sameSite: "Lax" }]);
+  await page.goto("/painel");
+  await expect(page).toHaveURL(/\/login\?volta=%2Fpainel$/);
+  const restantes = (await context.cookies()).filter((c) => c.name.startsWith("sb-") || c.name === "atta_atividade");
+  expect(restantes.filter((c) => c.value !== "")).toEqual([]);
+  await page.goto("/painel"); // a sessão não volta: o refresh foi revogado
+  await expect(page).toHaveURL(/\/login\?volta=%2Fpainel$/);
+});
+
+test("Voltar no 2º fator encerra a sessão e volta à tela de entrar", async ({ page }) => {
+  await entrar(page, "admin.novo.ficticio@exemplo.test");
+  await expect(page).toHaveURL(/\/painel\/seguranca\/2fa\?volta=%2Fpainel$/);
+  await page.getByRole("button", { name: "Voltar" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/painel");
+  await expect(page).toHaveURL(/\/login\?volta=%2Fpainel$/);
+});
+
 test("volta para fora do painel é ignorada", async ({ page }) => {
   await entrar(page, "colaboradora.ficticia@exemplo.test", "/login?volta=%2F%2Fevil.example%2Fpainel");
   await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/painel$/);
@@ -40,6 +63,7 @@ test("ADMIN sem 2º fator: o painel leva à ativação, e o código do app liber
   await expect(page).toHaveURL(/\/painel\/seguranca\/2fa\?volta=%2Fpainel%2Fconfiguracoes$/);
   await page.goto("/painel");
   await expect(page).toHaveURL(/\/painel\/seguranca\/2fa\?volta=%2Fpainel$/);
+  await expect(page.getByRole("button", { name: "Voltar" })).toBeVisible(); // quem não quer ativar não fica preso
   await page.getByRole("button", { name: "Gerar QR" }).click();
   await expect(page.getByRole("img", { name: "QR do app autenticador" })).toBeVisible();
   const chave = (await page.getByTestId("chave-totp").textContent()) ?? "";
