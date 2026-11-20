@@ -33,13 +33,13 @@ select ok(has_table_privilege('postgres', 'audit.action', 'INSERT') and not has_
 insert into audit.action (action, kind) values ('teste.leitura', 'access'), ('teste.mudanca', 'change');
 
 select set_config('request.jwt.claims', '{"sub":"a1a1a1a1-0000-4000-8000-0000000000a1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN"}', true);
-select set_config('request.headers', '{"x-forwarded-for":"203.0.113.7, 10.0.0.1","x-request-id":"req-ficticio-1"}', true);
+select set_config('request.headers', '{"x-forwarded-for":"198.51.100.99","x-atta-client-ip":"203.0.113.7","x-request-id":"req-ficticio-1"}', true);
 
 select lives_ok($$ select audit.record_event('teste.leitura', 'platform.tenant', 'aaaaaaaa-0000-4000-8000-000000000001', '{"motivo":"teste"}') $$, 'access sem before/after grava');
 select is((select tenant_id::text from audit.event order by seq desc limit 1), 'aaaaaaaa-0000-4000-8000-000000000001', 'tenant vem do token');
 select is((select actor::text from audit.event order by seq desc limit 1), 'a1a1a1a1-0000-4000-8000-0000000000a1', 'ator vem do sub do token');
 select is((select app_role from audit.event order by seq desc limit 1), 'ADMIN', 'papel vem do token');
-select is((select host(ip) from audit.event order by seq desc limit 1), '203.0.113.7', 'IP é o primeiro do x-forwarded-for');
+select is((select host(ip) from audit.event order by seq desc limit 1), '203.0.113.7', 'IP vem do x-atta-client-ip (declarado pelo servidor), não do x-forwarded-for');
 select is((select request_id from audit.event order by seq desc limit 1), 'req-ficticio-1', 'id de correlação vem do x-request-id');
 select lives_ok($$ select audit.record_event('teste.mudanca', 'platform.tenant', 'aaaaaaaa-0000-4000-8000-000000000001', '{}', '{"name":"Alfa"}', '{"name":"Alfa Nova"}') $$, 'change com before/after grava');
 select lives_ok($$ select audit.record_event('teste.leitura', 'platform.tenant', null, '{}', null, null, 'aaaaaaaa-0000-4000-8000-000000000001') $$, 'p_tenant_id igual ao do token passa');
