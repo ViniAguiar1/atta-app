@@ -48,6 +48,25 @@ export type Database = {
 "patient_update":
 { Args: { "p_birth_date"?: string,"p_email_enc"?: string,"p_full_name"?: string,"p_local_dek_wrapped"?: string,"p_local_envelope_id"?: string,"p_local_kek_version"?: number,"p_person_id": string,"p_phone_enc"?: string,"p_reason": string,"p_social_name"?: string }; Returns: undefined
                            },
+"professional_delete":
+{ Args: { "p_link_id": string }; Returns: undefined
+                           },
+"professional_get":
+{ Args: { "p_link_id": string }; Returns: {
+              "council": string,"council_number": string,"council_uf": string,"cpf_masked": string,"dek_wrapped": string,"display_name": string,"email_enc": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"invited_at": string,"kek_version": number,"link_id": string,"phone_enc": string,"professional_id": string,"propass_completed_at": string,"status": string
+            }[]
+                           },
+"professional_invite":
+{ Args: { "p_dek_wrapped": string,"p_envelope_id": string,"p_id": string,"p_invite_email_enc": string,"p_invite_email_hmac": string,"p_kek_version": number }; Returns: string
+                           },
+"professional_list":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "council": string,"council_number": string,"council_uf": string,"dek_wrapped": string,"display_name": string,"email_enc": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"invited_at": string,"kek_version": number,"link_id": string,"phone_enc": string,"professional_id": string,"status": string
+            }[]
+                           },
+"professional_resend_invite":
+{ Args: { "p_invite_email_enc"?: string,"p_invite_email_hmac"?: string,"p_link_id": string }; Returns: undefined
+                           },
 "report_divergence":
 { Args: { "p_person_id": string,"p_reason": string }; Returns: string
                            }
@@ -169,6 +188,46 @@ isOneToOne: false
                   Relationships: [
                     {
       foreignKeyName: "membership_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenant"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"professional": {
+                  Row: {
+                    "council": string,"council_number": string,"council_uf": string,"cpf_enc": string,"cpf_hmac": string,"cpf_masked": string,"created_at": string,"dek_wrapped": string,"deleted_at": string | null,"display_name": string,"email_enc": string,"id": string,"kek_version": number,"phone_enc": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "council": string,"council_number": string,"council_uf": string,"cpf_enc": string,"cpf_hmac": string,"cpf_masked": string,"created_at"?: string,"dek_wrapped": string,"deleted_at"?: string | null,"display_name": string,"email_enc": string,"id"?: string,"kek_version": number,"phone_enc"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "council"?: string,"council_number"?: string,"council_uf"?: string,"cpf_enc"?: string,"cpf_hmac"?: string,"cpf_masked"?: string,"created_at"?: string,"dek_wrapped"?: string,"deleted_at"?: string | null,"display_name"?: string,"email_enc"?: string,"id"?: string,"kek_version"?: number,"phone_enc"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"professional_tenant_link": {
+                  Row: {
+                    "dek_wrapped": string,"deleted_at": string | null,"envelope_id": string,"id": string,"invite_email_enc": string,"invite_email_hmac": string,"invited_at": string,"kek_version": number,"professional_id": string | null,"propass_completed_at": string | null,"tenant_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "dek_wrapped": string,"deleted_at"?: string | null,"envelope_id": string,"id"?: string,"invite_email_enc": string,"invite_email_hmac": string,"invited_at"?: string,"kek_version": number,"professional_id"?: string | null,"propass_completed_at"?: string | null,"tenant_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "dek_wrapped"?: string,"deleted_at"?: string | null,"envelope_id"?: string,"id"?: string,"invite_email_enc"?: string,"invite_email_hmac"?: string,"invited_at"?: string,"kek_version"?: number,"professional_id"?: string | null,"propass_completed_at"?: string | null,"tenant_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "professional_tenant_link_professional_id_fkey"
+      columns: ["professional_id"]
+isOneToOne: false
+      referencedRelation: "professional"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "professional_tenant_link_tenant_id_fkey"
       columns: ["tenant_id"]
 isOneToOne: false
       referencedRelation: "tenant"
