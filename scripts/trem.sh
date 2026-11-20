@@ -13,13 +13,13 @@
 #       bash scripts/trem.sh testar [PR...]   também empurra trem/1..N e espera o CI (gasta cota do Actions)
 #       TREM_MERGE_LIBERADO=1 bash scripts/trem.sh andar
 #                                           testa e faz o squash na ordem. O merge pelo trem depende do ok do CTO.
-# Sem lista de PRs, a fila é: PRs abertos com a etiqueta `fila`, `conserta-main` primeiro, depois a ordem do CTO em
-# $TREM_FILA_ARQ (um número por linha) e, por fim, o número do PR.
+# Sem lista de PRs, a fila é: `conserta-main` primeiro; depois a ordem do CTO em $TREM_FILA_ARQ (seção "## Ordem
+# atual", linhas "1. #29 ..."); por fim, os PRs abertos com a etiqueta `fila` que não estão lá, pelo número.
 set -euo pipefail
 
 REPO="${TREM_REPO:-ViniAguiar1/atta-app}"
 PROFUNDIDADE="${TREM_PROFUNDIDADE:-3}"
-FILA_ARQ="${TREM_FILA_ARQ:-/Users/macbook/OpenBot/Shared/atta/migracao/fila.txt}"
+FILA_ARQ="${TREM_FILA_ARQ:-/Users/macbook/OpenBot/Shared/atta/migracao/fila.md}"
 ORIGEM="${TREM_ORIGEM:-$HOME/Development/atta-app}"
 DIR="${TREM_DIR:-$HOME/Development/atta-app-wt/trem}"
 ESPERA_CI="${TREM_ESPERA_CI:-1200}"
@@ -140,16 +140,23 @@ estado_main() {
           elif .conclusion == "success" then "verde" else "vermelha" end'
 }
 
+# números da lista numerada da seção "## Ordem atual" do arquivo do CTO (a linha "Já na main: #3, #22" fica de fora)
+ordem_cto() {
+  [ -f "$FILA_ARQ" ] || return 0
+  awk '/^## /{ f = ($0 ~ /^## Ordem/) } f && /^[[:space:]]*[0-9]+\.[[:space:]]+#[0-9]+/ {
+         sub(/^[[:space:]]*[0-9]+\.[[:space:]]+#/, ""); sub(/[^0-9].*/, ""); print }' "$FILA_ARQ"
+}
+
 fila() {
-  local abertos ordem n
-  abertos="$(gh_ pr list -R "$REPO" --state open --label fila --limit 100 --json number,labels \
-    --jq '.[] | "\(if any(.labels[]; .name == "conserta-main") then 0 else 1 end) \(.number)"')"
-  ordem=""; [ -f "$FILA_ARQ" ] && ordem="$(grep -E '^[[:space:]]*#?[0-9]+' "$FILA_ARQ" | tr -dc '0-9\n')"
-  while read -r pri n; do
-    [ -n "${n:-}" ] || continue
-    pos="$(grep -n -x "$n" <<<"$ordem" | head -1 | cut -d: -f1 || true)"
-    printf '%s %06d %06d\n' "$pri" "${pos:-999999}" "$n"
-  done <<<"$abertos" | sort | awk '{print $3+0}'
+  local abertos conserta n
+  abertos="$(gh_ pr list -R "$REPO" --state open --limit 200 --json number,labels \
+    --jq '.[] | "\(.number) \(if any(.labels[]; .name == "conserta-main") then "c" elif any(.labels[]; .name == "fila") then "f" else "-" end)"')"
+  conserta="$(awk '$2 == "c" { print $1 }' <<<"$abertos" | sort -n)"
+  {
+    printf '%s\n' "$conserta"
+    for n in $(ordem_cto); do grep -q -E "^$n " <<<"$abertos" && echo "$n"; done
+    awk '$2 == "f" { print $1 }' <<<"$abertos" | sort -n
+  } | grep -E '^[0-9]+$' | awk '!v[$0]++'
 }
 
 # --- montagem dos vagões --------------------------------------------------------------------------------------------
