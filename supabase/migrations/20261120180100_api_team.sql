@@ -13,7 +13,7 @@
 -- Troca de papel (promover e rebaixar) fica para um PR seguinte, com a regra que o CTO confirmar.
 --
 -- Erros: 42501 ATTA-AUTH-0004 (sem permissão), P0002 ATTA-CORE-0005 (não encontrado, também para outra clínica),
--- P0001 ATTA-IN-0001 (campo inválido, detail = campo), 23505 ATTA-IN-0002 (já existe) e 55000 ATTA-IN-0003 (o estado
+-- P0001 ATTA-IN-0001 (campo inválido, detail = campo), 23505 ATTA-IN-0002 (já existe) e P0001 ATTA-IN-0003 (o estado
 -- não permite; detail = admin_limit | owner_protected | protected_action | status | role | self).
 
 alter table platform.membership drop constraint membership_status_check,
@@ -42,14 +42,14 @@ begin
   if tg_op = 'UPDATE' and old.is_owner and old.deleted_at is null and (
        new.is_owner is distinct from true or new.app_role <> 'ADMIN' or new.status <> 'active'
        or new.deleted_at is not null or new.tenant_id <> old.tenant_id or new.user_id <> old.user_id) then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'owner_protected';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'owner_protected';
   end if;
 
   if new.app_role = 'ADMIN' and new.deleted_at is null and new.status <> 'rejected' and (
        select count(*) from platform.membership m
         where m.tenant_id = new.tenant_id and m.id <> new.id and m.app_role = 'ADMIN'
           and m.deleted_at is null and m.status <> 'rejected') >= 2 then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'admin_limit';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'admin_limit';
   end if;
   return new;
 end
@@ -218,7 +218,7 @@ begin
     raise exception using errcode = 'P0002', message = 'ATTA-CORE-0005', detail = 'membership_id';
   end if;
   if v.status <> 'invited' then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'status';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'status';
   end if;
   update platform.membership set status = 'active' where id = v.id;
   perform audit.record_event('team.accept', 'platform.membership', v.id, '{}'::jsonb,
@@ -244,7 +244,7 @@ begin
   end if;
   v := private.team_target(p_membership_id);
   if v.app_role <> 'COLABORADOR' then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'role';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'role';
   end if;
   v_before := private.team_permissions_of(v.id);
   perform private.team_replace_permissions(v.id, v.tenant_id, p_permissions);
@@ -270,10 +270,10 @@ begin
   end if;
   v := private.team_target(p_membership_id);
   if v.user_id = auth.uid() then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'self';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'self';
   end if;
   if v.status <> 'active' then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'status';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'status';
   end if;
   update platform.membership set status = 'suspended' where id = v.id;
   perform audit.record_event('team.suspend', 'platform.membership', v.id, '{}'::jsonb,
@@ -295,7 +295,7 @@ begin
   end if;
   v := private.team_target(p_membership_id);
   if v.status <> 'suspended' then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'status';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'status';
   end if;
   update platform.membership set status = 'active' where id = v.id;
   perform audit.record_event('team.reactivate', 'platform.membership', v.id, '{}'::jsonb,
@@ -322,13 +322,13 @@ begin
   end if;
   v := private.team_target(p_membership_id);
   if v.user_id = auth.uid() then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'self';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'self';
   end if;
   if v.is_owner then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'owner_protected';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'owner_protected';
   end if;
   if v.app_role = 'ADMIN' and v.status in ('active', 'suspended') then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0003', detail = 'protected_action';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'protected_action';
   end if;
   update platform.membership set deleted_at = now() where id = v.id;
   perform audit.record_event('team.remove', 'platform.membership', v.id, '{}'::jsonb,
