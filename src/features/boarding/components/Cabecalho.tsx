@@ -1,3 +1,4 @@
+import { TituloDoPasso } from "@/components/ui/TituloDoPasso";
 import type { ResumoDoAtendimento } from "@/server/boarding/porta";
 import { TEXTOS } from "../textos";
 
@@ -7,10 +8,9 @@ import { TEXTOS } from "../textos";
 export function Cabecalho({ resumo }: { resumo: ResumoDoAtendimento }) {
   const { paciente, horario, tipoDeAtendimento, comparecimento } = resumo;
   return (
-    <section aria-labelledby="boarding-titulo" className="flex flex-col gap-4">
-      <h1 id="boarding-titulo" className="font-title text-3xl leading-tight text-text-primary">
-        {TEXTOS.titulo}
-      </h1>
+    <section className="flex flex-col gap-4">
+      {/* recebe o foco depois do refresh do PIN certo, para o leitor de tela anunciar a troca */}
+      <TituloDoPasso>{TEXTOS.titulo}</TituloDoPasso>
       <div className="flex flex-col gap-1">
         <p className="text-2xl font-medium">{paciente.nome}</p>
         <p className="text-text-secondary">{TEXTOS.anos(paciente.idade)}</p>
