@@ -8,7 +8,7 @@
 -- Exceção nova: só com o ok da Segurança e do TL, com o motivo. Só dados fictícios.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(12);
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Exceções, com o motivo
@@ -158,9 +158,18 @@ select is_empty($$ select distinct persona || ' ' || nome || ' ' || estado from 
                     where r.estado not in ('42501', 'P0002')
                       and not exists (select 1 from seg_recusa_liberada l where l.nome = r.nome) $$,
   'toda recusa às personas sem direito é 42501 ou P0002 (nada de validar argumento antes da permissão)');
-select is_empty($$ select format('%I.%I', n.nspname, c.relname) from pg_class c join pg_namespace n on n.oid = c.relnamespace
-                    where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f') $$,
-  'o schema public continua vazio (nenhuma tabela ou view)');
+-- public vazio (ADR 0001 §1): nem tabela, view ou sequência, nem função ou procedure. O PostgREST expõe as funções do
+-- public como RPC, fora do api. Ficam de fora só os objetos de extensão (sugestão do TL no #112).
+create temp view seg_public_objeto as
+select format('%I.%I', n.nspname, c.relname) as nome from pg_class c join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f', 'S')
+   and not exists (select 1 from pg_depend d where d.classid = 'pg_class'::regclass and d.objid = c.oid and d.deptype = 'e')
+union all
+select p.oid::regprocedure::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public'
+   and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e');
+select is_empty($$ select nome from seg_public_objeto $$,
+  'o schema public continua vazio (nenhuma tabela, view, sequência ou função fora de extensão)');
 
 -- 8: a exceção do ADMIN sem 2º fator é mesmo só a própria clínica e o próprio vínculo
 select set_config('request.jwt.claims', pg_temp.seg_token('5e900000-0000-4000-8000-000000000001',
@@ -199,6 +208,13 @@ select is((select string_agg(nome, ',' order by nome) from seg_vazamento where t
   'api.seg_autoteste_age(uuid),api.seg_autoteste_vaza_linhas(uuid)',
   'o autoteste acusa a função que devolve linha e a void que age sem recusar');
 select is((select count(*)::int from seg_vazamento), 3, 'e não acusa mais nada');
+
+-- 12: autoteste do public vazio, com uma função e uma sequência criadas só nesta transação
+create function public.seg_autoteste_publico() returns int language sql as $$ select 1 $$;
+create sequence public.seg_autoteste_seq;
+select is((select string_agg(nome, ',' order by nome) from seg_public_objeto),
+  'public.seg_autoteste_publico(),public.seg_autoteste_seq',
+  'o autoteste acusa a função e a sequência no public');
 
 select * from finish();
 rollback;
