@@ -40,7 +40,11 @@ export function CelularesDoFluxo({ inicial }: { inicial: CelularDoFluxo[] }) {
           {celulares.map((c) => (
             <li key={c.id} className="flex flex-wrap items-center gap-2 rounded-md border border-border px-3 py-2">
               <span className="min-w-0 flex-1 truncate">{c.nome}</span>
-              <span className="text-text-secondary">{c.numeroMascarado}</span>
+              {/* a máscara visual fica escondida do leitor de tela, que ouve o final por extenso (padrão do CPF, ADR 0002 §6) */}
+              <span className="text-text-secondary">
+                <span aria-hidden="true">{c.numeroMascarado}</span>
+                <span className="sr-only">{t.numeroFalado(c.numeroMascarado.slice(-4))}</span>
+              </span>
               <button
                 type="button"
                 disabled={ocupado}
