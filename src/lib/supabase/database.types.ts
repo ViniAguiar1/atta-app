@@ -248,7 +248,127 @@ isOneToOne: false
           }
         },"documents": {
           Tables: {
-            "template": {
+            "document": {
+                  Row: {
+                    "appointment_id": string | null,"cancel_reason": string | null,"cancelled_at": string | null,"cancelled_by": string | null,"created_at": string,"created_by": string | null,"folder_section": string | null,"id": string,"person_id": string | null,"professional_link_id": string | null,"status": string,"template_version_id": string | null,"tenant_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "appointment_id"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "appointment_id"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "document_template_version_id_fkey"
+      columns: ["template_version_id"]
+isOneToOne: false
+      referencedRelation: "template_version"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"evidence": {
+                  Row: {
+                    "atta_code": string,"atta_sign_version": string,"code_nonce": number,"created_at": string,"document_id": string,"evidence_sha256": string,"id": string,"payload_canonical": string,"signed_at": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "atta_code": string,"atta_sign_version": string,"code_nonce"?: number,"created_at"?: string,"document_id": string,"evidence_sha256": string,"id"?: string,"payload_canonical": string,"signed_at": string,"tenant_id": string
+                  }
+                  Update: {
+                    "atta_code"?: string,"atta_sign_version"?: string,"code_nonce"?: number,"created_at"?: string,"document_id"?: string,"evidence_sha256"?: string,"id"?: string,"payload_canonical"?: string,"signed_at"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "evidence_document_fk"
+      columns: ["tenant_id","document_id"]
+isOneToOne: false
+      referencedRelation: "document"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"seal": {
+                  Row: {
+                    "created_at": string,"evidence_id": string,"id": string,"kid": string,"signature": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"evidence_id": string,"id"?: string,"kid": string,"signature": string,"tenant_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"evidence_id"?: string,"id"?: string,"kid"?: string,"signature"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "seal_evidence_id_fkey"
+      columns: ["evidence_id"]
+isOneToOne: false
+      referencedRelation: "evidence"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "seal_kid_fkey"
+      columns: ["kid"]
+isOneToOne: false
+      referencedRelation: "seal_key"
+      referencedColumns: ["kid"]
+    }
+                  ]
+                },"seal_key": {
+                  Row: {
+                    "alg": string,"created_at": string,"id": string,"kid": string,"public_key_spki": string,"valid_from": string,"valid_until": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "alg"?: string,"created_at"?: string,"id"?: string,"kid": string,"public_key_spki": string,"valid_from": string,"valid_until"?: string | null
+                  }
+                  Update: {
+                    "alg"?: string,"created_at"?: string,"id"?: string,"kid"?: string,"public_key_spki"?: string,"valid_from"?: string,"valid_until"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"seal_timestamp": {
+                  Row: {
+                    "created_at": string,"id": string,"issuer": string,"kind": string,"seal_id": string,"tenant_id": string,"token": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"issuer": string,"kind": string,"seal_id": string,"tenant_id": string,"token": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"issuer"?: string,"kind"?: string,"seal_id"?: string,"tenant_id"?: string,"token"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "seal_timestamp_seal_id_fkey"
+      columns: ["seal_id"]
+isOneToOne: false
+      referencedRelation: "seal"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"stored_object": {
+                  Row: {
+                    "created_at": string,"dek_wrapped": string,"document_id": string,"id": string,"kek_version": number,"party_ref": string | null,"role": string,"sha256_plain": string,"size_bytes": number,"storage_path": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"dek_wrapped": string,"document_id": string,"id"?: string,"kek_version": number,"party_ref"?: string | null,"role": string,"sha256_plain": string,"size_bytes": number,"storage_path": string,"tenant_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"dek_wrapped"?: string,"document_id"?: string,"id"?: string,"kek_version"?: number,"party_ref"?: string | null,"role"?: string,"sha256_plain"?: string,"size_bytes"?: number,"storage_path"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "stored_object_document_fk"
+      columns: ["tenant_id","document_id"]
+isOneToOne: false
+      referencedRelation: "document"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"template": {
                   Row: {
                     "created_at": string,"created_by": string | null,"current_version": number | null,"draft_body": string | null,"frequency": string | null,"id": string,"kind": string,"required": boolean | null,"status": string,"tenant_id": string,"title": string,"updated_at": string,"validity_months": number | null
                   }
