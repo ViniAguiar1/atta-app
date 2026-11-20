@@ -166,7 +166,8 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# o app de cada sigla roda em 3000 + slot (scripts/supabase-local.sh); o login volta pelo /auth/callback
+additional_redirect_urls = ["http://127.0.0.1:3000/auth/callback", "http://127.0.0.1:3001/auth/callback", "http://127.0.0.1:3002/auth/callback", "http://127.0.0.1:3003/auth/callback", "http://127.0.0.1:3004/auth/callback", "http://127.0.0.1:3005/auth/callback", "http://127.0.0.1:3006/auth/callback", "http://127.0.0.1:3007/auth/callback", "http://127.0.0.1:3008/auth/callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -430,3 +431,32 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+# Projeto da nuvem (EUA, só dados fictícios): o `supabase config push --project-ref fqcorrvmbxottwngkfyy` usa estes
+# valores por cima dos de cima. Só o Backend 1 aplica, depois do merge na main. Nada é configurado à mão no painel.
+[remotes.nuvem]
+project_id = "fqcorrvmbxottwngkfyy"
+
+[remotes.nuvem.auth]
+site_url = "https://atta-app-nine.vercel.app"
+additional_redirect_urls = [
+  "https://atta-app-nine.vercel.app/auth/callback",
+  "https://atta-app-*-vinicius-aguiars-projects.vercel.app/auth/callback",
+]
+# Na nuvem ficam os valores que ela já tem (mais seguros que os locais, feitos para desenvolvimento): confirmação de
+# e-mail ligada, OTP de 8 dígitos, intervalo de 1 minuto entre e-mails, pool do plano e armazenamento vetorial desligado.
+
+[remotes.nuvem.auth.email]
+enable_confirmations = true
+max_frequency = "1m0s"
+otp_length = 8
+
+[remotes.nuvem.auth.sms]
+enable_confirmations = true
+
+[remotes.nuvem.db.pooler]
+default_pool_size = 15
+max_client_conn = 200
+
+[remotes.nuvem.storage.vector]
+enabled = false

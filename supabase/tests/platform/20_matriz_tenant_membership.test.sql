@@ -27,7 +27,7 @@ insert into platform.membership (tenant_id, user_id, app_role, status, deleted_a
   ('aaaaaaaa-0000-4000-8000-000000000001', 'e4e4e4e4-0000-4000-8000-0000000000e4', 'ADMIN', 'suspended', null);
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"a1a1a1a1-0000-4000-8000-0000000000a1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN"}', true);
+select set_config('request.jwt.claims', '{"sub":"a1a1a1a1-0000-4000-8000-0000000000a1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN","aal":"aal2"}', true);
 
 select is((select count(*)::int from platform.tenant), 1, 'ADMIN vê só a própria clínica');
 
@@ -64,7 +64,7 @@ select is((select app_role from platform.membership where user_id = 'c1c1c1c1-00
 
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"c1c1c1c1-0000-4000-8000-0000000000c1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"COLABORADOR"}', true);
+select set_config('request.jwt.claims', '{"sub":"c1c1c1c1-0000-4000-8000-0000000000c1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"COLABORADOR","aal":"aal1"}', true);
 
 select is((select count(*)::int from platform.tenant), 1, 'COLABORADOR vê a própria clínica');
 
@@ -80,7 +80,7 @@ select set_config('request.jwt.claims', '', true);
 select is((select name from platform.tenant where id = 'aaaaaaaa-0000-4000-8000-000000000001'), 'Clínica Alfa Renomeada', 'o COLABORADOR não renomeou a clínica');
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"c1c1c1c1-0000-4000-8000-0000000000c1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN"}', true);
+select set_config('request.jwt.claims', '{"sub":"c1c1c1c1-0000-4000-8000-0000000000c1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN","aal":"aal2"}', true);
 
 select is((select count(*)::int from platform.membership), 1, 'token com app_role ADMIN não vale: o papel é o do banco');
 
@@ -88,7 +88,7 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"b2b2b2b2-0000-4000-8000-0000000000b2","role":"authenticated","tenant_id":"bbbbbbbb-0000-4000-8000-000000000002","app_role":"ADMIN"}', true);
+select set_config('request.jwt.claims', '{"sub":"b2b2b2b2-0000-4000-8000-0000000000b2","role":"authenticated","tenant_id":"bbbbbbbb-0000-4000-8000-000000000002","app_role":"ADMIN","aal":"aal2"}', true);
 
 select is((select id from platform.tenant), 'bbbbbbbb-0000-4000-8000-000000000002'::uuid, 'ADMIN da B vê só a B');
 
@@ -98,7 +98,7 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"b2b2b2b2-0000-4000-8000-0000000000b2","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN"}', true);
+select set_config('request.jwt.claims', '{"sub":"b2b2b2b2-0000-4000-8000-0000000000b2","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN","aal":"aal2"}', true);
 
 select is((select count(*)::int from platform.membership), 0, 'token com a clínica A para quem não é membro dela: nada da equipe');
 
@@ -106,7 +106,7 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"d3d3d3d3-0000-4000-8000-0000000000d3","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN"}', true);
+select set_config('request.jwt.claims', '{"sub":"d3d3d3d3-0000-4000-8000-0000000000d3","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN","aal":"aal2"}', true);
 
 select is((select count(*)::int from platform.membership), 0, 'vínculo removido: o token ainda válido não vê a equipe');
 select is((select count(*)::int from platform.tenant), 0, 'vínculo removido: o token ainda válido não vê nem a clínica');
@@ -117,7 +117,7 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"e4e4e4e4-0000-4000-8000-0000000000e4","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN"}', true);
+select set_config('request.jwt.claims', '{"sub":"e4e4e4e4-0000-4000-8000-0000000000e4","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN","aal":"aal2"}', true);
 
 select is((select count(*)::int from platform.membership), 0, 'vínculo suspenso: nenhum vínculo, nem o próprio');
 select is((select count(*)::int from platform.tenant), 0, 'vínculo suspenso: nem a clínica');
@@ -136,7 +136,7 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"a1a1a1a1-0000-4000-8000-0000000000a1","role":"authenticated","tenant_id":"nao-e-uuid","app_role":"ADMIN"}', true);
+select set_config('request.jwt.claims', '{"sub":"a1a1a1a1-0000-4000-8000-0000000000a1","role":"authenticated","tenant_id":"nao-e-uuid","app_role":"ADMIN","aal":"aal2"}', true);
 
 select is((select count(*)::int from platform.tenant), 0, 'claim de clínica que não é uuid: nenhuma linha');
 

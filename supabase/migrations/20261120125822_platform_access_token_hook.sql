@@ -43,3 +43,31 @@ $$;
 revoke all on function private.custom_access_token_hook(jsonb) from public, anon, authenticated, service_role;
 grant usage on schema private to supabase_auth_admin;
 grant execute on function private.custom_access_token_hook(jsonb) to supabase_auth_admin;
+
+-- ADMIN só com o segundo fator (TOTP, aal2 no token): regra do dono (20/11, PLANO). A guarda do proxy só redireciona;
+-- esta é a trava de verdade, porque o token também vale direto na Data API. O COLABORADOR não precisa de aal2.
+create or replace function private.has_permission(p_module text, p_action text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((
+    select case
+      when p_module not in ('appointments', 'patients', 'documents', 'atta', 'metrics', 'settings', 'team', 'audit')
+        or p_action not in ('view', 'create', 'edit') then false
+      -- ADMIN só com o segundo fator no token (aal2): regra do dono, 20/11 (PLANO). Sem ele, nenhuma permissão.
+      when m.app_role = 'ADMIN' then coalesce(
+        nullif(pg_catalog.current_setting('request.jwt.claims', true), '')::jsonb ->> 'aal', 'aal1') = 'aal2'
+      when m.app_role = 'COLABORADOR' then p_module in ('appointments', 'patients', 'documents', 'atta', 'metrics')
+      else false
+    end
+    from platform.membership m
+    join platform.tenant t on t.id = m.tenant_id and t.deleted_at is null
+    where m.user_id = (select auth.uid())
+      and m.tenant_id = (select private.current_tenant_id())
+      and m.status = 'active'
+      and m.deleted_at is null
+  ), false)
+$$;
