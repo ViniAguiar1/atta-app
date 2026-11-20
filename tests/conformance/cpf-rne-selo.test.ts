@@ -125,6 +125,8 @@ describe("selo Ed25519 (sem vetor no atta-core: ida e volta e manifesto)", () =>
     const s = signEvidence(evidence, "staging-seal-2026-11", pem);
     const aposentada = [{ ...manifest[0]!, valid_until: "2026-11-21T00:00:00.000Z" }];
     expect(verifySeal(evidence, s, manifest, "2026-11-20T00:00:00.000Z")).toBe(true); // início inclusivo
+    expect(verifySeal(evidence, s, manifest, "2026-11-20T14:00:00Z")).toBe(true); // sem milissegundos também vale
+    expect(verifySeal(evidence, s, manifest, "2028-02-29T10:00:00.5Z")).toBe(true); // 29/02 de ano bissexto
     expect(verifySeal(evidence, s, manifest, "2026-11-19T23:59:59.999Z")).toBe(false); // antes da chave existir
     expect(verifySeal(evidence, s, aposentada, "2026-11-20T23:59:59.999Z")).toBe(true);
     expect(verifySeal(evidence, s, aposentada, "2026-11-21T00:00:00.000Z")).toBe(false); // fim exclusivo
@@ -146,7 +148,8 @@ describe("selo Ed25519 (sem vetor no atta-core: ida e volta e manifesto)", () =>
       expect(() => verifySeal(evidence, s, m as never, assinadoEm)).not.toThrow();
       expect(verifySeal(evidence, s, m as never, assinadoEm)).toBe(false);
     }
-    for (const data of ["", "2026-11-20", "2026-11-20T14:00:00+03:00", "amanhã"]) {
+    for (const data of ["", "2026-11-20", "2026-11-20T14:00:00+03:00", "amanhã", "2026-02-30T10:00:00Z",
+      "2026-11-20T24:00:00.000Z", "2026-11-20T14:60:00Z"]) {
       expect(verifySeal(evidence, s, manifest, data)).toBe(false);
     }
     expect(verifySeal(evidence, { ...s, sig_b64: 7 as never }, manifest, assinadoEm)).toBe(false);
