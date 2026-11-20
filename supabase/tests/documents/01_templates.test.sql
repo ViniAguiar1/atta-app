@@ -71,6 +71,10 @@ end $$;
 do $$ begin
   execute format('grant execute on all functions in schema %I to authenticated', pg_my_temp_schema()::regnamespace);
 end $$;
+-- Este arquivo prova o núcleo da plataforma (publicar, versão, imutabilidade). Desde o MIG-20 parte 3, o painel do
+-- ATTA-in publica pelo invólucro api.atta_in_template_publish (atta_in/05), e api.template_publish não tem EXECUTE
+-- para authenticated; aqui, só dentro desta transação (rollback no fim), ele volta para testar o núcleo.
+grant execute on function api.template_publish(uuid) to authenticated;
 
 -- estrutura ---------------------------------------------------------------------------------------------------------
 select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid = 'documents.template'::regclass),
