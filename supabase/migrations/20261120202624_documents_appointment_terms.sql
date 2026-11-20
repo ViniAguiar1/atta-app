@@ -183,6 +183,29 @@ as $$
 $$;
 revoke all on function private.appointment_terms_pending(uuid) from public, anon, authenticated, service_role;
 
+-- Liberação (Pronto, RN-CHK-02): todo modelo obrigatório vivo no atendimento precisa de um documento Pré-assinado (ou já
+-- definitivo). Aqui o recusado também trava (o obrigatório recusado no check-in encerra o check-in, §11.9); o cancelado
+-- pela lixeira e o excluído automaticamente não contam; recusado seguido de "Restaurar" vale pelo documento novo.
+create function private.appointment_terms_release_pending(p_appointment_id uuid)
+returns table (template_id uuid, title text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select v.template_id, min(v.title)
+  from atta_in.appointment a
+  join documents.document d on d.tenant_id = a.tenant_id and d.appointment_id = a.id
+  join documents.template_version v on v.tenant_id = d.tenant_id and v.id = d.template_version_id
+  where a.id = p_appointment_id
+    and ((select private.current_tenant_id()) is null or a.tenant_id = (select private.current_tenant_id()))
+    and v.required and d.status <> 'cancelado' and d.auto_excluded_at is null
+  group by v.template_id
+  having not bool_or(d.status in ('pre_assinado', 'assinado_definitivo'))
+  order by lower(min(v.title)), v.template_id
+$$;
+revoke all on function private.appointment_terms_release_pending(uuid) from public, anon, authenticated, service_role;
+
 create function private.appointment_terms_ready(p_appointment_id uuid)
 returns boolean
 language sql
@@ -202,9 +225,15 @@ security definer
 set search_path = ''
 as $$
 begin
-  -- Pronto (liberação, RN-CHK-02) e Concluído (§10.2.3) só com os obrigatórios assinados ou recusados
-  if new.status is distinct from old.status and new.status in ('pronto', 'concluido')
-     and exists (select 1 from private.appointment_terms_pending(new.id)) then
+  if new.status is not distinct from old.status then
+    return new;
+  end if;
+  -- Pronto (liberação, RN-CHK-02): os obrigatórios Pré-assinados; recusado trava
+  if new.status = 'pronto' and exists (select 1 from private.appointment_terms_release_pending(new.id)) then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'documents';
+  end if;
+  -- Concluído (§10.2.3): os obrigatórios assinados ou recusados (recusa não é falta de assinatura)
+  if new.status = 'concluido' and exists (select 1 from private.appointment_terms_pending(new.id)) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'documents';
   end if;
   return new;

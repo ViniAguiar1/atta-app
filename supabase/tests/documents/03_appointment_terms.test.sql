@@ -1,6 +1,6 @@
 -- MIG-21 (parte 2): termos do atendimento. PDD v206 §10.2.1, §10.2.2, §10.2.3, §16.4 e §17.6. Só dado fictício.
 begin;
-select plan(30);
+select plan(33);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-0000000003a1', 'Clínica Fictícia Termos A'),
@@ -55,13 +55,15 @@ select pg_temp.agendar('00000000-0000-4000-8000-0000000031a2', 2, null, '0000000
 select pg_temp.agendar('00000000-0000-4000-8000-0000000031a3', 3);
 select pg_temp.agendar('00000000-0000-4000-8000-0000000031a4', 4);
 select pg_temp.agendar('00000000-0000-4000-8000-0000000031a5', 5);
+select pg_temp.agendar('00000000-0000-4000-8000-0000000031a6', 6);
 
 create function pg_temp.mover(p_appointment uuid, p_to text, p_reason text default null) returns void language sql as $$
   select atta_in.apply_transition(p_appointment, '00000000-0000-4000-8000-0000000003a1', p_to, p_reason)
 $$;
 create function pg_temp.doc(p_appointment uuid, p_template uuid) returns uuid language sql as $$
   select d.id from documents.document d join documents.template_version v on v.id = d.template_version_id
-  where d.appointment_id = p_appointment and v.template_id = p_template order by d.created_at desc, d.id limit 1
+  where d.appointment_id = p_appointment and v.template_id = p_template
+  order by d.status in ('recusado', 'cancelado'), d.created_at desc, d.id limit 1   -- o vivo antes do recusado
 $$;
 create function pg_temp.assinar(p_doc uuid, p_status text) returns void language sql as $$
   update documents.document set status = p_status where id = p_doc   -- a assinatura de verdade vem no MIG-21c
@@ -154,11 +156,18 @@ select is(pg_temp.detalhe($$ select * from private.appointment_link_documents('0
                              array['00000000-0000-4000-8000-000000003102']::uuid[]) $$), 'status',
           'atendimento concluído não recebe termo novo');
 
--- recusa não trava a conclusão ----------------------------------------------------------------------------------------
-select private.appointment_link_documents('00000000-0000-4000-8000-0000000031a4', array['00000000-0000-4000-8000-000000003101']::uuid[]);
-select pg_temp.assinar(pg_temp.doc('00000000-0000-4000-8000-0000000031a4', '00000000-0000-4000-8000-000000003101'), 'recusado');
+-- recusa: trava a liberação, não a conclusão ---------------------------------------------------------------------------
+select private.appointment_link_documents('00000000-0000-4000-8000-0000000031a6', array['00000000-0000-4000-8000-000000003101']::uuid[]);
+select pg_temp.assinar(pg_temp.doc('00000000-0000-4000-8000-0000000031a6', '00000000-0000-4000-8000-000000003101'), 'recusado');
+select pg_temp.mover('00000000-0000-4000-8000-0000000031a6', 'em_preenchimento');
+select is(pg_temp.detalhe($$ select pg_temp.mover('00000000-0000-4000-8000-0000000031a6', 'pronto') $$), 'documents',
+          'RN-CHK-02: obrigatório recusado não libera (Pronto)');
+-- no Boarding Check (depois de liberar), o termo vinculado e recusado não impede concluir
 select pg_temp.mover('00000000-0000-4000-8000-0000000031a4', 'em_preenchimento');
 select pg_temp.mover('00000000-0000-4000-8000-0000000031a4', 'pronto');
+select pg_temp.mover('00000000-0000-4000-8000-0000000031a4', 'em_atendimento');
+select private.appointment_link_documents('00000000-0000-4000-8000-0000000031a4', array['00000000-0000-4000-8000-000000003101']::uuid[]);
+select pg_temp.assinar(pg_temp.doc('00000000-0000-4000-8000-0000000031a4', '00000000-0000-4000-8000-000000003101'), 'recusado');
 select lives_ok($$ select pg_temp.mover('00000000-0000-4000-8000-0000000031a4', 'concluido') $$,
                 '§10.2.3: termo recusado não impede a conclusão');
 select ok((select status = 'recusado' and auto_excluded_at is not null from documents.document
@@ -184,6 +193,22 @@ select results_eq($$ select created from private.appointment_link_documents('000
                   '"Restaurar" (§10.2.3): depois da recusa, o modelo pode voltar como documento novo');
 select is((select count(*)::int from documents.document where appointment_id = '00000000-0000-4000-8000-0000000031a5'), 2,
           'o recusado continua registrado ao lado do novo');
+select pg_temp.assinar(pg_temp.doc('00000000-0000-4000-8000-0000000031a5', '00000000-0000-4000-8000-000000003101'), 'pre_assinado');
+select pg_temp.mover('00000000-0000-4000-8000-0000000031a5', 'em_preenchimento');
+select lives_ok($$ select pg_temp.mover('00000000-0000-4000-8000-0000000031a5', 'pronto') $$,
+                'recusado e depois restaurado e Pré-assinado: libera pelo documento novo');
+
+-- a lista de motivos do documento cobre todos os do agendamento (o MIG-11 ganhar um motivo novo quebra aqui, não no
+-- cancelamento; observação do Backend 6 no #107)
+select is((select array_agg(r order by r) from (
+             select (regexp_matches(pg_get_constraintdef(c.oid), '''([a-z_]+)''', 'g'))[1] as r
+             from pg_constraint c where c.conname = 'appointment_cancel_reason_check'
+               and c.conrelid = 'atta_in.appointment'::regclass) x
+           where r <> 'cancelado' and r not in (
+             select (regexp_matches(pg_get_constraintdef(c.oid), '''([a-z_]+)''', 'g'))[1]
+             from pg_constraint c where c.conname = 'document_cancel_reason_check'
+               and c.conrelid = 'documents.document'::regclass)),
+          null, 'todo motivo de cancelamento do agendamento é aceito no documento');
 
 -- ninguém apaga -------------------------------------------------------------------------------------------------------
 select is(pg_temp.detalhe($$ delete from documents.document where appointment_id = '00000000-0000-4000-8000-0000000031a3' $$),
