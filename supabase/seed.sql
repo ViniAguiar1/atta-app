@@ -94,6 +94,7 @@ insert into network.person_tenant_link (tenant_id, person_id, origin) values
 --   Eduardo Lima                                                      Pronto
 --   Alana Duarte                                                      Em atendimento
 --   Fábio Moreira (cadastro incompleto)                               Ausente
+--   Carlos Siqueira, mais cedo                                        Concluído (visão Concluídos)
 -- ---------------------------------------------------------------------------------------------------------------
 insert into network.person_import_provisional (id, tenant_id, import_batch_id, cpf_hmac, cpf_masked, cpf_enc, full_name,
   dek_wrapped, kek_version) values
@@ -130,7 +131,8 @@ begin
     ('eeee0000-0000-4000-8000-000000000504', 'eeee0000-0000-4000-8000-000000000103', null, 'consulta', interval '-20 minutes'),
     ('eeee0000-0000-4000-8000-000000000505', 'eeee0000-0000-4000-8000-000000000104', null, 'avaliacao', interval '-30 minutes'),
     ('eeee0000-0000-4000-8000-000000000506', 'eeee0000-0000-4000-8000-000000000105', null, 'consulta', interval '-60 minutes'),
-    ('eeee0000-0000-4000-8000-000000000507', 'eeee0000-0000-4000-8000-000000000101', null, 'consulta', interval '60 minutes')
+    ('eeee0000-0000-4000-8000-000000000507', 'eeee0000-0000-4000-8000-000000000101', null, 'consulta', interval '60 minutes'),
+    ('eeee0000-0000-4000-8000-000000000508', 'eeee0000-0000-4000-8000-000000000102', null, 'procedimento', interval '-120 minutes')
   ) a (id, person_id, provisional_id, tipo, desvio)
   loop
     insert into atta_in.appointment (id, tenant_id, person_id, provisional_patient_id, professional_link_id,
@@ -139,7 +141,8 @@ begin
       least(greatest(now() + r.desvio, v_inicio), v_fim), least(greatest(now() + r.desvio, v_inicio), v_fim) + interval '1 hour');
   end loop;
   insert into atta_in.appointment_clinic_service (tenant_id, appointment_id, clinic_service_id)
-  values (v_tenant, 'eeee0000-0000-4000-8000-000000000502', 'eeee0000-0000-4000-8000-000000000401');
+  values (v_tenant, 'eeee0000-0000-4000-8000-000000000502', 'eeee0000-0000-4000-8000-000000000401'),
+         (v_tenant, 'eeee0000-0000-4000-8000-000000000508', 'eeee0000-0000-4000-8000-000000000401');
 
   -- os estados pela máquina de estados (a mesma função das ações da recepção e do check-in)
   perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000503', v_tenant, 'em_preenchimento');
@@ -150,4 +153,8 @@ begin
   perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000505', v_tenant, 'em_atendimento');
   perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000506', v_tenant, 'ausente', null, false, 'manual');
   perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000507', v_tenant, 'cancelado', 'cancelado_pelo_paciente');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000508', v_tenant, 'em_preenchimento');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000508', v_tenant, 'pronto');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000508', v_tenant, 'em_atendimento');
+  perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000508', v_tenant, 'concluido');
 end $$;
