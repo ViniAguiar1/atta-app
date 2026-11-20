@@ -24,7 +24,8 @@ ORIGEM="${TREM_ORIGEM:-$HOME/Development/atta-app}"
 DIR="${TREM_DIR:-$HOME/Development/atta-app-wt/trem}"
 ESPERA_CI="${TREM_ESPERA_CI:-1200}"
 # Sensível (PLANO: segurança, auth, RLS, saúde, auditoria, assinatura): exige também o Tech Lead e o Security Engineer.
-SENSIVEL_RE="${TREM_SENSIVEL_RE:-^supabase/(migrations|tests)/|^src/server/|/auth/|auth\.|saude|audit|crypto|atta-sign|assinatura|grant|^(src/)?(middleware|proxy)\.ts$}"
+# Lista do Tech Lead (revisão do #45): também o cliente do Supabase, a esteira, a config da Vercel e do Next e os scripts.
+SENSIVEL_RE="${TREM_SENSIVEL_RE:-^supabase/(migrations|tests)/|^src/server/|^src/lib/supabase/|/auth/|auth\.|saude|audit|crypto|atta-sign|assinatura|grant|^(src/)?(middleware|proxy)\.ts$|^\.github/workflows/|^vercel\.json$|^next\.config\.ts$|^scripts/}"
 
 gh_() { GH_CONFIG_DIR="$HOME/.config/gh" gh "$@"; }
 log() { printf '%s  %s\n' "$(date '+%H:%M:%S')" "$*"; }
@@ -68,17 +69,46 @@ revisores() {
 
 sensivel() { jq -r '.files[].path' <<<"$1" | grep -q -E "$SENSIVEL_RE"; }
 
-# Aprovação vale para o head atual se: é o último veredito daquele revisor e (cita o SHA curto do head ou é posterior
-# ao commit do head). Commit novo depois do ✅ pede ✅ de novo.
+# patch-id das mudanças do PR num head (diff merge-base(main, H)..H, pela API de comparação; vale para head antigo)
+patch_id() { gh_ api -H "Accept: application/vnd.github.diff" "repos/$REPO/compare/main...$1" | git patch-id --stable | cut -d' ' -f1; }
+
+# head que o revisor aprovou: o SHA citado no ✅, se existir; senão, pela linha do tempo do PR (GraphQL): o commit de
+# antes do primeiro force-push depois do ✅ (se ele já existia na hora do ✅) ou o último head até a hora do ✅.
+head_aprovado() {
+  local n="$1" corpo="$2" quando="$3" c sha
+  for c in $(grep -o -E '[0-9a-f]{7,40}' <<<"$corpo" | head -5); do
+    if sha="$(gh_ api "repos/$REPO/commits/$c" --jq .sha 2>/dev/null)"; then echo "$sha"; return; fi
+  done
+  # shellcheck disable=SC2016
+  gh_ api graphql -F o="${REPO%%/*}" -F r="${REPO##*/}" -F n="$n" -f query='
+    query($o: String!, $r: String!, $n: Int!) { repository(owner: $o, name: $r) { pullRequest(number: $n) {
+      timelineItems(first: 250, itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT, PULL_REQUEST_COMMIT]) { nodes {
+        __typename
+        ... on HeadRefForcePushedEvent { createdAt beforeCommit { oid committedDate } afterCommit { oid } }
+        ... on PullRequestCommit { commit { oid committedDate } } } } } } }' |
+    jq -r --arg q "$quando" '
+      .data.repository.pullRequest.timelineItems.nodes as $t
+      | ([ $t[] | select(.__typename == "HeadRefForcePushedEvent" and .createdAt > $q) ] | sort_by(.createdAt) | first) as $f
+      | if $f != null and $f.beforeCommit != null and $f.beforeCommit.committedDate <= $q then $f.beforeCommit.oid
+        else ([ $t[] | if .__typename == "PullRequestCommit" then {t: .commit.committedDate, h: .commit.oid}
+                       else {t: .createdAt, h: .afterCommit.oid} end | select(.t <= $q and .h != null) ]
+              | sort_by(.t) | last | .h // empty) end'
+}
+
+# Aprovação vale para o head atual se é o último veredito daquele revisor e as mudanças do PR no head aprovado são
+# idênticas às do head atual (git patch-id --stable; regra do Tech Lead). Rebase limpo mantém o ✅; conflito resolvido
+# ou commit novo pede ✅ de novo.
 aprovado_por() {
-  local json="$1" quem="$2" head data_head nomes
-  head="$(jq -r .headRefOid <<<"$json")"
-  data_head="$(gh_ api "repos/$REPO/commits/$head" --jq .commit.committer.date)"
-  nomes="$(apelidos "$quem")"
-  jq -r --arg nomes "$nomes" --arg h "${head:0:7}" --arg dh "$data_head" '
-    [ .comments[] | select(.body | test("^(✅ APROVADO|❌ AJUSTES) \\((" + $nomes + ")\\)")) ] | sort_by(.createdAt) | last
-    | if . == null then "nao" elif (.body | startswith("❌")) then "ajustes"
-      elif ((.body | contains($h)) or (.createdAt > $dh)) then "sim" else "velho" end' <<<"$json"
+  local json="$1" quem="$2" n head ultimo corpo quando ha
+  n="$(jq -r .number <<<"$json")"; head="$(jq -r .headRefOid <<<"$json")"
+  ultimo="$(jq -c --arg nomes "$(apelidos "$quem")" '
+    [ .comments[] | select(.body | test("^(✅ APROVADO|❌ AJUSTES) \\((" + $nomes + ")\\)")) ] | sort_by(.createdAt) | last' <<<"$json")"
+  [ "$ultimo" != null ] || { echo nao; return; }
+  corpo="$(jq -r .body <<<"$ultimo")"; quando="$(jq -r .createdAt <<<"$ultimo")"
+  case "$corpo" in "❌"*) echo ajustes; return ;; esac
+  ha="$(head_aprovado "$n" "$corpo" "$quando")"
+  [ -n "$ha" ] || { echo velho; return; }
+  if [ "$ha" = "$head" ] || [ "$(patch_id "$ha")" = "$(patch_id "$head")" ]; then echo sim; else echo velho; fi
 }
 
 # devolve "ok" ou o motivo de não poder entrar
