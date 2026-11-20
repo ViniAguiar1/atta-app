@@ -46,7 +46,8 @@ export function CardsDoResumo({ resumo, filtro, aoFiltrar }: Props) {
 
       <Card icone={<IconeQr />}>
         <h2 className="text-xs font-medium tracking-wide text-text-secondary uppercase">{c.checkin.titulo}</h2>
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        {/* os segmentos quebram em linhas quando o card é estreito: o rótulo inteiro sempre cabe (print de 390 px) */}
+        <div className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-2">
           {SEGMENTOS.map(({ status, campo, cor, anel }) => {
             const n = resumo.checkin[campo];
             const ativo = filtro?.tipo === "status" && filtro.status === status;
