@@ -1,6 +1,6 @@
 import "server-only";
 import type { Resultado } from "@/lib/errors";
-import { portaServicosSimulada } from "./simulado";
+import { portaServicosSupabase } from "./supabase";
 
 // Contrato entre a exclusão de Serviço do catálogo (Configurações › Serviços) e o banco. Decisão do dono (PLANO, R15;
 // PDD §10.3.1 omisso): excluir um Serviço que é o único procedimento de algum termo Ativo é recusado, com a lista dos
@@ -18,4 +18,4 @@ export type PortaServicos = {
   excluir(servicoId: string): Promise<Resultado<void>>;
 };
 
-export const portaServicos: PortaServicos = portaServicosSimulada;
+export const portaServicos: PortaServicos = portaServicosSupabase;
