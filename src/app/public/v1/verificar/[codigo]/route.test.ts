@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const verificarCodigo = vi.fn();
 vi.mock("@/server/verificacao/verificar", () => ({ verificarCodigo }));
+vi.mock("next/server", async (original) => ({
+  ...(await original<typeof import("next/server")>()),
+  connection: vi.fn(async () => undefined),
+}));
 
 const { GET } = await import("./route");
 
