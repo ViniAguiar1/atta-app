@@ -17,9 +17,11 @@ function Documento({ identificacao }: { identificacao: Identificacao }) {
   const falado = cpf
     ? textos.identificacao.cpfFalado(final(identificacao.mascarado))
     : textos.identificacao.estrangeiroFalado(final(identificacao.mascarado));
+  // o visual fica escondido do leitor de tela, que ouve o texto por extenso (padrão do painel, #29 e #44)
   return (
-    <span aria-label={falado} role="text">
+    <span>
       <span aria-hidden="true">{cpf ? identificacao.mascarado : `${textos.identificacao.estrangeiro} ${identificacao.mascarado}`}</span>
+      <span className="sr-only">{falado}</span>
     </span>
   );
 }
@@ -37,7 +39,14 @@ const secundario = "text-text-secondary";
 
 export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] }) {
   return (
-    <div className="overflow-x-auto rounded-md border border-border bg-surface-raised">
+    // região focável: quem usa teclado também rola a tabela de lado (axe scrollable-region-focusable); o relative prende
+    // os sr-only dentro dela
+    <div
+      role="region"
+      aria-label={textos.tabela}
+      tabIndex={0}
+      className="relative overflow-x-auto rounded-md border border-border bg-surface-raised"
+    >
       <table className="w-full min-w-[60rem] border-collapse text-sm">
         <caption className="sr-only">{textos.tabela}</caption>
         <thead className="border-b border-border bg-surface-app">
@@ -106,8 +115,9 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
                   <span className={secundario}>{textos.nenhumDocumento}</span>
                 ) : (
                   <ul className="flex flex-col gap-0.5">
-                    {p.documentos.map((d) => (
-                      <li key={d.nome} className="flex items-baseline gap-2">
+                    {p.documentos.map((d, i) => (
+                      // a porta ainda não traz id do documento (MIG-20); nome + posição não repete
+                      <li key={`${i}-${d.nome}`} className="flex items-baseline gap-2">
                         <span aria-hidden="true" className={COR[d.marca]}>{SIMBOLO[d.marca]}</span>
                         <span>
                           {d.nome}
