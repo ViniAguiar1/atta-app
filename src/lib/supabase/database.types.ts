@@ -29,6 +29,31 @@ export type Database = {
 "audit_auth_event":
 { Args: { "p_action": string,"p_details"?: Json,"p_user_id"?: string }; Returns: string
                            },
+"delivery_apply_status":
+{ Args: { "p_at": string,"p_billable"?: boolean,"p_channel": string,"p_code"?: string,"p_external_id": string,"p_state": string }; Returns: string
+                           },
+"delivery_cancel":
+{ Args: { "p_id": string,"p_tenant_id": string }; Returns: boolean
+                           },
+"delivery_claim":
+{ Args: { "p_batch": number,"p_lease_seconds": number }; Returns: {
+              "attempt": number,"channel": string,"id": string,"idempotency_key": string,"recipient_id": string,"recipient_kind": string,"reference_id": string,"reference_kind": string,"template_id": string,"tenant_id": string,"variables": Json
+            }[]
+                           },
+"delivery_enqueue":
+{ Args: { "p_address_enc"?: string,"p_alternatives"?: (string)[],"p_author": string,"p_channel": string,"p_dek_wrapped"?: string,"p_id"?: string,"p_idempotency_key": string,"p_kek_version"?: number,"p_priority"?: number,"p_recipient_id": string,"p_recipient_kind": string,"p_reference_id"?: string,"p_reference_kind"?: string,"p_scheduled_for"?: string,"p_template_id": string,"p_tenant_id": string,"p_valid_until"?: string,"p_variables": Json }; Returns: string
+                           },
+"delivery_list":
+{ Args: { "p_before"?: string,"p_limit"?: number,"p_reference_id"?: string,"p_reference_kind"?: string }; Returns: {
+              "attempts": number,"author": string,"channel": string,"created_at": string,"destination_masked": string,"id": string,"last_error_code": string,"reference_id": string,"reference_kind": string,"state": string,"template_id": string,"updated_at": string
+            }[]
+                           },
+"delivery_mark_failed":
+{ Args: { "p_attempt": number,"p_code": string,"p_id": string,"p_kind": string }; Returns: string
+                           },
+"delivery_mark_sent":
+{ Args: { "p_attempt": number,"p_destination_masked": string,"p_external_id": string,"p_id": string }; Returns: boolean
+                           },
 "grant_issue":
 { Args: { "p_appointment_id": string,"p_person_id"?: string,"p_professional_link_id"?: string,"p_purpose": string,"p_secret_hash": string,"p_tenant_id": string }; Returns: string
                            },
@@ -124,6 +149,9 @@ export type Database = {
                            },
 "template_set_services":
 { Args: { "p_service_ids": (string)[],"p_template_id": string }; Returns: number
+                           },
+"webhook_first_time":
+{ Args: { "p_event_id": string,"p_provider": string }; Returns: boolean
                            }
           }
           Enums: {
