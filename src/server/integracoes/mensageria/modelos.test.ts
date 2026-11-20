@@ -96,6 +96,7 @@ describe("catálogo de modelos", () => {
       "https://checkin.attahub.com.br/c/A#cpf=52998224725",
       "https://:segredo@checkin.attahub.com.br/c/A",
       "https://checkin.attahub.com.br/c/52998224725",
+      "https://checkin.attahub.com.br/c/529.982.247-25",
     ]) {
       const r = renderizar({ ...linkCheckin, variaveis: { ...variaveis, link } }, celular, opcoes);
       expect(r.ok, link).toBe(false);
@@ -197,5 +198,28 @@ describe("resumo da equipe e classificação HTTP", () => {
       renderizar({ ...base, variaveis: { periodo: "mensal", link: "https://painel.attahub.com.br/m" } }, gestor, opcoes)
         .ok,
     ).toBe(false);
+  });
+});
+
+describe("segredo no caminho do link", () => {
+  it("o link do Boarding Check com o segredo de 43 caracteres passa, mesmo com 11 dígitos seguidos dentro dele", () => {
+    const segredo = "12345678901AbCdEfGhIjKlMnOpQrStUvWxYz_-abcd"; // fictício, 43 caracteres base64url
+    expect(segredo).toHaveLength(43);
+    const r = renderizar(
+      {
+        canal: "whatsapp",
+        finalidade: "link_boarding_check",
+        modelo: "link_boarding_check",
+        chaveIdempotencia: "b1",
+        variaveis: {
+          nome_clinica: "Clínica Fictícia",
+          data_hora: "20/11 às 15:00",
+          link: `https://app.attahub.com.br/b/${segredo}`,
+        },
+      },
+      { tipo: "telefone", valor: "+5511912340001" },
+      opcoes,
+    );
+    expect(r.ok).toBe(true);
   });
 });

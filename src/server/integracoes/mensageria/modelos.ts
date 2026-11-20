@@ -175,6 +175,18 @@ export const MODELOS = {
     assunto: "Convite para a equipe de {nome_clinica} no ATTA",
     texto: "Você foi convidado para a equipe de {nome_clinica} no ATTA. Para aceitar: {link}",
   },
+  // PDD §10.4.3: "ao ser cadastrado, recebe e-mail com link do PROpass exclusivo" (o link vale 7 dias, MIG-14b)
+  convite_propass: {
+    finalidade: "convite_propass",
+    canais: ["email"],
+    essencial: true,
+    variaveis: [
+      ["nome_clinica", "nome_clinica"],
+      ["link", "url"],
+    ],
+    assunto: "{nome_clinica}: seu cadastro de profissional no ATTA",
+    texto: "{nome_clinica} cadastrou você como profissional no ATTA. Para confirmar os seus dados: {link}",
+  },
 } as const satisfies Record<string, Modelo>;
 
 export type IdModelo = keyof typeof MODELOS;
@@ -225,7 +237,9 @@ function validarVariavel(tipo: TipoVariavel, valor: string, opcoes: OpcoesRender
       // RN-AGN-CONV-04: nenhum dado pessoal em URL; o link carrega só um identificador opaco.
       // e o fragmento também vai no texto da mensagem; 11 dígitos seguidos no caminho parecem CPF, não id opaco
       const semDado = url.search === "" && url.hash === "" && url.username === "" && url.password === "";
-      return hostOk && protocoloOk && semDado && !/\d{11}/.test(url.pathname) && valor.length <= 200;
+      // um segmento que é CPF (11 dígitos, com ou sem pontuação) não é id opaco; o segredo base64url de 43 caracteres é
+      const pareceCpf = url.pathname.split("/").some((seg) => /^\d{11}$|^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(seg));
+      return hostOk && protocoloOk && semDado && !pareceCpf && valor.length <= 200;
     }
   }
 }
