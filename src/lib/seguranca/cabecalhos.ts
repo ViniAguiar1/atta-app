@@ -51,7 +51,8 @@ export function politicaDeConteudo(opcoes: { desenvolvimento: boolean; supabaseU
 
 /**
  * Rotas que levam segredo no caminho ou na query (link do profissional e do PROpass, ADR 0004 §3; o token_hash do link
- * de e-mail de "Esqueci a senha" e do convite no /auth/confirm, MIG-03c): nada de Referer, cache ou índice.
+ * de e-mail de "Esqueci a senha" e do convite no /auth/confirm, MIG-03c; o code do OAuth no /auth/callback): nada de
+ * Referer, cache ou índice.
  */
 export const ROTAS_COM_SEGREDO = [
   "/b/:path*",
@@ -60,6 +61,7 @@ export const ROTAS_COM_SEGREDO = [
   "/propass",
   "/propass/:path*",
   "/auth/confirm",
+  "/auth/callback", // o code do OAuth na query, quando o login com o Google entrar
 ] as const;
 
 export function cabecalhosDeSeguranca(opcoes: { desenvolvimento: boolean; supabaseUrl?: string }): RegraDeCabecalhos[] {

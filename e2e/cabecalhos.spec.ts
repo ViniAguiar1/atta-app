@@ -25,6 +25,7 @@ for (const caminho of [
   "/boarding",
   "/propass/segredo-ficticio-de-exemplo",
   "/auth/confirm?token_hash=ficticio-de-exemplo&type=recovery",
+  "/auth/callback?code=ficticio-de-exemplo",
 ]) {
   test(`${caminho}: rota com segredo sem Referer, sem cache e sem índice`, async ({ request }) => {
     const h = (await request.get(caminho, { maxRedirects: 0 })).headers();
