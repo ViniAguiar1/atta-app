@@ -15,7 +15,7 @@ export const COFRE_ENV: Readonly<Record<CofreDomain, string>> = {
   network: "ATTA_REDE_CHAVE_MESTRA",
 };
 
-/** Impressão digital da KEK de teste fixa do CI (tests/fixtures/cofre-ci.ts); produção a recusa. */
+/** Impressão digital da KEK de teste fixa do CI (tests/fixtures/cofre-ci.ts); produção e prévia a recusam. */
 export const CI_TEST_KEK_FINGERPRINT = "b43ad417deda943b31e6752385c3a70c6787fdc029d331f3c46cd9884dc2faa1";
 
 const cache = new Map<CofreDomain, Cofre>();
@@ -23,7 +23,9 @@ const cache = new Map<CofreDomain, Cofre>();
 export function getCofre(domain: CofreDomain): Cofre {
   let cofre = cache.get(domain);
   if (!cofre) {
-    const forbidden = process.env.VERCEL_ENV === "production" ? new Set([CI_TEST_KEK_FINGERPRINT]) : new Set<string>();
+    // a KEK de teste é recusada na nuvem (production e preview; ADR 0002 §1), só vale no CI e no local
+    const nuvem = process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview";
+    const forbidden = nuvem ? new Set([CI_TEST_KEK_FINGERPRINT]) : new Set<string>();
     cofre = new MasterKeyCofre(parseKeyring(process.env[COFRE_ENV[domain]], forbidden, COFRE_ENV[domain]));
     cache.set(domain, cofre);
   }
