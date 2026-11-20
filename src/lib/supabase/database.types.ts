@@ -79,7 +79,35 @@ export type Database = {
           }
         },"atta_in": {
           Tables: {
-            "professional_break": {
+            "business_hours": {
+                  Row: {
+                    "created_at": string,"ends_at": string,"id": string,"starts_at": string,"tenant_id": string,"weekday": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"ends_at": string,"id"?: string,"starts_at": string,"tenant_id": string,"weekday": number
+                  }
+                  Update: {
+                    "created_at"?: string,"ends_at"?: string,"id"?: string,"starts_at"?: string,"tenant_id"?: string,"weekday"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"clinic_service": {
+                  Row: {
+                    "active": boolean,"category": string | null,"created_at": string,"deleted_at": string | null,"duration_min": number,"id": string,"name": string,"requires_rt": boolean,"tenant_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"category"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"duration_min": number,"id"?: string,"name": string,"requires_rt"?: boolean,"tenant_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "active"?: boolean,"category"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"duration_min"?: number,"id"?: string,"name"?: string,"requires_rt"?: boolean,"tenant_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"professional_break": {
                   Row: {
                     "created_at": string,"ends_at": string,"id": string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at": string,"weekdays": (number)[]
                   }
@@ -107,6 +135,26 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"professional_service": {
+                  Row: {
+                    "clinic_service_id": string,"created_at": string,"professional_link_id": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clinic_service_id": string,"created_at"?: string,"professional_link_id": string,"tenant_id": string
+                  }
+                  Update: {
+                    "clinic_service_id"?: string,"created_at"?: string,"professional_link_id"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "professional_service_service_fk"
+      columns: ["tenant_id","clinic_service_id"]
+isOneToOne: false
+      referencedRelation: "clinic_service"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
                 },"setting": {
                   Row: {
                     "appointment_type": string | null,"clinic_service_id": string | null,"created_at": string,"created_by": string | null,"id": string,"key": string,"level": string,"tenant_id": string,"updated_at": string,"updated_by": string | null,"value_bool": boolean | null,"value_int": number | null
@@ -120,6 +168,12 @@ export type Database = {
                   }
                   Relationships: [
                     {
+      foreignKeyName: "setting_clinic_service_fk"
+      columns: ["tenant_id","clinic_service_id"]
+isOneToOne: false
+      referencedRelation: "clinic_service"
+      referencedColumns: ["tenant_id","id"]
+    },{
       foreignKeyName: "setting_key_fkey"
       columns: ["key"]
 isOneToOne: false
@@ -137,6 +191,20 @@ isOneToOne: false
                   }
                   Update: {
                     "allowed_ints"?: (number)[] | null,"created_at"?: string,"default_bool"?: boolean | null,"default_int"?: number | null,"key"?: string,"max_int"?: number | null,"min_int"?: number | null,"value_type"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"special_date": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"ends_on": string,"id": string,"kind": string,"name": string,"professional_link_id": string | null,"starts_on": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"ends_on": string,"id"?: string,"kind": string,"name": string,"professional_link_id"?: string | null,"starts_on": string,"tenant_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"ends_on"?: string,"id"?: string,"kind"?: string,"name"?: string,"professional_link_id"?: string | null,"starts_on"?: string,"tenant_id"?: string
                   }
                   Relationships: [
                     

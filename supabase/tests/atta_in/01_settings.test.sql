@@ -6,6 +6,9 @@ select plan(49);
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
   ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
+-- o Serviço fictício da exceção por Serviço (a FK para atta_in.clinic_service entra no MIG-11)
+insert into atta_in.clinic_service (id, tenant_id, name, duration_min)
+values ('00000000-0000-4000-8000-0000000000c1', '00000000-0000-4000-8000-00000000000a', 'Limpeza de Pele Fictícia', 60);
 
 create function pg_temp.entrar(p_tenant uuid, p_role text) returns void language plpgsql as $$
 declare
