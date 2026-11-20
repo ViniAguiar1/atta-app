@@ -15,12 +15,11 @@ const MAX_REENVIOS = 3;
 type Props = {
   desafio: string;
   finalCelular: string;
-  dica?: string;
   aoConfirmar: (situacao: Situacao) => void;
   aoCorrigirCpf: () => void;
 };
 
-export function PassoCodigo({ desafio, finalCelular, dica, aoConfirmar, aoCorrigirCpf }: Props) {
+export function PassoCodigo({ desafio, finalCelular, aoConfirmar, aoCorrigirCpf }: Props) {
   const [codigo, setCodigo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -103,7 +102,6 @@ export function PassoCodigo({ desafio, finalCelular, dica, aoConfirmar, aoCorrig
         <p aria-live="polite" className="text-text-secondary">
           {aviso}
         </p>
-        {dica && <p className="text-text-secondary">{dica}</p>}
       </div>
       <Botao type="submit" disabled={ocupado || cancelado}>
         {ocupado ? "Confirmando…" : "Confirmar"}

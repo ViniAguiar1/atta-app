@@ -13,9 +13,9 @@ type Passo =
   | { nome: "codigo"; desafio: string; finalCelular: string }
   | { nome: "resultado"; situacao: Situacao };
 
-type Props = { portal: string; clinica: string; dica?: string };
+type Props = { portal: string; clinica: string };
 
-export function FluxoCheckin({ portal, clinica, dica }: Props) {
+export function FluxoCheckin({ portal, clinica }: Props) {
   const [passo, setPasso] = useState<Passo>({ nome: "cpf" });
 
   return (
@@ -36,7 +36,6 @@ export function FluxoCheckin({ portal, clinica, dica }: Props) {
           <PassoCodigo
             desafio={passo.desafio}
             finalCelular={passo.finalCelular}
-            dica={dica}
             aoConfirmar={(situacao) => setPasso({ nome: "resultado", situacao })}
             aoCorrigirCpf={() => setPasso({ nome: "cpf" })}
           />
