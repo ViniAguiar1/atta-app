@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { BarraDoPainel } from "@/features/casca/components/BarraDoPainel";
 import { sessaoDoPainel } from "@/features/casca/sessao";
+import { ROTA_LOGIN } from "@/lib/auth/rotas";
 
 // Casca do painel da clínica (MIG-40): a barra de módulos em cima e a tela abaixo, no mesmo cartão, como no Simulador
 // ATTA-in. Largura máxima de 1200 px e margem de 24 px (Guia de Design §6). A sessão é por requisição: a barra fica no
@@ -20,7 +22,8 @@ export default function LayoutDoPainel({ children }: { children: React.ReactNode
 }
 
 async function Barra() {
+  await connection(); // sempre na hora da requisição: o supabase-js lê o relógio ao carregar a sessão
   const sessao = await sessaoDoPainel();
-  if (!sessao) redirect("/login");
+  if (!sessao) redirect(ROTA_LOGIN);
   return <BarraDoPainel sessao={sessao} />;
 }

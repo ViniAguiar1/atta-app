@@ -46,8 +46,8 @@ test("enviar vai por POST: e-mail e senha nunca na URL, e o erro aparece acima d
   await page.getByLabel("E-mail").fill("gestora@clinica.example");
   await page.getByLabel("Senha", { exact: true }).fill("senha-qualquer");
   await page.getByRole("button", { name: "Entrar" }).click();
-  // no CI não há Supabase de pé: a entrada falha como indisponível, sem sair da tela
-  await expect(erro).toHaveText("Não conseguimos entrar agora. Tente de novo em instantes.");
+  // conta que não existe: a mesma mensagem da senha errada (o e2e sobe o Supabase local desde o MIG-03b)
+  await expect(erro).toHaveText("Credenciais inválidas.");
   expect(page.url()).toMatch(/\/login$/);
   expect(page.url()).not.toContain("senha");
   expect(metodos.length).toBeGreaterThan(0);
