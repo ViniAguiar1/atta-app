@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Monograma } from "@/components/ui/Monograma";
 import { iniciais } from "@/lib/texto/iniciais";
 import { textos as t } from "../textos";
 import type { SessaoDoPainel } from "../sessao";
-import { abaAtiva, abasDoPapel } from "../abas";
+import { abaAtiva, abasDoPapel, MODULOS_PRONTOS } from "../abas";
 
 // Barra de módulos do painel (Guia de Design §4.1 e o Simulador ATTA-in). Escura por padrão; o monograma alterna para a
 // clara, a cada clique, por mouse, toque ou teclado, com rótulo que diz a próxima ação. Lembrar a escolha entre
@@ -16,11 +17,14 @@ import { abaAtiva, abasDoPapel } from "../abas";
 // encolher, e quem cede espaço é o nome da clínica (reticências). A pessoa aparece pelas iniciais; o nome vai ao leitor.
 // Cores: o Guia v21 pede #2c3128 na barra e #6c7563 na aba ativa, que ainda não estão nos tokens (pedido com o CTO);
 // até lá a barra usa o token de marca e a aba ativa um tom do texto sobre a marca.
-export function BarraDoPainel({ sessao, contadores = {} }: { sessao: SessaoDoPainel; contadores?: Record<string, number> }) {
+type Props = { sessao: SessaoDoPainel; contadores?: Record<string, number>; prontos?: readonly string[] };
+
+export function BarraDoPainel({ sessao, contadores = {}, prontos = MODULOS_PRONTOS }: Props) {
   const [clara, setClara] = useState(false);
   const caminho = usePathname();
   const ativa = abaAtiva(caminho);
-  const abas = abasDoPapel(sessao.papel);
+  const abas = abasDoPapel(sessao.papel, prontos);
+  const comSino = prontos.includes("/painel/notificacoes"); // o sino entra com o MIG-45
 
   const barra = clara ? "border border-brand/30 bg-surface-app text-brand" : "bg-brand text-on-brand [&_:focus-visible]:outline-on-brand";
   const abaAtivaCls = clara ? "bg-brand/5 underline decoration-brand/45 underline-offset-8" : "bg-on-brand/15 font-semibold";
@@ -39,9 +43,11 @@ export function BarraDoPainel({ sessao, contadores = {} }: { sessao: SessaoDoPai
         >
           <Monograma />
         </button>
-        <span title={sessao.clinica} className="truncate font-title text-lg">
-          {sessao.clinica}
-        </span>
+        {sessao.clinica && (
+          <span title={sessao.clinica} className="truncate font-title text-lg">
+            {sessao.clinica}
+          </span>
+        )}
       </div>
 
       {/* abaixo de large as abas ficam numa linha própria (rolável só no celular); de large em diante, entre o nome e o sino */}
@@ -75,14 +81,16 @@ export function BarraDoPainel({ sessao, contadores = {} }: { sessao: SessaoDoPai
       </nav>
 
       <div className="ml-auto flex min-h-14 shrink-0 items-center gap-3">
-        <Link href="/painel/notificacoes" aria-label={t.sino(sessao.notificacoes)} className="relative flex size-11 items-center justify-center rounded-md">
-          <IconeSino />
-          {sessao.notificacoes > 0 && (
-            <span aria-hidden="true" className="absolute top-1 right-1 rounded-full bg-on-brand px-1.5 text-xs text-brand">
-              {sessao.notificacoes}
-            </span>
-          )}
-        </Link>
+        {comSino && (
+          <Link href="/painel/notificacoes" aria-label={t.sino(sessao.notificacoes)} className="relative flex size-11 items-center justify-center rounded-md">
+            <IconeSino />
+            {sessao.notificacoes > 0 && (
+              <span aria-hidden="true" className="absolute top-1 right-1 rounded-full bg-on-brand px-1.5 text-xs text-brand">
+                {sessao.notificacoes}
+              </span>
+            )}
+          </Link>
+        )}
         <div title={sessao.pessoa.nome} className="flex items-center">
           <span aria-hidden="true" className={`flex size-9 items-center justify-center rounded-full text-xs ${clara ? "bg-brand text-on-brand" : "bg-on-brand text-brand"}`}>
             {iniciais(sessao.pessoa.nome)}
@@ -91,16 +99,6 @@ export function BarraDoPainel({ sessao, contadores = {} }: { sessao: SessaoDoPai
         </div>
       </div>
     </header>
-  );
-}
-
-// Monograma de traço (o A que acolhe e o T que estrutura, Guia §7); o arquivo oficial do logo entra quando o dono
-// mandar a pasta de identidade para o repo.
-function Monograma() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" focusable="false">
-      <path d="M4 20 11 4l3 7M9 13h10M14.5 13v7" />
-    </svg>
   );
 }
 

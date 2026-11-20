@@ -5,5 +5,4 @@ export const textos = {
   barraEscura: "Deixar a barra escura",
   contador: (n: number) => `${n} pendente${n === 1 ? "" : "s"}`,
   sino: (n: number) => (n > 0 ? `Notificações, ${n} nova${n === 1 ? "" : "s"}` : "Notificações"),
-  emConstrucao: "Esta área chega nos próximos itens da migração.",
 } as const;

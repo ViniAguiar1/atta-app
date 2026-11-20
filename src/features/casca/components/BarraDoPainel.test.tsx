@@ -2,7 +2,12 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { SessaoDoPainel } from "../sessao";
-import { BarraDoPainel } from "./BarraDoPainel";
+import { ABAS } from "../abas";
+import { BarraDoPainel as Barra } from "./BarraDoPainel";
+
+// a casca só mostra módulo pronto; aqui, todos prontos (e o sino), para testar a barra inteira
+const PRONTOS = [...ABAS.map((a) => a.href), "/painel/notificacoes"];
+const BarraDoPainel = (p: Omit<React.ComponentProps<typeof Barra>, "prontos">) => <Barra prontos={PRONTOS} {...p} />;
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/painel/configuracoes/agendamentos" }));
 
@@ -29,6 +34,13 @@ describe("barra do painel (MIG-40)", () => {
     render(<BarraDoPainel sessao={sessao} />);
     await userEvent.click(screen.getByRole("button", { name: "Deixar a barra clara" }));
     expect(screen.getByRole("button", { name: "Deixar a barra escura" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("sem módulo pronto não há aba nem sino, e sem nome de clínica não sobra texto vazio", () => {
+    render(<Barra sessao={{ ...sessao, clinica: null }} prontos={[]} />);
+    expect(screen.getByRole("navigation", { name: "Módulos do painel" }).querySelectorAll("a")).toHaveLength(0);
+    expect(screen.queryByRole("link", { name: /Notificações/ })).toBeNull();
+    expect(screen.queryByTitle("Clínica Fictícia")).toBeNull();
   });
 
   it("contador da aba aparece só quando há número, com texto para leitor de tela", () => {

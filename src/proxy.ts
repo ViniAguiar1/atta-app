@@ -2,8 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { envPublico } from "@/lib/env";
 
-// Proxy do Next 16 (o antigo middleware): por enquanto só renova a sessão do Supabase no cookie a cada requisição.
-// As guardas de rota e de papel entram no MIG-03.
+// Proxy do Next 16 (o antigo middleware): renova a sessão do Supabase no cookie a cada requisição e faz a guarda mínima
+// de rota (regra do stage, ADR 0001 §4): "/" vai ao painel com sessão e à tela de entrar sem ela; /painel/** sem sessão
+// vai para /login; /login com sessão vai ao painel. O MIG-03b (Backend 1) completa com o volta, o 2º fator e o papel.
 export async function proxy(request: NextRequest) {
   const env = envPublico();
   let resposta = NextResponse.next({ request });
@@ -18,8 +19,22 @@ export async function proxy(request: NextRequest) {
     },
   });
   // getClaims() confere o JWT; não pôr código entre a criação do cliente e esta chamada (doc do @supabase/ssr)
-  await supabase.auth.getClaims();
-  return resposta;
+  const { data } = await supabase.auth.getClaims();
+
+  const caminho = request.nextUrl.pathname;
+  const logado = Boolean(data?.claims);
+  const doPainel = caminho === "/painel" || caminho.startsWith("/painel/");
+  const destino =
+    caminho === "/" ? (logado ? "/painel" : "/login") : !logado && doPainel ? "/login" : logado && caminho === "/login" ? "/painel" : null;
+  if (!destino) return resposta;
+
+  const url = request.nextUrl.clone();
+  url.pathname = destino;
+  url.search = "";
+  const redirecionamento = NextResponse.redirect(url);
+  // leva junto o cookie de sessão renovado nesta requisição (doc do @supabase/ssr)
+  for (const cookie of resposta.cookies.getAll()) redirecionamento.cookies.set(cookie);
+  return redirecionamento;
 }
 
 export const config = {
