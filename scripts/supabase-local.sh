@@ -10,17 +10,25 @@
 set -eu
 
 sigla="${ATTA_SIGLA:-}"
+# Uma sigla por agente, o slot é a posição na lista (começa em 1). Sigla nova entra NO FIM, para os slots existentes
+# não mudarem. Slot 0 (sem sigla) é só do CI.
+SIGLAS="BE1 BE2 BE3 INT FE FE2 TL QA FE3 BE4 BE5 SEC BE6 INT2 FE4 FE5 FE6 QA2 TLF DEVEX"
 if [ -z "$sigla" ] && [ -z "${CI:-}" ]; then
-  echo "defina ATTA_SIGLA (BE1, BE2, BE3, BE4, BE5, INT, FE, FE2, FE3, SEC, TL ou QA): cada agente sobe a própria instância" >&2
+  echo "defina ATTA_SIGLA ($SIGLAS): cada agente sobe a própria instância" >&2
   exit 2
 fi
-case "$sigla" in
-  "") slot=0 ;;
-  BE1) slot=1 ;; BE2) slot=2 ;; BE3) slot=3 ;; INT) slot=4 ;;
-  FE) slot=5 ;; FE2) slot=6 ;; TL) slot=7 ;; QA) slot=8 ;;
-  FE3) slot=9 ;; BE4) slot=10 ;; BE5) slot=11 ;; SEC) slot=12 ;;
-  *) echo "sigla desconhecida: $sigla (use BE1, BE2, BE3, BE4, INT, FE, FE2, FE3, TL ou QA)" >&2; exit 2 ;;
-esac
+slot=0
+if [ -n "$sigla" ]; then
+  i=0
+  for s in $SIGLAS; do
+    i=$((i + 1))
+    if [ "$s" = "$sigla" ]; then slot=$i; fi
+  done
+  if [ "$slot" -eq 0 ]; then
+    echo "sigla desconhecida: $sigla (use uma de: $SIGLAS)" >&2
+    exit 2
+  fi
+fi
 
 base=$((43300 + slot * 100))
 if [ "$slot" -eq 0 ]; then id=atta-app; else id="atta-app-$(echo "$sigla" | tr 'A-Z' 'a-z')"; fi
