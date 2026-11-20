@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ABAS, abaAtiva, abasDoPapel, MODULOS_PRONTOS } from "./abas";
+import { ABAS, abaAtiva, abasDoPapel, MODULOS_PRONTOS, moduloDisponivel } from "./abas";
 
 const TODAS = ABAS.map((a) => a.href);
 
@@ -32,5 +32,20 @@ describe("abas da casca", () => {
     expect(abaAtiva("/painel/configuracoes/agendamentos")?.rotulo).toBe("Configurações");
     expect(abaAtiva("/painel/agenda")?.rotulo).toBe("Agendamentos");
     expect(abaAtiva("/painel/agenda-antiga")).toBeUndefined();
+  });
+});
+
+describe("moduloDisponivel", () => {
+  it("na produção, só com porta real; fora dela, também com a simulada", () => {
+    const antes = process.env.VERCEL_ENV;
+    try {
+      process.env.VERCEL_ENV = "production";
+      expect(moduloDisponivel("/painel/agenda", ["/painel/agenda"])).toBe(true);
+      expect(moduloDisponivel("/painel/configuracoes", ["/painel/agenda"])).toBe(false);
+      process.env.VERCEL_ENV = "preview";
+      expect(moduloDisponivel("/painel/configuracoes", ["/painel/agenda"])).toBe(true);
+    } finally {
+      process.env.VERCEL_ENV = antes;
+    }
   });
 });

@@ -22,6 +22,16 @@ export const ABAS: Aba[] = [
  */
 export const MODULOS_PRONTOS: readonly string[] = [];
 
+/**
+ * Se a tela de um módulo (ou seção) pode abrir: na produção, só com a porta real (está em MODULOS_PRONTOS); fora da
+ * produção (prévia, local e CI), também com a porta simulada, para revisão e QA. As páginas chamam notFound() quando
+ * der false. Só no servidor: no navegador o VERCEL_ENV não existe (decisão do Tech Lead Frontend, 20/11).
+ */
+export const emProducao = () => process.env.VERCEL_ENV === "production";
+
+export const moduloDisponivel = (href: string, prontos: readonly string[] = MODULOS_PRONTOS) =>
+  prontos.includes(href) || !emProducao();
+
 export const abasDoPapel = (papel: Papel | null, prontos: readonly string[] = MODULOS_PRONTOS) =>
   ABAS.filter((aba) => prontos.includes(aba.href) && (!aba.somenteAdmin || papel === "ADMIN"));
 
