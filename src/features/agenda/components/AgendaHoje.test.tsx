@@ -1,0 +1,122 @@
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { estadoDeDados } from "@/components/ui/DataState";
+import { falha, ok, type Resultado } from "@/lib/errors";
+import { portaAgendaSimulada } from "@/server/agenda/simulado";
+import type { DiaDaAgenda } from "../schema";
+import { textos } from "../textos";
+import { AgendaHoje } from "./AgendaHoje";
+
+// A tela só prova que entrega cada estado ao DataState (os quatro estados são testados uma vez nele) e o que é dela:
+// colunas do PDD §10.2.2, chips e selo Atrasado, documentos, CPF para o leitor de tela e a busca por server action.
+
+async function diaSimulado(): Promise<DiaDaAgenda> {
+  const r = await portaAgendaSimulada.dia({});
+  if (!r.ok) throw new Error("simulado falhou");
+  return r.data;
+}
+
+const vazio = (dia: DiaDaAgenda): DiaDaAgenda => ({ ...dia, linhas: [] });
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
+
+async function digitar(texto: string) {
+  fireEvent.change(screen.getByRole("searchbox", { name: textos.busca.rotulo }), { target: { value: texto } });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(300);
+  });
+}
+
+describe("Agenda › Hoje", () => {
+  it("mostra a data da clínica por extenso e as colunas do PDD, com o horário em ordem crescente", async () => {
+    const dia = await diaSimulado();
+    render(<AgendaHoje inicial={ok(dia)} buscar={vi.fn()} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/feira|sábado|domingo/i);
+    const cabecalhos = screen.getAllByRole("columnheader").map((th) => th.textContent?.replace("↑", "").trim());
+    expect(cabecalhos).toEqual(["Horário", "Paciente", "Procedimento", "Profissional", "Documentos", "Status"]);
+    expect(screen.getByRole("columnheader", { name: /Horário/ }).getAttribute("aria-sort")).toBe("ascending");
+    const horarios = screen.getAllByRole("row").slice(1).map((tr) => tr.querySelector("td")?.textContent);
+    expect(horarios).toEqual(["09:30", "10:00", "10:30", "11:00", "14:00", "15:00", "16:30"]);
+  });
+
+  it("chips de status, o selo Atrasado ao lado do Agendado e o envio do Boarding Check", async () => {
+    const { container } = render(<AgendaHoje inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
+    expect(estadoDeDados(container)).toBe("pronto");
+    const mariana = screen.getByRole("row", { name: /Mariana Costa Albuquerque/ });
+    expect(within(mariana).getByText("Agendado")).toBeDefined();
+    expect(within(mariana).getByText("Atrasado")).toBeDefined();
+    const juliana = screen.getByRole("row", { name: /Juliana Prates/ });
+    expect(within(juliana).getByText("Em atendimento")).toBeDefined();
+    expect(within(juliana).getByText("Boarding Check enviado às 10:44")).toBeDefined();
+    const status = [...container.querySelectorAll("[data-status]")].map((el) => el.getAttribute("data-status"));
+    expect(new Set(status)).toEqual(
+      new Set(["agendado", "em_preenchimento", "pronto", "em_atendimento", "ausente", "cancelado"]),
+    );
+  });
+
+  it("documentos com o estado por extenso para o leitor, opcional e Nenhum documento", async () => {
+    render(<AgendaHoje inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
+    const juliana = screen.getByRole("row", { name: /Juliana Prates/ });
+    expect(within(juliana).getByText(", assinado")).toBeDefined();
+    expect(within(juliana).getByText(", assinatura recusada")).toBeDefined();
+    expect(within(juliana).getByText("opcional")).toBeDefined();
+    const eduardo = screen.getByRole("row", { name: /Eduardo Lima/ });
+    expect(within(eduardo).getByText("Nenhum documento")).toBeDefined();
+  });
+
+  it("CPF mascarado na tela e lido como 'CPF terminado em' pelo leitor", async () => {
+    render(<AgendaHoje inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
+    const mariana = screen.getByRole("row", { name: /Mariana Costa Albuquerque/ });
+    expect(within(mariana).getByText("···.···.484-35").getAttribute("aria-hidden")).toBe("true");
+    expect(within(mariana).getByText("CPF terminado em 484-35")).toBeDefined();
+  });
+
+  it("dia sem agendamento: vazio; falha do servidor: erro com tentar de novo", async () => {
+    const dia = await diaSimulado();
+    const semNada = render(<AgendaHoje inicial={ok(vazio(dia))} buscar={vi.fn()} />);
+    expect(estadoDeDados(semNada.container)).toBe("vazio");
+    semNada.unmount();
+
+    const buscar = vi.fn<(f: unknown) => Promise<Resultado<DiaDaAgenda>>>().mockResolvedValue(ok(dia));
+    const comErro = render(<AgendaHoje inicial={falha("INDISPONIVEL", "fora")} buscar={buscar} />);
+    expect(estadoDeDados(comErro.container)).toBe("erro");
+    fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(buscar).toHaveBeenCalledWith({});
+    expect(estadoDeDados(comErro.container)).toBe("pronto");
+  });
+
+  it("a busca vai pela server action, no corpo; sem achado mostra sem resultado e limpar volta ao dia", async () => {
+    const dia = await diaSimulado();
+    const buscar = vi
+      .fn<(f: { busca?: string }) => Promise<Resultado<DiaDaAgenda>>>()
+      .mockImplementation(async (f) => ok(f.busca ? vazio(dia) : dia));
+    const { container } = render(<AgendaHoje inicial={ok(dia)} buscar={buscar} />);
+    expect(buscar).not.toHaveBeenCalled(); // o primeiro dia veio do servidor
+
+    await digitar("  Fulana  ");
+    expect(buscar).toHaveBeenLastCalledWith({ busca: "Fulana" });
+    expect(estadoDeDados(container)).toBe("sem-resultado");
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(buscar).toHaveBeenLastCalledWith({});
+    expect(estadoDeDados(container)).toBe("pronto");
+  });
+
+  it("enquanto a busca não volta, mostra carregando", async () => {
+    const dia = await diaSimulado();
+    let responder: (r: Resultado<DiaDaAgenda>) => void = () => {};
+    const buscar = vi.fn(() => new Promise<Resultado<DiaDaAgenda>>((r) => (responder = r)));
+    const { container } = render(<AgendaHoje inicial={ok(dia)} buscar={buscar} />);
+    await digitar("Juliana");
+    expect(estadoDeDados(container)).toBe("carregando");
+    await act(async () => responder(ok(dia)));
+    expect(estadoDeDados(container)).toBe("pronto");
+  });
+});
