@@ -29,6 +29,10 @@ export const LIMITES = {
   checkinIniciarPorIp: { bucket: "checkin.start.ip", limite: 10, janelaSegundos: 600 },
   /** Check-in, `iniciar`: 100 por portal a cada 10 min (ADR 0004 §2). */
   checkinIniciarPorPortal: { bucket: "checkin.start.portal", limite: 100, janelaSegundos: 600 },
+  /** Convite de Equipe & Permissões: 20 por hora por gestor (MIG-06; Tech Lead e Segurança, revisão do #105). */
+  conviteEquipePorUsuario: { bucket: "team.invite.user", limite: 20, janelaSegundos: 3600 },
+  /** Convite de Equipe & Permissões: 50 por dia por clínica (MIG-06; revisão do #105). */
+  conviteEquipePorClinica: { bucket: "team.invite.tenant", limite: 50, janelaSegundos: 86400 },
 } as const satisfies Record<string, PoliticaDeLimite>;
 
 const ROTULO = "atta.ratelimit.v1|";
