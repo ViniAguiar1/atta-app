@@ -6,7 +6,7 @@ create extension if not exists pgtap with schema extensions;
 -- só nesta transação: a dona (e o service_role) chamam as funções do pgTAP quando o teste assume a role deles
 grant usage on schema extensions to audit_owner;
 grant execute on all functions in schema extensions to audit_owner, service_role;
-select plan(50);
+select plan(52);
 
 -- ---------------------------------------------------------------- dona e posse
 select is((select rolcanlogin from pg_roles where rolname = 'audit_owner'), false, 'audit_owner não faz login');
@@ -61,6 +61,12 @@ select is((select app_role || '|' || coalesce(actor::text, 'sem-ator') || '|' ||
 
 -- ---------------------------------------------------------------- hash encadeado
 select is(audit.verify_chain(), null, 'cadeia íntegra');
+-- buraco de seq é normal (a sequência não volta no rollback): um evento desfeito deixa o seq pulado e a cadeia íntegra
+savepoint buraco;
+select audit.record_event('teste.mudanca', 'platform.tenant', null, '{}', '{"x":1}', '{"x":2}', 'bbbbbbbb-0000-4000-8000-000000000002');
+rollback to savepoint buraco;
+select audit.record_event('teste.mudanca', 'platform.tenant', null, '{}', '{"x":2}', '{"x":3}', 'bbbbbbbb-0000-4000-8000-000000000002');
+select is(audit.verify_chain(), null, 'buraco de seq (evento desfeito) não é adulteração: cadeia íntegra');
 select is((select last_hash from audit.chain_head), (select hash from audit.event order by seq desc limit 1), 'a cabeça aponta para o último evento');
 select ok((select bool_and(e.prev_hash = coalesce(p.hash, repeat('0', 64))) from audit.event e left join audit.event p on p.seq = (select max(seq) from audit.event x where x.seq < e.seq)), 'cada evento aponta para o hash do anterior');
 
@@ -99,9 +105,14 @@ select is(audit.verify_chain(), (select last_seq from audit.chain_head), 'últim
 
 -- adulteração de uma linha do meio: verify_chain aponta o seq dela (vem antes do aviso da cabeça)
 set local role audit_owner;
-update audit.event set details = '{"motivo":"adulterado"}' where seq = (select min(seq) + 1 from audit.event);
+-- a linha adulterada é uma deste teste (a primeira 'teste.mudanca'): o seq não é contínuo e a suíte pode rodar de novo
+-- sem reset, com eventos commitados pelo 01_corrida antes dos daqui
+update audit.event set details = '{"motivo":"adulterado"}'
+ where seq = (select min(seq) from audit.event where action = 'teste.mudanca');
 reset role;
-select is(audit.verify_chain(), (select min(seq) + 1 from audit.event), 'linha adulterada: verify_chain aponta o seq dela');
+select is((select details ->> 'motivo' from audit.event where seq = (select min(seq) from audit.event where action = 'teste.mudanca')),
+  'adulterado', 'a adulteração alcançou a linha (o teste não passa por update vazio)');
+select is(audit.verify_chain(), (select min(seq) from audit.event where action = 'teste.mudanca'), 'linha adulterada: verify_chain aponta o seq dela');
 
 select * from finish();
 rollback;

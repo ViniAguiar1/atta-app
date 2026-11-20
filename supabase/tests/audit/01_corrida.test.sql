@@ -2,6 +2,8 @@
 -- foto; uma segunda conexão (dblink, a mesma instância local) grava e commita; a gravação daqui tem de falhar com 40001
 -- em vez de criar um segundo evento com o mesmo prev_hash. Só dados fictícios. A conexão do dblink usa a senha padrão
 -- do Supabase local (não é segredo; não existe na nuvem).
+-- O evento da outra conexão fica commitado de propósito: a trilha é só de inserção e não se apaga nem em teste. Ele é um
+-- evento legítimo da cadeia, e rodar a suíte de novo sem reset prova que a cadeia segue íntegra com eventos antigos.
 begin isolation level repeatable read;
 create extension if not exists pgtap with schema extensions;
 create extension if not exists dblink with schema extensions;
