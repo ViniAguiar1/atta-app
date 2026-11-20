@@ -13,6 +13,7 @@
   --font-body: var(--ff-raleway), sans-serif;
   --font-title: var(--ff-prata), "Playfair Display", serif;
   --font-sub: var(--ff-poppins), sans-serif;
+  --font-atta: var(--ff-allerta-stencil), "Playfair Display", serif;
 }
 
 @layer base {
