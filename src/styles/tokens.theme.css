@@ -10,8 +10,8 @@
   --color-*: initial;
   --color-brand: var(--ref-atta-in);
   --color-on-brand: var(--ref-branco);
-  /* Aba ativa da barra de módulos (Guia v21 §4.1), com texto on-brand em 600: 4.81:1. */
-  --color-brand-active: var(--ref-atta-in-aba-ativa);
+  /* Aba ativa da barra de módulos, no tom do simulador (print 28), com texto on-brand em 600: 7.43:1. */
+  --color-brand-active: var(--ref-aba-ativa-simulador);
   --color-text-primary: var(--ref-txt1);
   --color-text-secondary: var(--ref-txt2);
   /* Só texto grande (≥ 24 px, ou ≥ 18,66 px em negrito): 4.21:1 sobre o fundo (planning/05 §4.6). Em legenda pequena, use text-secondary. */
