@@ -163,7 +163,7 @@ begin
 end;
 $$;
 revoke all on function atta_in.appointment_validate() from public, anon, authenticated;
-create trigger appointment_validate before insert or update of starts_at, ends_at, professional_link_id,
+create trigger appointment_validate before insert or update of starts_at, ends_at, professional_link_id, modality,
   return_of_appointment_id on atta_in.appointment for each row execute function atta_in.appointment_validate();
 
 create function atta_in.appointment_service_validate() returns trigger
