@@ -75,6 +75,14 @@ export type Database = {
                            },
 "report_divergence":
 { Args: { "p_person_id": string,"p_reason": string }; Returns: string
+                           },
+"template_deactivate":
+{ Args: { "p_template_id": string }; Returns: undefined
+                           },
+"template_publish":
+{ Args: { "p_template_id": string }; Returns: {
+              "body_sha256": string,"template_version_id": string,"version": number
+            }[]
                            }
           }
           Enums: {
@@ -240,7 +248,41 @@ isOneToOne: false
           }
         },"documents": {
           Tables: {
-            [_ in never]: never
+            "template": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"current_version": number | null,"draft_body": string | null,"frequency": string | null,"id": string,"kind": string,"required": boolean | null,"status": string,"tenant_id": string,"title": string,"updated_at": string,"validity_months": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"current_version"?: number | null,"draft_body"?: string | null,"frequency"?: string | null,"id"?: string,"kind": string,"required"?: boolean | null,"status"?: string,"tenant_id"?: string,"title": string,"updated_at"?: string,"validity_months"?: number | null
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"current_version"?: number | null,"draft_body"?: string | null,"frequency"?: string | null,"id"?: string,"kind"?: string,"required"?: boolean | null,"status"?: string,"tenant_id"?: string,"title"?: string,"updated_at"?: string,"validity_months"?: number | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"template_version": {
+                  Row: {
+                    "body": string,"body_normalization": string,"body_sha256": string,"created_at": string,"frequency": string,"id": string,"kind": string,"published_at": string,"published_by": string,"required": boolean,"template_id": string,"tenant_id": string,"title": string,"validity_months": number | null,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"body_normalization"?: string,"body_sha256": string,"created_at"?: string,"frequency": string,"id"?: string,"kind": string,"published_at"?: string,"published_by": string,"required": boolean,"template_id": string,"tenant_id": string,"title": string,"validity_months"?: number | null,"version": number
+                  }
+                  Update: {
+                    "body"?: string,"body_normalization"?: string,"body_sha256"?: string,"created_at"?: string,"frequency"?: string,"id"?: string,"kind"?: string,"published_at"?: string,"published_by"?: string,"required"?: boolean,"template_id"?: string,"tenant_id"?: string,"title"?: string,"validity_months"?: number | null,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "template_version_template_fk"
+      columns: ["tenant_id","template_id"]
+isOneToOne: false
+      referencedRelation: "template"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                }
           }
           Views: {
             [_ in never]: never
