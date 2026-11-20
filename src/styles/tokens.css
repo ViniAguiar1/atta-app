@@ -10,6 +10,9 @@
 :root {
   --ref-atta-in: #2c3128;
   --ref-atta-in-aba-ativa: #6c7563;
+  /* Aba ativa do Simulador ATTA-in (print 28 do dono, medido no pixel): pixel perfect com o simulador por cima do Guia v21
+     §4.1 (#6c7563), decisão do dono em 20/11 (PLANO, "Abas e fidelidade ao simulador"). */
+  --ref-aba-ativa-simulador: #5f5256;
   --ref-atta-empresa: #9fa194;
   --ref-hover: #a3a886;
   --ref-sucesso: #acc583;
@@ -34,8 +37,8 @@
 :root {
   --color-brand: var(--ref-atta-in);
   --color-on-brand: var(--ref-branco);
-  /* Aba ativa da barra de módulos (Guia v21 §4.1), com texto on-brand em 600: 4.81:1. */
-  --color-brand-active: var(--ref-atta-in-aba-ativa);
+  /* Aba ativa da barra de módulos, no tom do simulador (print 28), com texto on-brand em 600: 7.43:1. */
+  --color-brand-active: var(--ref-aba-ativa-simulador);
   --color-text-primary: var(--ref-txt1);
   --color-text-secondary: var(--ref-txt2);
   /* Só texto grande (≥ 24 px, ou ≥ 18,66 px em negrito): 4.21:1 sobre o fundo (planning/05 §4.6). Em legenda pequena, use text-secondary. */
