@@ -65,4 +65,19 @@ describe("cards do resumo", () => {
     render(<CardsDoResumo resumo={resumo} filtro={null} aoFiltrar={vi.fn()} />);
     expect(screen.getAllByRole("button")).toHaveLength(4); // 3 segmentos do Check-in + Sem documento
   });
+
+  it("usa os breakpoints do tema (medium e large), não os do Tailwind, que o tema zera", () => {
+    render(<CardsDoResumo resumo={resumo} filtro={null} aoFiltrar={vi.fn()} />);
+    const grade = screen.getByRole("region", { name: textos.cards.rotulo }).className;
+    expect(grade).toContain("medium:grid-cols-2");
+    expect(grade).toContain("large:grid-cols-");
+    expect(grade).not.toMatch(/\b(sm|md|lg|xl):/);
+  });
+
+  it("pressionado tem desenho próprio, diferente do anel de foco", () => {
+    render(<CardsDoResumo resumo={resumo} filtro={{ tipo: "status", status: "pronto" }} aoFiltrar={vi.fn()} />);
+    const ativo = screen.getByRole("button", { name: "Pronto: 0. Filtrar a lista" });
+    expect(ativo.className).toContain("ring-inset");
+    expect(ativo.className).not.toContain("ring-focus-ring");
+  });
 });
