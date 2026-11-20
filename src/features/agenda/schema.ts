@@ -117,6 +117,36 @@ export function termoPronto(termo: string): boolean {
 }
 
 /** Cards do topo (§10.2.2). Sempre contam o dia de hoje, menos a Confirmação (agendamentos futuros). */
+/** Lista de uma visão por período (Todos, Concluídos): como o dia, sem a data pedida (cada linha traz a sua). */
+export const listaSchema = z.object({
+  hojeLocal: dataLocalSchema,
+  fuso: z.string().min(1),
+  linhas: z.array(linhaSchema),
+  proximoCursor: z.string().nullable(),
+});
+export type ListaDaAgenda = z.infer<typeof listaSchema>;
+
+/** Visão Todos (§10.2.2): agendamentos de hoje em diante, sem os concluídos; período e status vêm do painel Filtros. */
+export const filtroDoPeriodoSchema = z.object({
+  de: dataLocalSchema.optional(),
+  ate: dataLocalSchema.optional(),
+  vinculoProfissionalId: z.uuid().optional(),
+  status: z.array(z.enum(STATUS)).min(1).max(STATUS.length).optional(),
+  busca: z.string().trim().max(80).optional(),
+  cursor: z.string().max(200).optional(),
+});
+export type FiltroDoPeriodo = z.infer<typeof filtroDoPeriodoSchema>;
+
+/** Visão Concluídos (§10.2.2): "Esta semana" e "Este mês"; Ausente aparece como "Não realizado". */
+export const PERIODOS_CONCLUIDOS = ["semana", "mes"] as const;
+export type PeriodoConcluidos = (typeof PERIODOS_CONCLUIDOS)[number];
+export const filtroDosConcluidosSchema = z.object({
+  periodo: z.enum(PERIODOS_CONCLUIDOS),
+  busca: z.string().trim().max(80).optional(),
+  cursor: z.string().max(200).optional(),
+});
+export type FiltroDosConcluidos = z.infer<typeof filtroDosConcluidosSchema>;
+
 /** Total do card: número do banco, ou null quando ainda não existe (porta vazia): a tela mostra "—". */
 const total = z.number().int().nonnegative().nullable();
 export const resumoSchema = z.object({

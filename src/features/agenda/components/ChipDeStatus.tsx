@@ -14,14 +14,15 @@ const ESTILO: Record<Status, { chip: string; ponto: string }> = {
   cancelado: { chip: "border border-border-functional text-text-secondary", ponto: "bg-text-tertiary" },
 };
 
-const chip = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-sm whitespace-nowrap";
+const chip = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.8125rem] whitespace-nowrap";
 
-export function ChipDeStatus({ status }: { status: Status }) {
+/** `rotulo` troca só o texto (Ausente → "Não realizado" na visão Concluídos); a cor segue o estado. */
+export function ChipDeStatus({ status, rotulo }: { status: Status; rotulo?: string }) {
   const { chip: cor, ponto } = ESTILO[status];
   return (
     <span data-status={status} className={`${chip} ${cor}`}>
       <span aria-hidden="true" className={`size-1.5 rounded-full ${ponto}`} />
-      {textos.status[status]}
+      {rotulo ?? textos.status[status]}
     </span>
   );
 }

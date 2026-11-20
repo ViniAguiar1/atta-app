@@ -3,7 +3,17 @@
 import { useEffect, useId, useState } from "react";
 import { DataState, type EstadoDeDados } from "@/components/ui/DataState";
 import type { Resultado } from "@/lib/errors";
-import { termoPronto, type DiaDaAgenda, type FiltroDoDia, type ResumoDaAgenda, type Status } from "../schema";
+import {
+  termoPronto,
+  type DiaDaAgenda,
+  type FiltroDoDia,
+  type FiltroDoPeriodo,
+  type FiltroDosConcluidos,
+  type ListaDaAgenda,
+  type PeriodoConcluidos,
+  type ResumoDaAgenda,
+  type Status,
+} from "../schema";
 import { dataPorExtenso } from "../formatos";
 import { textos } from "../textos";
 import { ALTURA_DOS_CARDS_REM, CardsDoResumo, type FiltroDosCards } from "./CardsDoResumo";
@@ -12,12 +22,17 @@ import { ALTURA_DA_LINHA_REM, TabelaDoDia } from "./TabelaDoDia";
 // Visão Hoje da Agenda (PDD v206 §10.2.2), tela de pouso da recepção: a linha da data no topo, a busca por nome ou CPF
 // e a tabela do dia com os quatro estados de dados pelo DataState. O primeiro dia vem do servidor; a busca vai por
 // server action (POST): nome e CPF nunca na URL (ADR 0001 §5). Os cards do topo filtram a lista pelo servidor (o
-// "sem documento" é regra do banco). Avisos, Todos/Concluídos, filtros e ações entram nos PRs seguintes do MIG-41.
+// "sem documento" é regra do banco). O segmento troca entre Hoje, Todos (com a coluna Data) e Concluídos (semana ou
+// mês; Ausente como "Não realizado"), cada um na sua leitura. Avisos, filtros e ações entram nos PRs seguintes.
+
+export type Visao = "hoje" | "todos" | "concluidos";
 
 type Props = {
   inicial: Resultado<DiaDaAgenda>;
   resumoInicial: Resultado<ResumoDaAgenda>;
   buscar: (filtro: FiltroDoDia) => Promise<Resultado<DiaDaAgenda>>;
+  buscarPeriodo: (filtro: FiltroDoPeriodo) => Promise<Resultado<ListaDaAgenda>>;
+  buscarConcluidos: (filtro: FiltroDosConcluidos) => Promise<Resultado<ListaDaAgenda>>;
   resumir: () => Promise<Resultado<ResumoDaAgenda>>;
 };
 
@@ -30,14 +45,17 @@ function argumentosDoFiltro(chave: string): FiltroDoDia {
 
 const ESPERA_DA_BUSCA_MS = 300;
 
-export function AgendaHoje({ inicial, resumoInicial, buscar, resumir }: Props) {
+export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, buscarConcluidos, resumir }: Props) {
+  const [visao, setVisao] = useState<Visao>("hoje");
+  // Concluídos abre em "Esta semana"; "Este mês" e "Todo o período" vêm no painel Filtros (captura 37, PR dos filtros)
+  const periodo: PeriodoConcluidos = "semana";
   const [busca, setBusca] = useState("");
   const [filtroDosCards, setFiltroDosCards] = useState<FiltroDosCards>(null);
   const [resumo, setResumo] = useState<Resultado<ResumoDaAgenda> | null>(resumoInicial);
   const [tocado, setTocado] = useState(false); // o primeiro dia já veio do servidor: só busca depois de mexer
   const [tentativa, setTentativa] = useState(0);
   // A última lista que chegou fica na tela, com aria-busy, até a próxima resposta: a tabela não pisca a cada tecla.
-  const [dia, setDia] = useState<DiaDaAgenda | null>(inicial.ok ? inicial.data : null);
+  const [dia, setDia] = useState<ListaDaAgenda | null>(inicial.ok ? inicial.data : null);
   const [falhou, setFalhou] = useState(!inicial.ok);
   const [buscando, setBuscando] = useState(false);
   const idDaBusca = useId();
@@ -52,7 +70,13 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, resumir }: Props) {
     let vigente = true; // resposta de uma busca já trocada é descartada
     const espera = setTimeout(async () => {
       setBuscando(true);
-      const r = await buscar({ ...(termo ? { busca: termo } : {}), ...argumentosDoFiltro(chave) });
+      const comBusca = termo ? { busca: termo } : {};
+      const r =
+        visao === "hoje"
+          ? await buscar({ ...comBusca, ...argumentosDoFiltro(chave) })
+          : visao === "todos"
+            ? await buscarPeriodo(comBusca)
+            : await buscarConcluidos({ periodo, ...comBusca });
       if (!vigente) return;
       setBuscando(false);
       setFalhou(!r.ok);
@@ -62,11 +86,16 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, resumir }: Props) {
       vigente = false;
       clearTimeout(espera);
     };
-  }, [termo, pronto, chave, tentativa, tocado, buscar]);
+  }, [termo, pronto, chave, visao, periodo, tentativa, tocado, buscar, buscarPeriodo, buscarConcluidos]);
 
   const mudarBusca = (valor: string) => {
     setTocado(true);
     setBusca(valor);
+  };
+  const mudarVisao = (nova: Visao) => {
+    setTocado(true);
+    setFiltroDosCards(null); // os filtros dos cards valem na visão Hoje (o painel Filtros entra depois)
+    setVisao(nova);
   };
   const filtrarPelosCards = (filtro: FiltroDosCards) => {
     setTocado(true);
@@ -92,18 +121,18 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, resumir }: Props) {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* Como no simulador: a linha da data com o ícone é o topo; o nome do módulo já está na aba (PDD §10). Sem a
           data (falha no primeiro carregamento), o h1 mostra o nome do módulo. */}
       <header className="flex items-center gap-3">
-        <span aria-hidden="true" className="flex size-10 items-center justify-center rounded-md bg-surface-card">
+        <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-md bg-brand/10 text-brand">
           <IconeCalendario />
         </span>
-        <h1 className="text-lg">
+        <h1 className="text-base">
           {dia ? (
             <>
               <span className="sr-only">{textos.titulo}, </span>
-              {dataPorExtenso(dia.dataLocal)}
+              {dataPorExtenso(dia.hojeLocal)}
             </>
           ) : (
             textos.titulo
@@ -123,17 +152,27 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, resumir }: Props) {
         esqueleto={{ linhas: 1, alturaRem: ALTURA_DOS_CARDS_REM }}
         vazio={{ titulo: textos.cards.rotulo }}
       >
-        {resumo?.ok && <CardsDoResumo resumo={resumo.data} filtro={filtroDosCards} aoFiltrar={filtrarPelosCards} />}
+        {resumo?.ok && (
+          <CardsDoResumo
+            resumo={resumo.data}
+            visao={visao}
+            filtro={filtroDosCards}
+            aoFiltrar={visao === "hoje" ? filtrarPelosCards : undefined}
+          />
+        )}
       </DataState>
 
-      <div className="flex w-full max-w-sm flex-col gap-1">
+      {/* Linha de controles do simulador (captura 01): o segmento das visões e a busca lado a lado. */}
+      <div className="flex flex-wrap items-start gap-3">
+        <SegmentoDasVisoes visao={visao} aoMudar={mudarVisao} />
+        <div className="flex w-full max-w-sm flex-col gap-1">
         <div className="relative">
           <label htmlFor={idDaBusca} className="sr-only">
             {textos.busca.rotulo}
           </label>
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-text-secondary"
+            className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-text-secondary"
           >
             <IconeBusca />
           </span>
@@ -146,23 +185,39 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, resumir }: Props) {
             value={busca}
             aria-describedby={pronto ? undefined : idDaDica}
             onChange={(evento) => mudarBusca(evento.target.value)}
-            className="min-h-11 w-full rounded-full border border-border-functional bg-surface-raised pr-4 pl-11"
+            className="min-h-9 w-full rounded-full border border-border-functional bg-surface-raised pr-4 pl-10 text-[0.8125rem]"
           />
         </div>
         {!pronto && (
-          <p id={idDaDica} className="pl-4 text-sm text-text-secondary">
+          <p id={idDaDica} className="pl-4 text-xs text-text-secondary">
             {textos.busca.termoCurto}
           </p>
         )}
+        </div>
       </div>
 
       <DataState
         estado={estado}
         rotulo={textos.rotuloDaLista}
         esqueleto={{ linhas: 5, alturaRem: ALTURA_DA_LINHA_REM }}
-        vazio={textos.vazio}
+        vazio={textos.vazioDa[visao]}
       >
-        {dia && <TabelaDoDia linhas={dia.linhas} fuso={dia.fuso} ocupado={buscando} />}
+        {dia && (
+          <TabelaDoDia
+            linhas={dia.linhas}
+            fuso={dia.fuso}
+            ocupado={buscando}
+            comData={visao !== "hoje"}
+            hojeLocal={dia.hojeLocal}
+            ausenteComoNaoRealizado={visao === "concluidos"}
+            ordem={visao === "concluidos" ? "descending" : "ascending"}
+          />
+        )}
+        {dia && visao !== "hoje" && dia.linhas.length > 0 && (
+          <p className="text-right text-[0.8125rem] text-text-secondary">
+            {visao === "todos" ? textos.rodape.todos(dia.linhas.length) : textos.rodape.concluidos(dia.linhas.length)}
+          </p>
+        )}
       </DataState>
     </div>
   );
@@ -173,7 +228,7 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, resumir }: Props) {
  * resultado só com busca; erro com tentar de novo.
  */
 export function estadoDe(e: {
-  dia: DiaDaAgenda | null;
+  dia: ListaDaAgenda | null;
   falhou: boolean;
   buscando: boolean;
   comBusca: boolean;
@@ -186,6 +241,50 @@ export function estadoDe(e: {
   if (e.dia.linhas.length > 0) return { tipo: "pronto" };
   if (e.buscando) return { tipo: "carregando" };
   return e.comBusca ? { tipo: "sem-resultado", limparFiltros: e.limparFiltros } : { tipo: "vazio" };
+}
+
+/** Hoje / Todos / Concluídos (PDD §10.2.2; simulador, captura 01): pílula cinza com a visão ativa em branco. */
+function SegmentoDasVisoes({ visao, aoMudar }: { visao: Visao; aoMudar: (v: Visao) => void }) {
+  const v = textos.visoes;
+  const itens: { valor: Visao; rotulo: string }[] = [
+    { valor: "hoje", rotulo: v.hoje },
+    { valor: "todos", rotulo: v.todos },
+    { valor: "concluidos", rotulo: v.concluidos },
+  ];
+  return <Segmento rotulo={v.rotulo} itens={itens} ativo={visao} aoMudar={aoMudar} />;
+}
+
+function Segmento<T extends string>({
+  rotulo,
+  itens,
+  ativo,
+  aoMudar,
+}: {
+  rotulo: string;
+  itens: { valor: T; rotulo: string }[];
+  ativo: T;
+  aoMudar: (valor: T) => void;
+}) {
+  return (
+    <div role="group" aria-label={rotulo} className="inline-flex rounded-full bg-surface-card p-1">
+      {itens.map((item) => {
+        const pressionado = item.valor === ativo;
+        return (
+          <button
+            key={item.valor}
+            type="button"
+            aria-pressed={pressionado}
+            onClick={() => aoMudar(item.valor)}
+            className={`min-h-8 rounded-full px-3.5 text-[0.8125rem] ${
+              pressionado ? "bg-surface-raised font-medium text-text-primary shadow-sm" : "text-text-secondary"
+            }`}
+          >
+            {item.rotulo}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 // Ícones de traço fino (Guia de Design §7), decorativos.
