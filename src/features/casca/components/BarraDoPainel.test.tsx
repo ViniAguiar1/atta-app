@@ -25,6 +25,13 @@ describe("barra do painel (MIG-40)", () => {
     expect(screen.getByText("AE")).toHaveAttribute("aria-hidden", "true");
   });
 
+  it("cores do Guia v21 na barra escura: aba ativa em brand-active com texto branco 600, inativas a 78 %", () => {
+    render(<BarraDoPainel sessao={sessao} />);
+    expect(modulos().getByRole("link", { name: "Configurações" }).className).toMatch(/\bbg-brand-active\b.*\bfont-semibold\b.*\btext-on-brand\b/);
+    expect(modulos().getByRole("link", { name: "Agendamentos" }).className).toContain("text-on-brand/78");
+    expect(screen.getByRole("banner").className).toContain("bg-brand");
+  });
+
   it("Colaborador não vê Métricas nem Configurações", () => {
     render(<BarraDoPainel sessao={{ ...sessao, papel: "COLABORADOR" }} />);
     expect(modulos().getAllByRole("link").map((l) => l.textContent)).toEqual(["Agendamentos", "Pacientes", "Termos & Docs", "ATTA"]);

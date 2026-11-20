@@ -15,8 +15,8 @@ import { abaAtiva, abasDoPapel, MODULOS_PRONTOS } from "../abas";
 // Foco: na barra escura o anel global (cor da marca) some no fundo da marca, então ali ele vira o claro (on-brand).
 // Largura: abaixo de large as abas descem para uma linha própria; de large em diante ficam na linha da barra sem
 // encolher, e quem cede espaço é o nome da clínica (reticências). A pessoa aparece pelas iniciais; o nome vai ao leitor.
-// Cores: o Guia v21 pede #2c3128 na barra e #6c7563 na aba ativa, que ainda não estão nos tokens (pedido com o CTO);
-// até lá a barra usa o token de marca e a aba ativa um tom do texto sobre a marca.
+// Cores do Guia v21 §4.1: barra em brand (#2c3128); aba ativa em brand-active (#6c7563), texto branco 600; inativas em
+// branco a 78 %. Clara: fundo off-white, escrita em brand, borda de 1 px a 32 %, aba ativa a 5 % com sublinhado de 1 px a 45 %.
 type Props = { sessao: SessaoDoPainel; contadores?: Record<string, number>; prontos?: readonly string[] };
 
 export function BarraDoPainel({ sessao, contadores = {}, prontos = MODULOS_PRONTOS }: Props) {
@@ -26,9 +26,9 @@ export function BarraDoPainel({ sessao, contadores = {}, prontos = MODULOS_PRONT
   const abas = abasDoPapel(sessao.papel, prontos);
   const comSino = prontos.includes("/painel/notificacoes"); // o sino entra com o MIG-45
 
-  const barra = clara ? "border border-brand/30 bg-surface-app text-brand" : "bg-brand text-on-brand [&_:focus-visible]:outline-on-brand";
-  const abaAtivaCls = clara ? "bg-brand/5 underline decoration-brand/45 underline-offset-8" : "bg-on-brand/15 font-semibold";
-  const abaInativa = clara ? "text-brand hover:bg-brand/5" : "text-on-brand/80 hover:bg-on-brand/10 hover:text-on-brand";
+  const barra = clara ? "border border-brand/32 bg-surface-app text-brand" : "bg-brand text-on-brand [&_:focus-visible]:outline-on-brand";
+  const abaAtivaCls = clara ? "bg-brand/5 underline decoration-brand/45 decoration-1 underline-offset-8" : "bg-brand-active font-semibold text-on-brand";
+  const abaInativa = clara ? "text-brand hover:bg-brand/5" : "text-on-brand/78 hover:bg-on-brand/10 hover:text-on-brand";
 
   return (
     <header className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-t-md px-3 py-1.5 large:flex-nowrap ${barra}`}>
