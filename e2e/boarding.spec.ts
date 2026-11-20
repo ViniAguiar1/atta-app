@@ -15,7 +15,7 @@ test("o GET do link não renderiza nem guarda o segredo na URL, e tem os headers
   expect(r.headers()["location"]).toBe("/boarding");
   expect(r.headers()["referrer-policy"]).toBe("no-referrer");
   expect(r.headers()["cache-control"]).toContain("no-store");
-  expect(r.headers()["x-robots-tag"]).toBe("noindex");
+  expect(r.headers()["x-robots-tag"]).toContain("noindex"); // a lista ROTAS_COM_SEGREDO (src/lib/seguranca/cabecalhos.ts)
   expect(r.headers()["set-cookie"]).toMatch(/atta_boarding_link=.*HttpOnly/i);
   expect(r.headers()["set-cookie"]).toMatch(/Path=\/boarding/i);
 });
