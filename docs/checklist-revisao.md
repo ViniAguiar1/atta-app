@@ -18,6 +18,10 @@ Quem revisa passa por esta lista antes de comentar "✅ APROVADO (sigla)". Item 
 - [ ] Gestor e Colaborador não têm caminho nenhum até o Formulário de Saúde, nem por função, nem por view. **(TL)**
 - [ ] Seeds, testes, prints e PR só com dado fictício (CPF e CNPJ gerados, nomes inventados).
 
+## Stage = produção (regra do dono, 20/11)
+- [ ] Nenhum texto de ambiente na interface: "Ambiente de validação", "fictício", "demo", "teste", "simulado", "stage", dica de código ou CPF na tela, rodapé de atalhos, página-marcador. O teste `src/lib/qualidade/termos-proibidos.test.ts` reprova esses textos; exceção nova só com o ok do Tech Lead.
+- [ ] A diferença entre stage e produção fica em variável de ambiente e no adaptador (simulador), nunca no texto. Valores para testar vão para `migracao/guia-de-teste.md` (QA).
+
 ## Servidor e segredos
 - [ ] `SUPABASE_SECRET_KEY` e o `Cofre` só em código de servidor (`server-only`), e o papel é conferido antes de usar a chave. **(TL)**
 - [ ] Nenhum valor de chave em código, commit, PR ou `.env` versionado.
