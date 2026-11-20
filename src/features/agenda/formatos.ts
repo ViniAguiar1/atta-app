@@ -16,3 +16,14 @@ export function dataPorExtenso(dataLocal: string) {
 
 /** Os 5 dígitos visíveis do CPF mascarado (`···.···.247-25` → `247-25`), para o leitor de tela. */
 export const finalDoCpf = (mascarado: string) => mascarado.slice(-6);
+
+/** Coluna Data das visões Todos e Concluídos (capturas 35 e 36): "Hoje" ou "Sáb, 21/11", no fuso da clínica. */
+export function dataCurta(iso: string, fuso: string, hojeLocal?: string) {
+  const local = new Intl.DateTimeFormat("en-CA", { timeZone: fuso, year: "numeric", month: "2-digit", day: "2-digit" }).format(
+    new Date(iso),
+  );
+  if (hojeLocal && local === hojeLocal) return "Hoje";
+  const semana = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: fuso }).format(new Date(iso)).replace(".", "");
+  const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: fuso }).format(new Date(iso));
+  return `${semana.charAt(0).toLocaleUpperCase("pt-BR")}${semana.slice(1)}, ${diaMes}`;
+}

@@ -1,6 +1,14 @@
 import "server-only";
 import type { Resultado } from "@/lib/errors";
-import type { AvisoDaAgenda, DiaDaAgenda, FiltroDoDia, ResumoDaAgenda } from "@/features/agenda/schema";
+import type {
+  AvisoDaAgenda,
+  DiaDaAgenda,
+  FiltroDoDia,
+  FiltroDoPeriodo,
+  FiltroDosConcluidos,
+  ListaDaAgenda,
+  ResumoDaAgenda,
+} from "@/features/agenda/schema";
 import { portaAgendaSimulada } from "./simulado";
 import { portaAgendaVazia } from "./vazia";
 
@@ -14,6 +22,10 @@ export type PortaAgenda = {
   dia(filtro: FiltroDoDia): Promise<Resultado<DiaDaAgenda>>;
   /** Números dos cards do topo; com o profissional filtrado, só os dele (§10.2.2). */
   resumo(filtro: { vinculoProfissionalId?: string }): Promise<Resultado<ResumoDaAgenda>>;
+  /** Visão Todos (§10.2.2), sem os concluídos; leitura real: api.agenda_range do Backend 2 (a fazer). */
+  periodo(filtro: FiltroDoPeriodo): Promise<Resultado<ListaDaAgenda>>;
+  /** Visão Concluídos (§10.2.2), da semana ou do mês; leitura real: api.agenda_range do Backend 2 (a fazer). */
+  concluidos(filtro: FiltroDosConcluidos): Promise<Resultado<ListaDaAgenda>>;
   /** Avisos do topo da lista ainda não confirmados (§10.2.2). */
   avisos(): Promise<Resultado<AvisoDaAgenda[]>>;
 };

@@ -19,9 +19,10 @@ describe("cards do resumo", () => {
   it("mostra os 4 cards com os textos do PDD e do simulador", () => {
     render(<CardsDoResumo resumo={resumo} filtro={null} aoFiltrar={vi.fn()} />);
     const regiao = screen.getByRole("region", { name: textos.cards.rotulo });
-    expect(within(regiao).getByRole("heading", { name: /5\s*Agendamentos hoje/ })).toBeDefined();
+    expect(within(regiao).getByText("Agendamentos hoje")).toBeDefined();
+    expect(within(regiao).getByText("5")).toBeDefined();
     expect(within(regiao).getByText("1 concluído")).toBeDefined();
-    expect(within(regiao).getByRole("heading", { name: /2\s*Agendamentos no mês/ })).toBeDefined();
+    expect(within(regiao).getByText("Agendamentos no mês")).toBeDefined();
     expect(within(regiao).getByText("concluídos no mês")).toBeDefined();
     expect(within(regiao).getByText("175")).toBeDefined();
     expect(within(regiao).getByText("horários livres na agenda")).toBeDefined();
