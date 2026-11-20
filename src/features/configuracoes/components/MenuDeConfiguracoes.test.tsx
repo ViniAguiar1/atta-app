@@ -6,21 +6,19 @@ import { MenuDeConfiguracoes } from "./MenuDeConfiguracoes";
 vi.mock("next/navigation", () => ({ usePathname: () => "/painel/configuracoes/agendamentos" }));
 
 const GRUPOS = [
-  { titulo: "Clínica", secoes: [{ caminho: "perfil", titulo: "Perfil da Clínica", pronta: false }] },
   {
     titulo: "Agendamentos",
     secoes: [
-      { caminho: "agendamentos", titulo: "Agendamentos", pronta: true },
-      { caminho: "integracoes", titulo: "Integrações", pronta: true },
+      { caminho: "agendamentos", titulo: "Agendamentos", exibir: "fora-da-producao" as const },
+      { caminho: "integracoes", titulo: "Integrações", exibir: "sempre" as const },
     ],
   },
 ];
 
 describe("menu lateral de Configurações", () => {
-  it("mostra só os grupos e as seções prontas, com a atual marcada", () => {
+  it("mostra os grupos recebidos, com a seção atual marcada", () => {
     render(<MenuDeConfiguracoes grupos={GRUPOS} />);
     const menu = screen.getByRole("navigation", { name: "Seções de Configurações" });
-    expect(within(menu).queryByText("Clínica")).toBeNull();
     expect(within(menu).getByRole("list", { name: "Agendamentos" })).toBeInTheDocument();
     expect(within(menu).getByRole("link", { name: "Agendamentos" })).toHaveAttribute("aria-current", "page");
     expect(within(menu).getByRole("link", { name: "Integrações" })).toHaveAttribute("href", "/painel/configuracoes/integracoes");
