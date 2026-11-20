@@ -106,6 +106,9 @@ export type Database = {
 { Args: { "p_template_id": string }; Returns: {
               "body_sha256": string,"template_version_id": string,"version": number
             }[]
+                           },
+"template_set_services":
+{ Args: { "p_service_ids": (string)[],"p_template_id": string }; Returns: number
                            }
           }
           Enums: {
@@ -186,6 +189,26 @@ export type Database = {
                   Relationships: [
                     {
       foreignKeyName: "professional_service_service_fk"
+      columns: ["tenant_id","clinic_service_id"]
+isOneToOne: false
+      referencedRelation: "clinic_service"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"service_document_template": {
+                  Row: {
+                    "clinic_service_id": string,"created_at": string,"created_by": string | null,"id": string,"template_id": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clinic_service_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"template_id": string,"tenant_id": string
+                  }
+                  Update: {
+                    "clinic_service_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"template_id"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "service_document_template_service_fk"
       columns: ["tenant_id","clinic_service_id"]
 isOneToOne: false
       referencedRelation: "clinic_service"
