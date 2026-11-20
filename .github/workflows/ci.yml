@@ -9,7 +9,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
-    branches: [main]
+    # trem/** são os vagões do trem de merge (scripts/trem.sh): push roda a suíte inteira, sem filtro de caminho
+    branches: [main, "trem/**"]
 
 permissions:
   contents: read
