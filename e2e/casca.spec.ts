@@ -44,7 +44,7 @@ test.describe("com sessão", () => {
 
   test("o cookie da sessão é HttpOnly e SameSite=Lax", async ({ page }) => {
     await page.goto("/painel");
-    const sessao = (await page.context().cookies()).filter((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+    const sessao = (await page.context().cookies()).filter((c) => (c.name.startsWith("sb-") && c.name.includes("auth-token")) || c.name === "atta_atividade");
     expect(sessao.length).toBeGreaterThan(0);
     for (const c of sessao) {
       expect(c.httpOnly).toBe(true);

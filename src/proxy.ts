@@ -1,14 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { decidirGuarda } from "@/lib/auth/rotas";
+import { agoraEmSegundos, COOKIE_ATIVIDADE, sessaoVencida } from "@/lib/auth/sessao";
 import { envPublico } from "@/lib/env";
-import { opcoesDoCookieDeSessao } from "@/lib/supabase/cookies";
+import { opcoesDoCookieDeAtividade, opcoesDoCookieDeSessao } from "@/lib/supabase/cookies";
 
 // Proxy do Next 16 (o antigo middleware): renova a sessão do Supabase no cookie a cada requisição e guarda as rotas.
 // Só redireciona; quem autoriza o dado é a RLS (has_permission). Regras em decidirGuarda (src/lib/auth/rotas.ts).
 export async function proxy(request: NextRequest) {
   const env = envPublico();
-  const cookieDaSessao = opcoesDoCookieDeSessao(request.nextUrl.protocol === "https:");
+  const https = request.nextUrl.protocol === "https:";
+  const cookieDaSessao = opcoesDoCookieDeSessao(https);
   let resposta = NextResponse.next({ request });
   const supabase = createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     cookies: {
@@ -22,7 +24,20 @@ export async function proxy(request: NextRequest) {
   });
   // getClaims() confere a assinatura do JWT; não pôr código entre a criação do cliente e esta chamada
   const { data } = await supabase.auth.getClaims();
-  const destino = decidirGuarda(request.nextUrl.pathname, request.nextUrl.search, data?.claims);
+  const { pathname, search } = request.nextUrl;
+  let claims = data?.claims;
+  if (claims) {
+    const agora = agoraEmSegundos();
+    if (sessaoVencida(claims, request.cookies.get(COOKIE_ATIVIDADE)?.value, agora)) {
+      // 30 min sem atividade ou 12 h desde o login (src/lib/auth/sessao.ts): encerra esta sessão (revoga o refresh)
+      await supabase.auth.signOut({ scope: "local" });
+      resposta.cookies.delete(COOKIE_ATIVIDADE);
+      claims = undefined;
+    } else {
+      resposta.cookies.set(COOKIE_ATIVIDADE, String(agora), opcoesDoCookieDeAtividade(https));
+    }
+  }
+  const destino = decidirGuarda(pathname, search, claims);
   return destino ? redirecionar(request, resposta, destino) : resposta;
 }
 
