@@ -79,7 +79,35 @@ export type Database = {
           }
         },"atta_in": {
           Tables: {
-            "setting": {
+            "professional_break": {
+                  Row: {
+                    "created_at": string,"ends_at": string,"id": string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at": string,"weekdays": (number)[]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"ends_at": string,"id"?: string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at"?: string,"weekdays": (number)[]
+                  }
+                  Update: {
+                    "created_at"?: string,"ends_at"?: string,"id"?: string,"professional_link_id"?: string,"starts_at"?: string,"tenant_id"?: string,"updated_at"?: string,"weekdays"?: (number)[]
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"professional_schedule": {
+                  Row: {
+                    "created_at": string,"ends_at": string,"id": string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at": string,"weekdays": (number)[]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"ends_at": string,"id"?: string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at"?: string,"weekdays": (number)[]
+                  }
+                  Update: {
+                    "created_at"?: string,"ends_at"?: string,"id"?: string,"professional_link_id"?: string,"starts_at"?: string,"tenant_id"?: string,"updated_at"?: string,"weekdays"?: (number)[]
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"setting": {
                   Row: {
                     "appointment_type": string | null,"clinic_service_id": string | null,"created_at": string,"created_by": string | null,"id": string,"key": string,"level": string,"tenant_id": string,"updated_at": string,"updated_by": string | null,"value_bool": boolean | null,"value_int": number | null
                   }
