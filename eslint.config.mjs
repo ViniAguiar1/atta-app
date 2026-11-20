@@ -1,7 +1,8 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
-import { coresSoPorToken } from "./eslint-rules/cores.mjs";
+import { seletoresDeBreakpoint } from "./eslint-rules/breakpoints.mjs";
+import { seletoresDeCor } from "./eslint-rules/cores.mjs";
 import { fronteiras } from "./eslint-rules/fronteiras.mjs";
 
 // A secret key passa por cima da RLS: só entra onde o código roda no servidor e confere o papel (ADR 0001 §4).
@@ -15,10 +16,21 @@ const SO_SERVIDOR = {
   ],
 };
 
+// HTML cru (ADR 0004 §3b): reaproveitado nos dois blocos de no-restricted-syntax abaixo.
+const HTML_CRU = [
+  {
+    selector: "AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML)$/]",
+    message: "HTML cru é proibido (ADR 0004 §3b): use texto pelo React.",
+  },
+  {
+    selector: "CallExpression[callee.property.name=/^(insertAdjacentHTML|write|writeln)$/]",
+    message: "HTML cru é proibido (ADR 0004 §3b): use texto pelo React.",
+  },
+];
+
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  coresSoPorToken, // cor só por token (ADR 0001 §6; regra do Frontend)
   fronteiras, // feature não importa de outra feature (ADR 0001 §4; regra do Frontend)
   // as fixtures do Playwright chamam use(), que o rules-of-hooks confunde com hook do React
   { files: ["e2e/**/*.ts"], rules: { "react-hooks/rules-of-hooks": "off" } },
@@ -32,18 +44,15 @@ export default defineConfig([
       "no-eval": "error",
       "no-implied-eval": "error",
       "no-new-func": "error",
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector: "AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML)$/]",
-          message: "HTML cru é proibido (ADR 0004 §3b): use texto pelo React.",
-        },
-        {
-          selector: "CallExpression[callee.property.name=/^(insertAdjacentHTML|write|writeln)$/]",
-          message: "HTML cru é proibido (ADR 0004 §3b): use texto pelo React.",
-        },
-      ],
+      "no-restricted-syntax": ["error", ...HTML_CRU],
     },
+  },
+  // Classes do tema (regras do Frontend, ADR 0001 §6): cor só por token e breakpoint só do tema. No-restricted-syntax é
+  // uma regra só e o último bloco vence, então este repete o HTML cru e fica depois dele (nos testes, só o HTML cru).
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}"],
+    rules: { "no-restricted-syntax": ["error", ...HTML_CRU, ...seletoresDeCor, ...seletoresDeBreakpoint] },
   },
   // o único lugar com console.*: o logger, que escreve JSON sem dado pessoal (ADR 0001 §5)
   { files: ["src/lib/logger.ts"], rules: { "no-console": "off" } },
