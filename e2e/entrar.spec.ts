@@ -33,6 +33,15 @@ test("31 min sem atividade: a sessão é encerrada e o painel volta à tela de e
   await expect(page).toHaveURL(/\/login\?volta=%2Fpainel$/);
 });
 
+test("Voltar no 2º fator encerra a sessão e volta à tela de entrar", async ({ page }) => {
+  await entrar(page, "admin.novo.ficticio@exemplo.test");
+  await expect(page).toHaveURL(/\/painel\/seguranca\/2fa\?volta=%2Fpainel$/);
+  await page.getByRole("button", { name: "Voltar" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/painel");
+  await expect(page).toHaveURL(/\/login\?volta=%2Fpainel$/);
+});
+
 test("volta para fora do painel é ignorada", async ({ page }) => {
   await entrar(page, "colaboradora.ficticia@exemplo.test", "/login?volta=%2F%2Fevil.example%2Fpainel");
   await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/painel$/);
@@ -54,6 +63,7 @@ test("ADMIN sem 2º fator: o painel leva à ativação, e o código do app liber
   await expect(page).toHaveURL(/\/painel\/seguranca\/2fa\?volta=%2Fpainel%2Fconfiguracoes$/);
   await page.goto("/painel");
   await expect(page).toHaveURL(/\/painel\/seguranca\/2fa\?volta=%2Fpainel$/);
+  await expect(page.getByRole("button", { name: "Voltar" })).toBeVisible(); // quem não quer ativar não fica preso
   await page.getByRole("button", { name: "Gerar QR" }).click();
   await expect(page.getByRole("img", { name: "QR do app autenticador" })).toBeVisible();
   const chave = (await page.getByTestId("chave-totp").textContent()) ?? "";
