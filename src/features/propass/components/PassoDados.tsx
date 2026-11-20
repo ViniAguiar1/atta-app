@@ -103,7 +103,9 @@ export function PassoDados({ clinica, email, conviteEm, inicial, aoConferir }: P
       {campo(
         "conselho",
         <select {...aria("conselho")} value={dados.conselho} onChange={(e) => mudar("conselho", e.target.value)} className={classeDoCampo}>
-          <option value="" disabled />
+          <option value="" disabled>
+            {TEXTOS.selecione}
+          </option>
           {CONSELHOS.map((c) => (
             <option key={c} value={c}>
               {NOMES_DOS_CONSELHOS[c]}
@@ -116,14 +118,20 @@ export function PassoDados({ clinica, email, conviteEm, inicial, aoConferir }: P
         {campo(
           "uf",
           <select {...aria("uf")} value={dados.uf} onChange={(e) => mudar("uf", e.target.value)} className={classeDoCampo}>
-            <option value="" disabled />
+            <option value="" disabled>
+            {TEXTOS.selecione}
+          </option>
             {UFS.map((uf) => (
               <option key={uf}>{uf}</option>
             ))}
           </select>,
         )}
       </div>
-      {erroGeral && <p className="text-status-negative">{erroGeral}</p>}
+      {erroGeral && (
+        <p role="alert" className="text-status-negative">
+          {erroGeral}
+        </p>
+      )}
       <p className="text-base text-text-secondary">{TEXTOS.conviteEm(conviteEm)}</p>
       <Botao type="submit" disabled={ocupado}>
         {ocupado ? TEXTOS.conferindo : TEXTOS.continuar}

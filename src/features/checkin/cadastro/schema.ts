@@ -7,16 +7,14 @@ import { z } from "zod";
 const digitos = (v: string) => v.replace(/\D/g, "");
 
 // Celular: lib comum (também usada pelo PROpass); reexportado para os imports do cadastro não mudarem.
-import { celularValido } from "@/lib/brasil/documentos";
-export { celularValido, mascararCelular } from "@/lib/brasil/documentos";
+import { celularValido, nomeValido } from "@/lib/brasil/documentos";
+export { celularValido, mascararCelular, nomeValido } from "@/lib/brasil/documentos";
 
 export function mascararCep(valor: string): string {
   const d = digitos(valor).slice(0, 8);
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
 }
 
-/** Nome: mínimo de dois termos (§16.6). */
-export const nomeValido = (v: string) => v.trim().split(/\s+/).filter((p) => p.length > 1).length >= 2;
 
 export const dadosSchema = z
   .object({
