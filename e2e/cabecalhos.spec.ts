@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+import { SESSAO_DA_GESTORA } from "./acesso";
 
 // Auditoria de segurança S2-1 (PDD v206 §19.3; ADR 0004 §3): toda resposta leva os cabeçalhos de segurança, e as rotas
 // com segredo no caminho não vazam Referer nem ficam em cache. A tela de entrar roda sem violação da CSP.
@@ -19,7 +20,12 @@ for (const caminho of GERAIS) {
   });
 }
 
-for (const caminho of ["/b/segredo-ficticio-de-exemplo", "/boarding", "/propass/segredo-ficticio-de-exemplo"]) {
+for (const caminho of [
+  "/b/segredo-ficticio-de-exemplo",
+  "/boarding",
+  "/propass/segredo-ficticio-de-exemplo",
+  "/auth/confirm?token_hash=ficticio-de-exemplo&type=recovery",
+]) {
   test(`${caminho}: rota com segredo sem Referer, sem cache e sem índice`, async ({ request }) => {
     const h = (await request.get(caminho, { maxRedirects: 0 })).headers();
     expect(h["referrer-policy"]).toBe("no-referrer");
@@ -38,4 +44,28 @@ test("a tela de entrar carrega sem violação da CSP", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.waitForLoadState("networkidle");
   expect(violacoes).toEqual([]);
+});
+
+// Com sessão (a gestora do seed, ADMIN com 2º fator): o painel e a tela do 2º fator também rodam sem violação da CSP
+// (observação do Backend 1 no #55).
+function coletarViolacoes(page: Page): string[] {
+  const violacoes: string[] = [];
+  page.on("console", (m) => {
+    if (/Content Security Policy|Refused to (load|execute|apply|connect|frame)/i.test(m.text())) violacoes.push(m.text());
+  });
+  return violacoes;
+}
+
+test.describe("com sessão", () => {
+  test.use({ storageState: SESSAO_DA_GESTORA });
+
+  for (const caminho of ["/painel", "/painel/seguranca/2fa"]) {
+    test(`${caminho} carrega sem violação da CSP`, async ({ page }) => {
+      const violacoes = coletarViolacoes(page);
+      await page.goto(caminho);
+      await expect(page).toHaveURL(new RegExp(`${caminho.replaceAll("/", "\\/")}$`)); // com sessão e 2º fator, sem redirecionar
+      await page.waitForLoadState("networkidle");
+      expect(violacoes).toEqual([]);
+    });
+  }
 });
