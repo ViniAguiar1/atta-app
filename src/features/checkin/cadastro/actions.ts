@@ -1,19 +1,27 @@
 "use server";
 
 import { z } from "zod";
-import { falhaDeValidacao, type Resultado } from "@/lib/errors";
+import { falha, falhaDeValidacao, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { portaCadastro } from "@/server/cadastro/porta";
+import { lerSessaoSimulada } from "@/server/checkin/sessao-simulada";
 import { dadosSchema, type DadosDoPaciente } from "./schema";
 
 // Server actions da "Confirme Seus Dados" (POST; dado pessoal só no corpo). O paciente vem do grant no servidor.
+// Toda action confere a sessão antes de qualquer coisa, inclusive o CEP (ADR 0004 §3: sem isso, vira serviço aberto).
+// Hoje a sessão é a simulada; com o MIG-13a, a conferência passa a ser a de src/server/grant/politica.ts.
 // Log só com o desfecho, sem nenhum campo do cadastro.
 
+const SEM_SESSAO = falha("NAO_AUTENTICADO", "Sem sessão do check-in.");
+const temSessao = async () => Boolean(await lerSessaoSimulada());
+
 export async function carregarDados(): Promise<Resultado<DadosDoPaciente>> {
+  if (!(await temSessao())) return SEM_SESSAO;
   return portaCadastro.carregar();
 }
 
 export async function salvarDados(entrada: unknown): Promise<Resultado<{ salvoEm: string }>> {
+  if (!(await temSessao())) return SEM_SESSAO;
   const dados = dadosSchema.safeParse(entrada);
   if (!dados.success) return falhaDeValidacao(dados.error.issues);
   const r = await portaCadastro.salvar(dados.data);
@@ -22,6 +30,7 @@ export async function salvarDados(entrada: unknown): Promise<Resultado<{ salvoEm
 }
 
 export async function buscarCep(entrada: unknown) {
+  if (!(await temSessao())) return SEM_SESSAO;
   const cep = z.string().regex(/^\d{8}$/).safeParse(entrada);
   if (!cep.success) return falhaDeValidacao(cep.error.issues);
   return portaCadastro.buscarCep(cep.data);
