@@ -58,8 +58,17 @@ create table network.person_tenant_link (
   origin text not null default 'recepcao',
   linked_at timestamptz not null default now(),
   created_by uuid default auth.uid(),
+  -- acesso da clínica ao dado de rede (dono, 20/11; ADR 0001 §1): owner = a clínica criou a pessoa; pending = o CPF já
+  -- existia na rede e a clínica só sabe que existe; granted = o titular autorizou a portabilidade no check-in (MIG-13)
+  network_access text not null default 'owner',
+  -- em pending, a clínica vê e edita só o que ela mesma digitou, guardado aqui
+  local_full_name text,
+  local_social_name text,
+  local_birth_date date,
   primary key (tenant_id, person_id),
-  constraint person_tenant_link_origin_check check (origin in ('recepcao', 'atta_me', 'importacao'))
+  constraint person_tenant_link_origin_check check (origin in ('recepcao', 'atta_me', 'importacao')),
+  constraint person_tenant_link_network_access_check check (network_access in ('owner', 'pending', 'granted')),
+  constraint person_tenant_link_pending_name_check check (network_access <> 'pending' or local_full_name is not null)
 );
 create index person_tenant_link_person_idx on network.person_tenant_link (person_id);
 

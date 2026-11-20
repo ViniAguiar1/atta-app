@@ -1,6 +1,6 @@
 -- MIG-12 (a): schema network fechado, RLS forçada e as regras de identidade (dados fictícios: hmacs de texto inventado).
 begin;
-select plan(28);
+select plan(30);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -61,6 +61,12 @@ select throws_ok($$ insert into network.person_tenant_link (tenant_id, person_id
 select lives_ok($$ insert into network.person_tenant_link (tenant_id, person_id, origin)
                    values ('00000000-0000-4000-8000-00000000000b', '00000000-0000-4000-8000-0000000000e1', 'atta_me') $$,
                 'a mesma pessoa pode ter vínculo com outra clínica');
+select throws_ok($$ update network.person_tenant_link set network_access = 'pending'
+                    where tenant_id = '00000000-0000-4000-8000-00000000000b' $$,
+                 '23514', null, 'acesso pendente à rede sem o nome digitado pela clínica é recusado');
+select throws_ok($$ update network.person_tenant_link set network_access = 'total'
+                    where tenant_id = '00000000-0000-4000-8000-00000000000b' $$,
+                 '23514', null, 'acesso à rede fora da lista é recusado');
 select throws_ok($$ insert into network.person_tenant_link (tenant_id, person_id, origin)
                     values ('00000000-0000-4000-8000-00000000000b', gen_random_uuid(), 'whatsapp') $$,
                  '23514', null, 'origem fora da lista é recusada');
