@@ -42,7 +42,12 @@ test("Esqueci a senha: o link do e-mail leva à nova senha, e ela passa a valer"
   );
 
   const link = new URL(await linkDoEmail(request, base!));
-  await page.goto(`${link.pathname}${link.search}`); // o SiteURL local aponta para a porta da sigla; segue no app em teste
+  const caminho = `${link.pathname}${link.search}`; // o SiteURL local aponta para a porta da sigla; segue no app em teste
+  // um filtro de e-mail abre o link (GET) sozinho: isso não pode gastar o token
+  expect((await request.get(caminho)).status()).toBe(200);
+  await page.goto(caminho);
+  await expect(page.getByRole("heading", { level: 1, name: "Confirmar acesso" })).toBeVisible();
+  await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page).toHaveURL(/\/definir-senha\?fluxo=recuperar$/);
   await page.getByLabel("Nova senha", { exact: true }).fill("curta1");
   await page.getByLabel("Repita a nova senha").fill("curta1");
@@ -53,9 +58,10 @@ test("Esqueci a senha: o link do e-mail leva à nova senha, e ela passa a valer"
   await page.getByRole("button", { name: "Salvar senha" }).click();
   await expect(page).toHaveURL(INICIO_DO_PAINEL);
 
-  // o link é de uso único
+  // o link é de uso único: a página abre, mas o botão não confere de novo
   await page.context().clearCookies();
-  await page.goto(`${link.pathname}${link.search}`);
+  await page.goto(caminho);
+  await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page).toHaveURL(/\/login\?erro=link$/);
 
   // e a senha nova vale no login
@@ -80,9 +86,11 @@ test("Esqueci a senha com e-mail sem conta: a mesma resposta, e nenhum e-mail sa
   expect(((await busca.json()) as { messages: unknown[] }).messages).toEqual([]);
 });
 
-test("link de e-mail inválido volta ao login", async ({ page }) => {
+test("link de e-mail inválido não abre sessão", async ({ page }) => {
   await page.goto("/auth/confirm?token_hash=invalido123&type=recovery");
+  await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page).toHaveURL(/\/login\?erro=link$/);
   await page.goto("/auth/confirm?token_hash=qualquer123&type=signup");
-  await expect(page).toHaveURL(/\/login\?erro=link$/);
+  await expect(page.getByText("Este link não é válido.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continuar" })).toHaveCount(0);
 });

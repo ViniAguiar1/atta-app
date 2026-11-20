@@ -13,7 +13,8 @@ export type AcaoDeAcesso =
   | "auth.mfa_enrolled"
   | "auth.mfa_verified"
   | "auth.logout"
-  | "auth.session_expired";
+  | "auth.session_expired"
+  | "auth.password_reset";
 
 export type DetalhesDeAcesso = Partial<Record<"method" | "aal" | "reason", string>>;
 
