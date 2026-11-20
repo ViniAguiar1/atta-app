@@ -6,7 +6,7 @@ create extension if not exists pgtap with schema extensions;
 -- só nesta transação: a dona (e o service_role) chamam as funções do pgTAP quando o teste assume a role deles
 grant usage on schema extensions to audit_owner;
 grant execute on all functions in schema extensions to audit_owner, service_role;
-select plan(44);
+select plan(45);
 
 -- ---------------------------------------------------------------- dona e posse
 select is((select rolcanlogin from pg_roles where rolname = 'audit_owner'), false, 'audit_owner não faz login');
@@ -26,6 +26,7 @@ select ok(not has_function_privilege('authenticated', 'audit.record_event(text,t
 select ok(not has_function_privilege('service_role', 'audit.record_event(text,text,uuid,jsonb,jsonb,jsonb,uuid)', 'EXECUTE'), 'service_role não chama record_event');
 select ok(not has_schema_privilege('authenticated', 'audit', 'USAGE') and not has_schema_privilege('service_role', 'audit', 'USAGE') and not has_schema_privilege('anon', 'audit', 'USAGE'), 'anon, authenticated e service_role sem USAGE em audit');
 select ok(not has_table_privilege('postgres', 'audit.event', 'UPDATE') and not has_table_privilege('postgres', 'audit.event', 'DELETE') and not has_table_privilege('postgres', 'audit.event', 'TRUNCATE') and not has_table_privilege('postgres', 'audit.event', 'INSERT'), 'postgres sem INSERT, UPDATE, DELETE e TRUNCATE direto na trilha');
+select ok(has_table_privilege('postgres', 'audit.event', 'SELECT'), 'postgres lê a trilha (funções de leitura do MIG-06 e testes das trilhas)');
 select ok(has_table_privilege('postgres', 'audit.action', 'INSERT') and not has_table_privilege('postgres', 'audit.action', 'UPDATE') and not has_table_privilege('postgres', 'audit.action', 'DELETE'), 'postgres só acrescenta ação ao catálogo (migration)');
 
 -- ---------------------------------------------------------------- contrato do record_event

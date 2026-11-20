@@ -102,6 +102,9 @@ alter table audit.event force row level security;
 revoke all on audit.action, audit.event from public, anon, authenticated, service_role, postgres;
 -- migrations (postgres) acrescentam ações e as leem; nada além disso
 grant select, insert on audit.action to postgres;
+-- leitura da trilha pelo postgres: as funções de leitura em api (ADMIN, MIG-06) e os testes das trilhas leem por
+-- funções donas dele. Ler não fere o append-only; escrever, só pelo record_event.
+grant select on audit.event to postgres;
 
 create policy owner_reads_actions on audit.action for select to audit_owner using (true);
 create policy owner_reads_events on audit.event for select to audit_owner using (true);
