@@ -13,7 +13,10 @@ const DESAFIO = "00000000-1111-4111-8111-111111111111";
 
 describe("FluxoCheckin", () => {
   beforeEach(() => vi.clearAllMocks());
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers(); // o relógio falso de um teste que falhou não vaza para o próximo
+  });
 
   it("não chama o servidor com CPF inválido", async () => {
     render(<FluxoCheckin portal="aurora" clinica="Clínica Aurora Estética" />);
@@ -106,6 +109,5 @@ describe("FluxoCheckin", () => {
     vi.advanceTimersByTime(31_000);
     await userEvent.click(await screen.findByRole("button", { name: "Reenviar código" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Não recebeu o código? Procure a recepção.");
-    vi.useRealTimers();
   });
 });
