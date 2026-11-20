@@ -196,14 +196,14 @@ isOneToOne: false
                   ]
                 },"appointment_transition": {
                   Row: {
-                    "actor": string | null,"appointment_id": string,"at": string,"from_status": string,"id": string,"reason": string | null,"tenant_id": string,"to_status": string
+                    "actor": string | null,"appointment_id": string,"at": string,"from_status": string,"id": string,"justification": string | null,"reason": string | null,"tenant_id": string,"to_status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "actor"?: string | null,"appointment_id": string,"at"?: string,"from_status": string,"id"?: string,"reason"?: string | null,"tenant_id": string,"to_status": string
+                    "actor"?: string | null,"appointment_id": string,"at"?: string,"from_status": string,"id"?: string,"justification"?: string | null,"reason"?: string | null,"tenant_id": string,"to_status": string
                   }
                   Update: {
-                    "actor"?: string | null,"appointment_id"?: string,"at"?: string,"from_status"?: string,"id"?: string,"reason"?: string | null,"tenant_id"?: string,"to_status"?: string
+                    "actor"?: string | null,"appointment_id"?: string,"at"?: string,"from_status"?: string,"id"?: string,"justification"?: string | null,"reason"?: string | null,"tenant_id"?: string,"to_status"?: string
                   }
                   Relationships: [
                     {
@@ -371,7 +371,7 @@ isOneToOne: false
           }
           Functions: {
             "apply_transition":
-{ Args: { "p_absent_mode"?: string,"p_by_reception"?: boolean,"p_id": string,"p_reason"?: string,"p_tenant": string,"p_to": string }; Returns: undefined
+{ Args: { "p_absent_mode"?: string,"p_by_reception"?: boolean,"p_id": string,"p_justification"?: string,"p_reason"?: string,"p_tenant": string,"p_to": string }; Returns: undefined
                            },
 "check_link_rules":
 { Args: { "p_appointment_type": string,"p_clinic_service_id": string }; Returns: undefined
@@ -397,7 +397,7 @@ isOneToOne: false
             }[]
                            },
 "transition_appointment":
-{ Args: { "p_id": string,"p_reason"?: string,"p_to": string }; Returns: undefined
+{ Args: { "p_id": string,"p_justification"?: string,"p_reason"?: string,"p_to": string }; Returns: undefined
                            }
           }
           Enums: {

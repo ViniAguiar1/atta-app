@@ -1,6 +1,6 @@
 -- MIG-11b: agendamento, estados e regras (PDD v206 §10.2.1 e §10.2.2; ADR 0005 §4). Dados fictícios.
 begin;
-select plan(30);
+select plan(45);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'), ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
 -- paciente da rede com vínculo na A e um provisório da importação da A
@@ -73,6 +73,33 @@ $$;
 create function pg_temp.eventos(p_action text) returns int language sql security definer as $$
   select count(*)::int from audit.event where action = p_action
 $$;
+-- link do Boarding Check emitido para o atendimento (como o MIG-13 fará)
+create function pg_temp.emitir_link(p_appointment uuid) returns void language sql security definer as $$
+  insert into platform.access_grant (purpose, tenant_id, professional_link_id, appointment_id, secret_hash, expires_at, sent_at)
+  values ('professional_boarding', '00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000d1',
+          p_appointment, sha256(p_appointment::text::bytea), now() + interval '8 hours', now())
+$$;
+create function pg_temp.link_revogado(p_appointment uuid) returns boolean language sql security definer as $$
+  select bool_and(revoked_at is not null) from platform.access_grant where appointment_id = p_appointment
+$$;
+-- leva um atendimento Em preenchimento a Pronto pelo caminho interno (como o check-in do MIG-13 fará)
+create function pg_temp.ate_pronto(p_id uuid) returns void language sql security definer as $$
+  select atta_in.apply_transition(p_id, '00000000-0000-4000-8000-00000000000a', 'pronto');
+$$;
+create function pg_temp.trilha_remarcar(p_id uuid) returns text language sql security definer as $$
+  select string_agg(k, ',' order by k) from audit.event e, jsonb_object_keys(e.after) k
+  where e.action = 'appointment.change' and e.entity_id = p_id
+$$;
+create function pg_temp.propass_link3() returns void language sql security definer as $$
+  insert into platform.professional (id, display_name, council, council_uf, council_number, cpf_hmac, cpf_masked, cpf_enc,
+                                     email_enc, dek_wrapped, kek_version)
+  values ('00000000-0000-4000-8000-0000000000f3', 'Dr. Fictício Dois', 'crm', 'SP', '777', sha256('cpf-prof-3'::bytea),
+          '···.···.000-03', '\x01', '\x01', '\x01', 1);
+  insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
+                                                 envelope_id, dek_wrapped, kek_version, propass_completed_at)
+  values ('00000000-0000-4000-8000-0000000000d3', '00000000-0000-4000-8000-00000000000a',
+          '00000000-0000-4000-8000-0000000000f3', sha256('dr3@a.test'::bytea), '\x01', gen_random_uuid(), '\x01', 1, now());
+$$;
 create function pg_temp.status(p_id uuid) returns text language sql security definer as $$
   select status from atta_in.appointment where id = p_id
 $$;
@@ -132,18 +159,64 @@ select lives_ok($$ select atta_in.transition_appointment('00000000-0000-4000-800
                 'marcar ausente no dia');
 select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a003', 'cancelado') $$,
                  'P0001', 'ATTA-IN-0001', 'cancelar sem motivo: recusado');
+select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a003', 'cancelado',
+                                                         'paciente pediu para desmarcar') $$,
+                 'P0001', 'ATTA-IN-0001', 'cancelar com texto livre: recusado (lista fechada, Regra Transversal 3)');
+select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a003', 'cancelado',
+                                                         'paciente_desistiu') $$,
+                 'P0001', 'ATTA-IN-0001', 'antes da chegada, só os motivos de agendamento (§10.2.2)');
+select pg_temp.emitir_link('00000000-0000-4000-8000-00000000a003');
 select lives_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a003', 'cancelado',
-                                                        'paciente pediu para desmarcar') $$, 'cancelar com motivo');
+                                                        'cancelado_pelo_paciente') $$, 'cancelar com motivo da lista');
+select ok(pg_temp.link_revogado('00000000-0000-4000-8000-00000000a003'),
+          'cancelado: o link do Boarding Check do atendimento é revogado na mesma transação (RN-FIC-07)');
 select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a003', 'ausente') $$,
                  'P0001', 'ATTA-IN-0003', 'cancelado não volta (tabela do §10.2.2)');
-select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a002', 'concluido', 'ok') $$,
-                 'P0001', 'ATTA-IN-0001', 'concluir pela recepção exige motivo de 3 a 50 caracteres');
 select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a002', 'concluido',
-                                                         'atendido no consultório') $$,
-                 'P0001', 'ATTA-IN-0003', 'agendado não conclui direto (só depois de Pronto)');
+                                                         'atendido no consultório', repeat('x', 60)) $$,
+                 'P0001', 'ATTA-IN-0001', 'concluir pela recepção: motivo só em chip fixo (§10.2.3)');
+select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a002', 'concluido',
+                                                         'profissional_inacessivel', 'curta demais') $$,
+                 'P0001', 'ATTA-IN-0001', 'concluir pela recepção: justificativa de no mínimo 50 caracteres');
+select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a002', 'concluido',
+                                                         'profissional_inacessivel', repeat('justificativa ', 5)) $$,
+                 'P0001', 'ATTA-IN-0003', 'agendado não conclui direto (só a partir de Pronto ou Em atendimento)');
 select is(pg_temp.status('00000000-0000-4000-8000-00000000a003'), 'cancelado', 'o estado ficou cancelado');
 select ok(pg_temp.eventos('appointment.create') = 3 and pg_temp.eventos('appointment.transition') = 2,
           'cada agendamento e cada transição vão para a auditoria');
+
+-- reabrir preenchimento (Ausente → Em preenchimento) e edição só em Agendado
+select lives_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a001', 'em_preenchimento') $$,
+                'Reabrir preenchimento de um Ausente (§10.2.2)');
+select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a002', 'em_preenchimento') $$,
+                 'P0001', 'ATTA-IN-0003', 'reabrir só vale para Ausente');
+select throws_ok($$ update atta_in.appointment set starts_at = starts_at + interval '1 hour', ends_at = ends_at + interval '1 hour'
+                    where id = '00000000-0000-4000-8000-00000000a001' $$,
+                 'P0001', 'ATTA-IN-0003', 'fora de Agendado não remarca');
+select throws_ok($$ delete from atta_in.appointment_clinic_service where appointment_id = '00000000-0000-4000-8000-00000000a001' $$,
+                 'P0001', 'ATTA-IN-0003', 'fora de Agendado não troca Serviço');
+-- remarcar um Agendado: auditado só com o que mudou
+select lives_ok($$ update atta_in.appointment set starts_at = starts_at + interval '2 hours', ends_at = ends_at + interval '2 hours'
+                   where id = '00000000-0000-4000-8000-00000000a002' $$, 'remarcar um Agendado');
+select is(pg_temp.trilha_remarcar('00000000-0000-4000-8000-00000000a002'), 'ends_at,starts_at',
+          'remarcar vai para a auditoria com before/after só do que mudou');
+-- trocar o profissional: os Serviços do agendamento precisam estar autorizados ao novo
+select lives_ok($$ insert into atta_in.appointment_clinic_service (tenant_id, appointment_id, clinic_service_id)
+                   values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000a002', '00000000-0000-4000-8000-0000000000c1') $$,
+                'Serviço autorizado no agendamento do provisório');
+-- concluir pela recepção a partir de Pronto revoga o link
+select pg_temp.ate_pronto('00000000-0000-4000-8000-00000000a001');
+select pg_temp.emitir_link('00000000-0000-4000-8000-00000000a001');
+select lives_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a001', 'concluido',
+                   'profissional_inacessivel', repeat('justificativa ', 5)) $$,
+                'concluir pela recepção a partir de Pronto, com chip e justificativa');
+select ok(pg_temp.link_revogado('00000000-0000-4000-8000-00000000a001'),
+          'concluído: o link do Boarding Check é revogado na mesma transação (RN-FIC-07)');
+
+select lives_ok($$ select pg_temp.propass_link3() $$, 'um 2º profissional com PROpass, sem o Serviço');
+select throws_ok($$ update atta_in.appointment set professional_link_id = '00000000-0000-4000-8000-0000000000d3'
+                    where id = '00000000-0000-4000-8000-00000000a002' $$,
+                 'P0001', 'ATTA-IN-0003', 'trocar para profissional sem o Serviço autorizado: recusado');
 
 -- RN-CFG-01: horário do profissional dentro do funcionamento
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
