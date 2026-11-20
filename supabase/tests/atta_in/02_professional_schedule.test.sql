@@ -27,7 +27,10 @@ begin
   perform set_config('request.jwt.claims',
     json_build_object('sub', v_user, 'role', 'authenticated', 'tenant_id', p_tenant, 'app_role', p_role,
                       -- ADMIN só com o 2º fator no token (MIG-03)
-                      'aal', case when p_role = 'ADMIN' then 'aal2' else 'aal1' end)::text, true);
+                      'aal', case when p_role = 'ADMIN' then 'aal2' else 'aal1' end,
+                      -- hora do login (sessão de 12 h, MIG-03 do Backend 1)
+                      'amr', json_build_array(json_build_object('method', 'password',
+                                                                'timestamp', extract(epoch from now())::bigint)))::text, true);
 end $$;
 create function pg_temp.remover_vinculo() returns void language plpgsql as $$
 begin
