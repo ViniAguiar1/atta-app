@@ -11,7 +11,7 @@ const DESFECHOS: Record<Situacao, { titulo: string; texto?: string; voltar?: boo
   seguir: { titulo: "Identidade confirmada", texto: "Agora você vai conferir os seus dados." },
   cadastro_novo: { titulo: "Identidade confirmada", texto: TEXTOS.cadastroNovo },
   concluido: { titulo: TEXTOS.concluido },
-  cancelado: { titulo: TEXTOS.semAtendimento, texto: "Procure a recepção." },
+  cancelado: { titulo: TEXTOS.semAtendimento }, // só o literal do PDD §11.9
   ausente: { titulo: TEXTOS.ausenteTitulo, texto: TEXTOS.ausenteTexto, voltar: true },
   divergencia: { titulo: TEXTOS.divergencia },
 };
