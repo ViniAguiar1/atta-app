@@ -35,6 +35,9 @@ export const LIMITES = {
   conviteEquipePorUsuario: { bucket: "team.invite.user", limite: 20, janelaSegundos: 3600 },
   /** Convite de Equipe & Permissões: 50 por dia por clínica (MIG-06; revisão do #105). */
   conviteEquipePorClinica: { bucket: "team.invite.tenant", limite: 50, janelaSegundos: 86400 },
+  /** PROpass, envio dos dados e conferência do conselho: 10 por hora por IP. Junto da revogação do link na 5ª recusa
+   * (api.propass_submit), impede que o link vire oráculo de CPF (Tech Lead e Segurança, revisão do #129). */
+  propassEnvioPorIp: { bucket: "propass.submit.ip", limite: 10, janelaSegundos: 3600 },
 } as const satisfies Record<string, PoliticaDeLimite>;
 
 const ROTULO = "atta.ratelimit.v1|";

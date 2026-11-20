@@ -127,5 +127,6 @@ describe("consumirLimite", () => {
     expect(LIMITES.verificacaoPublicaPorIp).toEqual({ bucket: "verify.ip", limite: 30, janelaSegundos: 60 });
     expect(LIMITES.checkinIniciarPorIp).toEqual({ bucket: "checkin.start.ip", limite: 10, janelaSegundos: 600 });
     expect(LIMITES.checkinIniciarPorPortal).toEqual({ bucket: "checkin.start.portal", limite: 100, janelaSegundos: 600 });
+    expect(LIMITES.propassEnvioPorIp).toEqual({ bucket: "propass.submit.ip", limite: 10, janelaSegundos: 3600 });
   });
 });
