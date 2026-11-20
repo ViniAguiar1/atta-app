@@ -1,6 +1,6 @@
 -- MIG-11c: leitura da Agenda (api.agenda_day e api.agenda_summary) e "Confirmar agendamento". Dados fictícios.
 begin;
-select plan(24);
+select plan(27);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'), ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
 insert into network.person (id, full_name, social_name, cpf_hmac, cpf_masked, cpf_enc, dek_wrapped, kek_version)
@@ -67,6 +67,14 @@ returns void language sql security definer as $$
   values (p_id, '00000000-0000-4000-8000-00000000000a', p_person, p_prov, '00000000-0000-4000-8000-0000000000d1', p_type, p_modality, p_inicio,
           p_inicio + interval '1 hour')
 $$;
+create function pg_temp.pausa() returns void language sql security definer as $$
+  insert into atta_in.professional_break (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
+  values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000d1', '{0,1,2,3,4,5,6}', '12:00', '13:00')
+$$;
+create function pg_temp.janela_consulta(p_h int) returns void language sql security definer as $$
+  insert into atta_in.setting (tenant_id, key, level, appointment_type, value_int)
+  values ('00000000-0000-4000-8000-00000000000a', 'janela_de_confirmacao_h', 'tipo_de_atendimento', 'consulta', p_h)
+$$;
 create function pg_temp.transitar(p_id uuid, p_to text, p_reason text default null) returns void
 language sql security definer as $$
   select atta_in.apply_transition(p_id, '00000000-0000-4000-8000-00000000000a', p_to, p_reason)
@@ -88,6 +96,7 @@ select pg_temp.transitar('00000000-0000-4000-8000-00000000a003', 'concluido');
 select pg_temp.agendar('00000000-0000-4000-8000-00000000a004', pg_temp.hora(1, 10));
 insert into atta_in.appointment_clinic_service (tenant_id, appointment_id, clinic_service_id)
 values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000a004', '00000000-0000-4000-8000-0000000000c1');
+select pg_temp.agendar('00000000-0000-4000-8000-00000000a005', pg_temp.hora(2, 10));
 
 -- horário do profissional todos os dias, 09:00 às 13:00 (4 blocos de 1 h); pelo painel, para a auditoria ter a clínica
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
@@ -139,10 +148,20 @@ select ok((select r -> 'checkin' = '{"em_preenchimento": 1, "pronto": 0, "em_ate
            from api.agenda_summary() r), 'cards de hoje: faltam 2, concluído 1, Check-in por estado');
 select ok((select (r ->> 'no_document')::int = 2 from api.agenda_summary() r),
           'card sem documento usa a mesma regra do filtro');
-select ok((select (r ->> 'month_free_slots')::int >= 0 from api.agenda_summary() r),
-          'horários livres no mês calculados no banco');
-select ok((select (r -> 'confirmation' ->> 'agendados')::int = 1 and (r -> 'confirmation' ->> 'a_confirmar')::int = 1
-           from api.agenda_summary() r), 'Confirmação: o futuro dentro da janela de 72 h está a confirmar');
+create temp table livres_antes as select (r ->> 'month_free_slots')::int as n from api.agenda_summary() r;
+select ok((select n >= 0 from livres_antes), 'horários livres no mês calculados no banco');
+select pg_temp.pausa();
+select ok((select (r ->> 'month_free_slots')::int from api.agenda_summary() r) < (select n from livres_antes),
+          'a pausa do profissional sai dos horários livres (§10.2.2)');
+select ok((select (r -> 'confirmation' ->> 'agendados')::int = 2 and (r -> 'confirmation' ->> 'a_confirmar')::int = 2
+           from api.agenda_summary() r), 'Confirmação: os dois futuros dentro da janela de 72 h estão a confirmar');
+
+-- janela de confirmação pela cascata: 24 h em consulta deixa o agendamento de daqui a ~2 dias fora da janela
+select pg_temp.janela_consulta(24);
+select is((select e ->> 'confirmation' from jsonb_array_elements(api.agenda_day(pg_temp.hora(2, 0)::date) -> 'data') e),
+          'fora_da_janela', 'janela de 24 h em consulta: a consulta de daqui a 2 dias está fora da janela');
+select throws_ok($$ select atta_in.confirm_appointment('00000000-0000-4000-8000-00000000a005') $$,
+                 'P0001', 'ATTA-IN-0003', 'fora da janela do tipo de atendimento não se confirma');
 
 -- Confirmar agendamento: só Agendado futuro dentro da janela; remarcar zera
 select lives_ok($$ select atta_in.confirm_appointment('00000000-0000-4000-8000-00000000a004') $$,

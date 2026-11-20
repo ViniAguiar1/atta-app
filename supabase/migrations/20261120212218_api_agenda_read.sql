@@ -24,6 +24,26 @@ revoke all on function atta_in.appointment_reset_confirmation() from public, ano
 create trigger appointment_reset_confirmation before update of starts_at on atta_in.appointment
   for each row execute function atta_in.appointment_reset_confirmation();
 
+-- valor efetivo de uma chave inteira para um agendamento, pela cascata das Configurações (MIG-10): Serviço → tipo de
+-- atendimento → unidade → padrão do sistema. Com mais de um Serviço com valor próprio, vale o menor (o mais restrito).
+-- Interna, sem exigir settings.view: quem chama já conferiu a permissão do que mostra (revisão do Backend 4 no #130).
+create function private.appointment_setting_int(p_tenant uuid, p_appointment_id uuid, p_key text) returns bigint
+language sql stable set search_path = ''
+as $$
+  select coalesce(
+    (select min(s.value_int) from atta_in.setting s
+     join atta_in.appointment_clinic_service acs
+       on acs.tenant_id = s.tenant_id and acs.clinic_service_id = s.clinic_service_id
+     where s.tenant_id = p_tenant and s.key = p_key and s.level = 'servico' and acs.appointment_id = p_appointment_id),
+    (select s.value_int from atta_in.setting s
+     join atta_in.appointment a on a.tenant_id = s.tenant_id and a.id = p_appointment_id
+     where s.tenant_id = p_tenant and s.key = p_key and s.level = 'tipo_de_atendimento'
+       and s.appointment_type = a.appointment_type),
+    (select s.value_int from atta_in.setting s where s.tenant_id = p_tenant and s.key = p_key and s.level = 'unidade'),
+    (select d.default_int from atta_in.setting_definition d where d.key = p_key))
+$$;
+revoke all on function private.appointment_setting_int(uuid, uuid, text) from public, anon, authenticated, service_role;
+
 insert into audit.action (action, kind) values ('appointment.confirm', 'change') on conflict (action) do nothing;
 
 create function atta_in.confirm_appointment(p_id uuid) returns void
@@ -41,10 +61,7 @@ begin
   if not found then
     raise exception using errcode = 'P0002', message = 'ATTA-CORE-0005', detail = 'appointment_id';
   end if;
-  select coalesce(s.value_int, d.default_int) into v_window_h
-  from atta_in.setting_definition d
-  left join atta_in.setting s on s.tenant_id = v_tenant and s.key = d.key and s.level = 'unidade'
-  where d.key = 'janela_de_confirmacao_h';
+  v_window_h := private.appointment_setting_int(v_tenant, p_id, 'janela_de_confirmacao_h');
   if v_appointment.status <> 'agendado' or v_appointment.confirmed_at is not null
      or v_appointment.starts_at <= now() or v_appointment.starts_at > now() + make_interval(hours => v_window_h::int) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'confirmation';
@@ -70,10 +87,6 @@ as $$
   with ctx as (
     select t.timezone,
            (now() at time zone t.timezone)::date as today,
-           coalesce((select s.value_int from atta_in.setting s
-                     where s.tenant_id = p_tenant and s.key = 'janela_de_confirmacao_h' and s.level = 'unidade'),
-                    (select d.default_int from atta_in.setting_definition d where d.key = 'janela_de_confirmacao_h'))
-             as window_h,
            coalesce((select s.value_bool from atta_in.setting s
                      where s.tenant_id = p_tenant and s.key = 'fluxo_alternativo_habilitado' and s.level = 'unidade'),
                     (select d.default_bool from atta_in.setting_definition d where d.key = 'fluxo_alternativo_habilitado'))
@@ -81,7 +94,8 @@ as $$
     from platform.tenant t where t.id = p_tenant
   ),
   base as (
-    select a.*, c.timezone, c.today, c.window_h, c.alt_flow,
+    select a.*, c.timezone, c.today, c.alt_flow,
+           private.appointment_setting_int(a.tenant_id, a.id, 'janela_de_confirmacao_h') as window_h,
            (a.starts_at at time zone c.timezone)::date as local_day,
            -- paciente: pessoa da rede (em pending, só o que a clínica digitou) ou provisório da importação
            case when a.person_id is not null
@@ -305,7 +319,13 @@ begin
   select coalesce(sum(greatest(0, d.slots - d.busy)), 0)::int into v_free
   from (
     select ps.professional_link_id, g.day,
-           floor(extract(epoch from (ps.ends_at - ps.starts_at)) / 3600)::int as slots,
+           -- a pausa do profissional não é horário livre (§10.2.2): sai da janela antes de contar os blocos de 1 h
+           floor((extract(epoch from (ps.ends_at - ps.starts_at))
+                  - coalesce((select sum(greatest(0, extract(epoch from (least(pb.ends_at, ps.ends_at)
+                                                                          - greatest(pb.starts_at, ps.starts_at)))))
+                              from atta_in.professional_break pb
+                              where pb.tenant_id = ps.tenant_id and pb.professional_link_id = ps.professional_link_id
+                                and extract(dow from g.day)::smallint = any (pb.weekdays)), 0)) / 3600)::int as slots,
            coalesce((select ceil(sum(extract(epoch from (a.ends_at - a.starts_at))) / 3600)::int
                      from atta_in.appointment a
                      where a.tenant_id = v_tenant and a.professional_link_id = ps.professional_link_id
