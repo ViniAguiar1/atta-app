@@ -67,7 +67,7 @@ describe("PROpass, passos 1 e 2", () => {
     abrir();
     await preencher();
     await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(await screen.findByText(/ainda não foi feita/)).toBeInTheDocument();
+    expect(await screen.findByText(/é feita pela equipe ATTA/)).toBeInTheDocument();
     expect(screen.queryByText("Regularizado (Conselho Ativo)")).toBeNull();
   });
 });
