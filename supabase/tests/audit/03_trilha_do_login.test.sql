@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 grant execute on all functions in schema extensions to service_role, authenticated;
-select plan(14);
+select plan(15);
 
 insert into auth.users (id, email, aud, role) values
   ('a1a1a1a1-0000-4000-8000-0000000000a1', 'trilha.login@exemplo.test', 'authenticated', 'authenticated'),
@@ -37,6 +37,7 @@ select throws_ok($$ select api.audit_auth_event('auth.login', 'a1a1a1a1-0000-400
 select throws_ok($$ select api.audit_auth_event('auth.login', 'a1a1a1a1-0000-4000-8000-0000000000a1', jsonb_build_object('reason', repeat('x', 41))) $$, 'P0001', 'ATTA-IN-0001', 'texto longo é recusado');
 select throws_ok($$ select api.audit_auth_event('auth.login_failed', 'a1a1a1a1-0000-4000-8000-0000000000a1') $$, 'P0001', 'ATTA-IN-0001', 'falha de login com conta é recusada');
 select throws_ok($$ select api.audit_auth_event('auth.login', null) $$, 'P0001', 'ATTA-IN-0001', 'login sem conta é recusado');
+select throws_ok($$ select api.audit_auth_event('auth.login', gen_random_uuid(), '{"method":"password"}') $$, 'P0001', 'ATTA-IN-0001', 'usuário que não existe não vira autor');
 reset role;
 
 select is(audit.verify_chain(), null, 'a cadeia segue íntegra');

@@ -39,6 +39,11 @@ begin
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'user_id';
   end if;
 
+  -- o autor do evento tem de existir: um id trocado ou de outro ambiente não vira autor falso na trilha (§19.6)
+  if p_user_id is not null and not exists (select 1 from auth.users u where u.id = p_user_id) then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'user_id';
+  end if;
+
   if p_user_id is not null then
     -- a clínica e o papel do vínculo ativo mais antigo, como o hook do token (MIG-03a)
     select m.tenant_id, m.app_role into v_tenant, v_role
