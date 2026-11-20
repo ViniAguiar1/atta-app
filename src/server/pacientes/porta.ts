@@ -1,13 +1,13 @@
 import "server-only";
 import type { Resultado } from "@/lib/errors";
-import { portaPacientesSimulada } from "./simulado";
+import { portaPacientesReal } from "./real";
 
 // Contrato entre as telas de Pacientes e da Pasta do Paciente (MIG-43, Frontend 3) e a pessoa da rede (MIG-12, BE2:
 // api.patient_list, patient_search, patient_get, patient_register, patient_update e report_divergence). Diz o que a
 // tela precisa; a forma das funções em `api` é do Backend 2, aprovada pelo Tech Lead (ADR 0001 §4).
-// Até a porta real entrar, a implementação é a simulada, só com dado fictício e sem dica na tela. A real usa o cliente
-// de servidor com a sessão do usuário (nunca a secret key), abre os contatos com getCofre('network') e devolve a tela
-// pronta: nome de exibição, documento mascarado (ADR 0002 §6) e campos derivados calculados no servidor.
+// A tela usa a real (real.ts): cliente de servidor com a sessão do usuário (nunca a secret key), contatos abertos com
+// getCofre('network') e a tela pronta: nome de exibição, documento mascarado (ADR 0002 §6) e campos derivados calculados
+// no servidor. A simulada (simulado.ts) fica só para os testes de unidade, importada direto por eles.
 // Vínculo em network_access = 'pending': só os campos que a própria clínica digitou, nunca dado da rede (dono, 20/11).
 
 /** Documento à mostra, sempre mascarado pelo servidor (`···.···.247-25`); a tela não remascara. */
@@ -36,7 +36,10 @@ export type LinhaDePaciente = {
   identificacao: Identificacao;
   /** AAAA-MM-DD; null quando não informado. */
   nascimento: string | null;
-  /** null quando a clínica não tem contato deste paciente. */
+  /**
+   * Já mascarado pelo servidor, como o CPF: "(11) ·····-4321" e "ju···@exemplo.test" (PDD §19.8, exibição parcial; pedido
+   * da Segurança). O inteiro só na Pasta do Paciente. null quando a clínica não tem contato deste paciente.
+   */
   contato: Contato | null;
   /** O último atendimento concluído nesta clínica, no fuso dela; null quando não houve nenhum. */
   ultimoAtendimento: { em: string /* AAAA-MM-DDTHH:mm, local */; procedimento: string; profissional: string } | null;
@@ -113,4 +116,4 @@ export type PortaPacientes = {
   reportarDivergencia(id: string, motivo: MotivoDeDivergencia): Promise<Resultado<{ protocolo: string }>>;
 };
 
-export const portaPacientes: PortaPacientes = portaPacientesSimulada;
+export const portaPacientes: PortaPacientes = portaPacientesReal;
