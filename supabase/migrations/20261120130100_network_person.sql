@@ -17,7 +17,7 @@ create table network.person (
   cpf_masked text,
   cpf_enc bytea,
   foreign_doc_type text,                -- estrangeiro: RNE, RNM ou CRNM, sem dígito verificador (dono, 20/11)
-  foreign_doc_hmac bytea unique,
+  foreign_doc_hmac bytea,
   foreign_doc_masked text,
   foreign_doc_enc bytea,
   full_name text not null,
@@ -38,6 +38,8 @@ create table network.person (
   constraint person_foreign_doc_check check (num_nulls(foreign_doc_type, foreign_doc_hmac, foreign_doc_masked,
     foreign_doc_enc) in (0, 4)),
   constraint person_foreign_doc_type_check check (foreign_doc_type in ('rne', 'rnm', 'crnm')),
+  -- o mesmo número em tipos diferentes (RNE e RNM) são documentos diferentes (Tech Lead, revisão do #8)
+  constraint person_foreign_doc_unique unique (foreign_doc_type, foreign_doc_hmac),
   constraint person_hmac_size_check check (
     (cpf_hmac is null or octet_length(cpf_hmac) = 32)
     and (foreign_doc_hmac is null or octet_length(foreign_doc_hmac) = 32)),
@@ -85,23 +87,24 @@ create table network.person_import_provisional (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references platform.tenant (id),
   import_batch_id uuid not null,
-  cpf_hmac bytea,
-  cpf_masked text,
-  cpf_enc bytea,
+  -- sem CPF não importa (PDD 10.1; INT, revisão do #8)
+  cpf_hmac bytea not null,
+  cpf_masked text not null,
+  cpf_enc bytea not null,
   full_name text not null,
   birth_date date,
   phone_enc bytea,
   email_enc bytea,
-  dek_wrapped bytea,
-  kek_version smallint,
+  dek_wrapped bytea not null,
+  kek_version smallint not null,
   status text not null default 'pendente',
   created_at timestamptz not null default now(),
   constraint person_import_provisional_status_check check (status in ('pendente', 'confirmado', 'descartado')),
-  constraint person_import_provisional_cpf_check check (num_nulls(cpf_hmac, cpf_masked, cpf_enc) in (0, 3)),
-  constraint person_import_provisional_envelope_check check (
-    (num_nonnulls(cpf_enc, phone_enc, email_enc) = 0) = (dek_wrapped is null)
-    and (dek_wrapped is null) = (kek_version is null))
+  constraint person_import_provisional_hmac_size_check check (octet_length(cpf_hmac) = 32)
 );
+-- o mesmo CPF não entra duas vezes vivo na importação da mesma clínica; descartado libera
+create unique index person_import_provisional_cpf_uidx on network.person_import_provisional (tenant_id, cpf_hmac)
+  where status <> 'descartado';
 create index person_import_provisional_tenant_idx on network.person_import_provisional (tenant_id, import_batch_id);
 
 -- ---------------------------------------------------------------------------------------------------------------
@@ -111,10 +114,12 @@ create table network.divergence_report (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references platform.tenant (id),
   person_id uuid not null references network.person (id),
+  -- lista fechada, sem texto livre (dono, 20/11): nome, data de nascimento, CPF que não é do paciente, outro
   reason text not null,
   reported_by uuid default auth.uid(),
   created_at timestamptz not null default now(),
-  constraint divergence_report_reason_check check (length(btrim(reason)) between 5 and 500)
+  constraint divergence_report_reason_check check (reason in ('nome_nao_confere', 'data_nascimento_nao_confere',
+    'cpf_nao_e_do_paciente', 'outro'))
 );
 create index divergence_report_tenant_idx on network.divergence_report (tenant_id, created_at desc);
 

@@ -1,6 +1,6 @@
 -- MIG-12 (a): schema network fechado, RLS forçada e as regras de identidade (dados fictícios: hmacs de texto inventado).
 begin;
-select plan(20);
+select plan(28);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -43,6 +43,15 @@ select throws_ok($$ insert into network.person (cpf_hmac, cpf_masked, cpf_enc, f
                     values (sha256('cpf-ficticio-3'), '***', '\x01', 'Ana Exemplar') $$,
                  '23514', null, 'campo cifrado sem envelope (dek_wrapped, kek_version) é recusado');
 
+select lives_ok($$ insert into network.person (foreign_doc_type, foreign_doc_hmac, foreign_doc_masked, foreign_doc_enc,
+                                              full_name, dek_wrapped, kek_version)
+                   values ('rne', sha256('crnm-ficticio-1'), '****-**1', '\x01aa', 'Lia Simulada Estrangeira', '\x01bb', 1) $$,
+                'o mesmo número em outro tipo (RNE x CRNM) é outro documento');
+select throws_ok($$ insert into network.person (foreign_doc_type, foreign_doc_hmac, foreign_doc_masked, foreign_doc_enc,
+                                               full_name, dek_wrapped, kek_version)
+                    values ('crnm', sha256('crnm-ficticio-1'), '****-**1', '\x01aa', 'Outro Nome', '\x01bb', 1) $$,
+                 '23505', null, 'o mesmo CRNM duas vezes é recusado');
+
 -- vínculo: um cadastro ativo por pessoa na clínica; a mesma pessoa em duas clínicas
 insert into network.person_tenant_link (tenant_id, person_id) values
   ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000e1');
@@ -66,10 +75,36 @@ select lives_ok($$ insert into network.identity_verification (person_id, verifie
                            sha256('prova'), 'aprovada') $$,
                 'selo de 1 ano aceito');
 
--- divergência: motivo curto demais é recusado
+-- divergência: motivo só da lista fechada, sem texto livre (dono, 20/11)
 select throws_ok($$ insert into network.divergence_report (tenant_id, person_id, reason)
-                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000e1', 'x') $$,
-                 '23514', null, 'divergência sem motivo é recusada');
+                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000e1',
+                            'o nome no WhatsApp está diferente') $$,
+                 '23514', null, 'divergência com texto livre é recusada');
+select lives_ok($$ insert into network.divergence_report (tenant_id, person_id, reason)
+                   values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000e1',
+                           'cpf_nao_e_do_paciente') $$,
+                'divergência com motivo da lista é aceita');
+
+-- importação: sem CPF não entra; o mesmo CPF vivo uma vez por clínica; descartado libera (PDD 10.1)
+create function pg_temp.importar(p_tenant text, p_cpf text) returns void language sql as $$
+  insert into network.person_import_provisional (tenant_id, import_batch_id, cpf_hmac, cpf_masked, cpf_enc, full_name,
+                                                 dek_wrapped, kek_version)
+  values (p_tenant::uuid, gen_random_uuid(), sha256(p_cpf::bytea), '***.***.***-' || right(p_cpf, 2), '\x01aa',
+          'Paciente Importado Fictício', '\x01bb', 1)
+$$;
+select throws_ok($$ insert into network.person_import_provisional (tenant_id, import_batch_id, full_name)
+                    values ('00000000-0000-4000-8000-00000000000a', gen_random_uuid(), 'Sem CPF') $$,
+                 '23502', null, 'importação sem CPF é recusada');
+select lives_ok($$ select pg_temp.importar('00000000-0000-4000-8000-00000000000a', 'cpf-import-1') $$,
+                'clínica A importa o CPF X');
+select throws_ok($$ select pg_temp.importar('00000000-0000-4000-8000-00000000000a', 'cpf-import-1') $$,
+                 '23505', null, 'clínica A não importa o CPF X de novo enquanto o primeiro está vivo');
+select lives_ok($$ select pg_temp.importar('00000000-0000-4000-8000-00000000000b', 'cpf-import-1') $$,
+                'clínica B importa o mesmo CPF X');
+update network.person_import_provisional set status = 'descartado'
+where tenant_id = '00000000-0000-4000-8000-00000000000a' and cpf_hmac = sha256('cpf-import-1'::bytea);
+select lives_ok($$ select pg_temp.importar('00000000-0000-4000-8000-00000000000a', 'cpf-import-1') $$,
+                'descartado libera: a clínica A importa o CPF X de novo');
 
 -- authenticated não lê nada direto, nem com clínica no token
 set local role authenticated;
