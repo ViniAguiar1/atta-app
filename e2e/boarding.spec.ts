@@ -3,7 +3,8 @@ import { devices, expect, type Page, test } from "@playwright/test";
 
 // Boarding Check do profissional (MIG-53; PDD §10.2.3; ADR 0004 §3) com a porta simulada, no tamanho de celular.
 // Valores de teste no migracao/guia-de-teste.md; nada disso aparece na tela.
-test.use({ ...devices["iPhone 13"], defaultBrowserType: "chromium" });
+// Largura de 360 px (o menor celular comum; regra do Tech Lead Frontend para o axe).
+test.use({ ...devices["iPhone 13"], viewport: { width: 360, height: 780 }, defaultBrowserType: "chromium" });
 
 const LINK = `/b/${"vale".padEnd(43, "A")}`;
 const axe = (page: Page) => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
@@ -25,6 +26,7 @@ test("pré-visualização repetida não gasta o link; o PIN certo depois abre o 
   await page.goto(LINK);
   expect(page.url()).toMatch(/\/boarding$/);
   await expect(page.getByRole("heading", { level: 1, name: "Boarding Check" })).toBeVisible();
+  await expect(page).toHaveTitle(/Boarding Check/); // o <title> chega por streaming; o axe roda depois dele
   expect((await axe(page)).violations).toEqual([]);
 
   await page.getByLabel("Senha").fill("1111");
@@ -46,6 +48,7 @@ test("sem link válido, a tela só diz que o link não vale mais", async ({ page
   await page.goto("/b/curto-demais");
   await expect(page.getByRole("heading", { name: "Este link não vale mais." })).toBeVisible();
   await expect(page.getByLabel("Senha")).toHaveCount(0);
+  await expect(page).toHaveTitle(/Boarding Check/);
   expect((await axe(page)).violations).toEqual([]);
 });
 
