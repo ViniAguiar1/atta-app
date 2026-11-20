@@ -7,12 +7,15 @@
  * Uso numa server action ou route handler, antes de qualquer outra coisa:
  *   const limite = await consumirLimite(LIMITES.verificacaoPublicaPorIp, ip);
  *   if (!limite.ok) return limite;   // LIMITE (429)
- * Sem IP (desenvolvimento local), os pedidos dividem um contador só, "sem-valor": o limite continua valendo.
+ * Sem IP (desenvolvimento local), os pedidos dividem um contador só, "sem-valor": o limite continua valendo. Em
+ * produção e preview, isso vira um aviso no log (`limite.sem_valor`).
+ * O IP é o do usuário que o #58 resolve (1º x-forwarded-for da Vercel, validado), nunca um cabeçalho do navegador.
  * Erro do banco também nega (falha fechada): o limite não some quando o banco oscila.
  */
 import "server-only";
 import { createHmac } from "node:crypto";
 import { falha, falhaDoBanco, MENSAGENS, ok, type Resultado } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { pepperFromEnv } from "@/server/crypto/pepper";
 
@@ -60,6 +63,11 @@ export async function consumirLimite(
   valor: string | null | undefined,
   cliente?: ClienteDoLimite,
 ): Promise<Resultado<null>> {
+  // Fora do desenvolvimento, IP ausente é defeito de borda: todos caem no contador "sem-valor" e um atacante trava a
+  // rota de todo mundo. Fica no log, sem valor nenhum (revisão do Tech Lead e do Backend 3 no #65).
+  if ((typeof valor !== "string" || valor.trim() === "") && ["production", "preview"].includes(process.env.VERCEL_ENV ?? "")) {
+    logger.warn("limite.sem_valor", { bucket: politica.bucket, ambiente: process.env.VERCEL_ENV });
+  }
   let chave: Buffer;
   try {
     chave = chaveDoLimite(politica.bucket, valor);

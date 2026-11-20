@@ -1,6 +1,6 @@
 // Limitador de tentativas (ADR 0004 §2). Pepper e IPs fictícios; o banco é trocado por um cliente falso.
 import { createHmac } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { chaveDoLimite, chaveDoLimiteWith, type ClienteDoLimite, consumirLimite, LIMITES } from "./limite";
 
 const PEPPER = Buffer.alloc(32, 7);
@@ -89,6 +89,38 @@ describe("consumirLimite", () => {
     const { cliente } = clienteFalso({ data: null, error: null });
     const r = await consumirLimite(LIMITES.verificacaoPublicaPorIp, "203.0.113.7", cliente);
     expect(r.ok).toBe(false);
+  });
+
+  describe("IP ausente", () => {
+    const antes = process.env.VERCEL_ENV;
+    afterEach(() => {
+      vi.restoreAllMocks();
+      if (antes === undefined) delete process.env.VERCEL_ENV;
+      else process.env.VERCEL_ENV = antes;
+    });
+
+    it("em produção e preview, avisa no log (sem valor nenhum) e continua limitando", async () => {
+      for (const ambiente of ["production", "preview"]) {
+        process.env.VERCEL_ENV = ambiente;
+        const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const { cliente, chamadas } = clienteFalso({ data: true, error: null });
+        await consumirLimite(LIMITES.verificacaoPublicaPorIp, null, cliente);
+        expect(aviso).toHaveBeenCalledTimes(1);
+        const linha = JSON.parse(String(aviso.mock.calls[0]![0]));
+        expect(linha).toMatchObject({ nivel: "warn", evento: "limite.sem_valor", bucket: "verify.ip", ambiente });
+        expect(chamadas).toHaveLength(1);
+        aviso.mockRestore();
+      }
+    });
+
+    it("no desenvolvimento e com IP, não avisa", async () => {
+      const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+      delete process.env.VERCEL_ENV;
+      await consumirLimite(LIMITES.verificacaoPublicaPorIp, null, clienteFalso({ data: true, error: null }).cliente);
+      process.env.VERCEL_ENV = "production";
+      await consumirLimite(LIMITES.verificacaoPublicaPorIp, "203.0.113.7", clienteFalso({ data: true, error: null }).cliente);
+      expect(aviso).not.toHaveBeenCalled();
+    });
   });
 
   it("as políticas seguem a ADR: 30/min na verificação, 10 e 100 por 10 min no check-in", () => {
