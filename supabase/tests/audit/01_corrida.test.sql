@@ -9,11 +9,11 @@ select plan(4);
 
 -- cada lado usa a sua ação: a desta transação nasce aqui (visível na foto); a da outra conexão entra commitada por ela
 -- (catálogo é só de inserção). O que as duas disputam é só a cabeça da cadeia.
-insert into audit.action (action, kind) values ('teste.corrida_a', 'access');
+insert into audit.action (action, kind, scope) values ('teste.corrida_a', 'access', 'network');
 -- pelo endereço de rede do próprio banco (o de loopback entra sem senha, e o dblink de quem não é superusuário exige senha)
 select extensions.dblink_connect('outra', format('host=%s port=%s dbname=%s user=postgres password=postgres',
   coalesce(host(inet_server_addr()), '127.0.0.1'), coalesce(inet_server_port(), 5432), current_database()));
-select extensions.dblink_exec('outra', $$insert into audit.action (action, kind) values ('teste.corrida_b', 'access') on conflict do nothing$$);
+select extensions.dblink_exec('outra', $$insert into audit.action (action, kind, scope) values ('teste.corrida_b', 'access', 'network') on conflict do nothing$$);
 
 -- a foto desta transação é tirada aqui (primeira leitura da tabela)
 select ok((select count(*) from audit.event) >= 0, 'foto da transação tirada antes da gravação concorrente');
