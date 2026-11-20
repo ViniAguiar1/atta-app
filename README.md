@@ -52,7 +52,8 @@ Nunca use a base local de outro agente sem combinar.
 A regra continua a do PLANO: rebase na `main` atual, CI verde nesse estado e um merge por vez. O trem faz isso por todos, sem disputa, testando até 3 PRs em cascata ao mesmo tempo:
 `trem/1` = main + A, `trem/2` = main + A + B, `trem/3` = main + A + B + C, cada um com a suíte inteira.
 
-- **Entrada:** o autor põe a etiqueta `fila` quando já tem o ✅ do revisor (no sensível, também do Tech Lead e do Security Engineer) e a prévia da Vercel verde. Commit novo depois do ✅ pede ✅ de novo (ou o ✅ cita o SHA).
+- **Entrada:** o autor põe a etiqueta `fila` quando já tem o ✅ do revisor (no sensível, também do Tech Lead e do Security Engineer) e a prévia da Vercel verde. O ✅ vale para o head atual se as mudanças do PR forem idênticas às do head aprovado (`git patch-id --stable` do diff desde a `main`; o head aprovado é o SHA citado no ✅ ou o head na hora do comentário). Rebase limpo mantém o ✅; conflito resolvido ou commit novo pede ✅ de novo.
+- **Sensível** (exige também o Tech Lead e o Security Engineer): `supabase/migrations|tests`, `src/server/`, `src/lib/supabase/`, auth, saúde, auditoria, cripto, ATTA Sign, grant, middleware/proxy, `.github/workflows/`, `vercel.json`, `next.config.ts` e `scripts/`.
 - **Ordem:** `conserta-main` primeiro, depois a ordem do CTO em `Shared/atta/migracao/fila.txt` (um número de PR por linha) e, por fim, o número do PR.
 - **Antes de cada squash:** a árvore do PR rebaseado é idêntica à testada (`HEAD^{tree}`), o head do PR é o mesmo que entrou no trem, as aprovações valem e a `main` não está vermelha. O script deixa no PR o SHA da árvore e o link do CI que a testou.
 - **Falha:** o PR sai da fila (`fila-falhou`, comentário com o link) e os de trás voltam na próxima volta.
