@@ -1,16 +1,17 @@
 -- MIG-14a (2): horários e pausas do profissional (dados fictícios).
 begin;
-select plan(16);
+select plan(24);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
   ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
-insert into platform.professional (id, display_name, council, council_uf, council_number)
-values ('00000000-0000-4000-8000-0000000000f1', 'Dra. Fictícia', 'cro', 'SP', '12345'),
-       ('00000000-0000-4000-8000-0000000000f2', 'Dr. Simulado', 'crm', 'RJ', '999');
-insert into platform.professional_tenant_link (tenant_id, professional_id)
-values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f1'),
-       ('00000000-0000-4000-8000-00000000000b', '00000000-0000-4000-8000-0000000000f2');
+-- vínculos fictícios nascidos no convite (o PROpass não é preciso para configurar a agenda)
+insert into platform.professional_tenant_link (id, tenant_id, invite_email_hmac, invite_email_enc, envelope_id,
+                                               dek_wrapped, kek_version)
+values ('00000000-0000-4000-8000-0000000000c1', '00000000-0000-4000-8000-00000000000a', sha256('dra@a.test'::bytea),
+        '\x01', gen_random_uuid(), '\x01', 1),
+       ('00000000-0000-4000-8000-0000000000c2', '00000000-0000-4000-8000-00000000000b', sha256('dr@b.test'::bytea),
+        '\x01', gen_random_uuid(), '\x01', 1);
 
 create function pg_temp.entrar(p_tenant uuid, p_role text) returns void language plpgsql as $$
 declare
@@ -36,6 +37,9 @@ begin
   where user_id = (current_setting('request.jwt.claims')::jsonb ->> 'sub')::uuid;
   perform set_config('role', 'authenticated', true);
 end $$;
+create function pg_temp.eventos(p_action text, p_op text) returns int language sql security definer as $$
+  select count(*)::int from audit.event where action = p_action and details ->> 'op' = p_op
+$$;
 create function pg_temp.trilha() returns text language sql security definer as $$
   select string_agg(details ->> 'op', ',' order by created_at) from audit.event where action = 'professional_schedule.change'
 $$;
@@ -49,11 +53,11 @@ select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid
           'horários com RLS forçada');
 
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
-select lives_ok($$ insert into atta_in.professional_schedule (tenant_id, professional_id, weekdays, starts_at, ends_at)
-                   values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f1', '{1,2,3,4,5}',
+select lives_ok($$ insert into atta_in.professional_schedule (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
+                   values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000c1', '{1,2,3,4,5}',
                            '09:00', '18:00') $$, 'Seg a Sex · 09:00 às 18:00');
-select throws_ok($$ insert into atta_in.professional_schedule (tenant_id, professional_id, weekdays, starts_at, ends_at)
-                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f1', '{6}',
+select throws_ok($$ insert into atta_in.professional_schedule (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
+                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000c1', '{6}',
                             '09:00', '12:00') $$, '23505', null, 'um horário por profissional na clínica');
 select throws_ok($$ update atta_in.professional_schedule set weekdays = '{}' $$, '23514', null,
                  'pelo menos um dia é obrigatório');
@@ -62,32 +66,44 @@ select throws_ok($$ update atta_in.professional_schedule set ends_at = '08:00' $
 select throws_ok($$ update atta_in.professional_schedule set weekdays = '{1,7}' $$, '23514', null,
                  'dia fora de 0 a 6 é recusado');
 select lives_ok($$ update atta_in.professional_schedule set ends_at = '17:00' $$, 'ajuste do horário');
-select lives_ok($$ insert into atta_in.professional_break (tenant_id, professional_id, weekdays, starts_at, ends_at)
-                   values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f1', '{1,2,3,4,5}',
+select lives_ok($$ insert into atta_in.professional_break (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
+                   values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000c1', '{1,2,3,4,5}',
                            '12:00', '13:00') $$, 'pausa de almoço');
-select throws_ok($$ insert into atta_in.professional_schedule (tenant_id, professional_id, weekdays, starts_at, ends_at)
-                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f2', '{1}',
+select throws_ok($$ insert into atta_in.professional_schedule (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
+                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000c2', '{1}',
                             '09:00', '10:00') $$, '23503', null, 'profissional sem vínculo com a clínica é recusado');
 select is(pg_temp.trilha(), 'insert,update', 'cada alteração do horário vai para a auditoria');
+
+-- UPDATE e DELETE nas duas tabelas, com o evento na auditoria (o DELETE usa old)
+select lives_ok($$ update atta_in.professional_break set ends_at = '13:30' $$, 'ajuste da pausa');
+select ok((select updated_at is not null from atta_in.professional_break), 'a pausa guarda quando mudou');
+select is(pg_temp.eventos('professional_break.change', 'update'), 1, 'o ajuste da pausa vai para a auditoria');
+select lives_ok($$ delete from atta_in.professional_break $$, 'remoção da pausa');
+select is(pg_temp.eventos('professional_break.change', 'delete'), 1, 'a remoção da pausa vai para a auditoria');
+select lives_ok($$ delete from atta_in.professional_schedule $$, 'remoção do horário');
+select is(pg_temp.eventos('professional_schedule.change', 'delete'), 1, 'a remoção do horário vai para a auditoria');
+select lives_ok($$ insert into atta_in.professional_schedule (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
+                   values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000c1', '{1,2,3,4,5}',
+                           '09:00', '18:00') $$, 'horário de novo');
 
 -- Colaborador vê, mas não muda; a B não vê nem muda o da A
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
 select is((select count(*)::int from atta_in.professional_schedule), 1, 'Colaborador vê os horários (agenda)');
-select throws_ok($$ insert into atta_in.professional_break (tenant_id, professional_id, weekdays, starts_at, ends_at)
-                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f1', '{1}',
+select throws_ok($$ insert into atta_in.professional_break (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
+                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000c1', '{1}',
                             '15:00', '15:30') $$, '42501', null, 'Colaborador não muda horário');
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000b', 'ADMIN');
 select is((select count(*)::int from atta_in.professional_schedule), 0, 'B não vê os horários da A');
-select throws_ok($$ insert into atta_in.professional_break (tenant_id, professional_id, weekdays, starts_at, ends_at)
-                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f1', '{1}',
+select throws_ok($$ insert into atta_in.professional_break (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
+                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000c1', '{1}',
                             '15:00', '15:30') $$, '42501', null, 'B não grava na agenda da A');
 
 -- vínculo removido com o token ainda válido: nada (ADR 0001 §2)
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
 select pg_temp.remover_vinculo();
 select is((select count(*)::int from atta_in.professional_schedule), 0, 'vínculo removido: o ADMIN não vê os horários');
-select throws_ok($$ insert into atta_in.professional_break (tenant_id, professional_id, weekdays, starts_at, ends_at)
-                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000f1', '{1}',
+select throws_ok($$ insert into atta_in.professional_break (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
+                    values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000c1', '{1}',
                             '15:00', '15:30') $$, '42501', null, 'vínculo removido: o ADMIN não grava horário');
 
 select * from finish();

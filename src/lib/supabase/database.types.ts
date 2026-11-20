@@ -81,28 +81,28 @@ export type Database = {
           Tables: {
             "professional_break": {
                   Row: {
-                    "created_at": string,"ends_at": string,"id": string,"professional_id": string,"starts_at": string,"tenant_id": string,"weekdays": (number)[]
+                    "created_at": string,"ends_at": string,"id": string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at": string,"weekdays": (number)[]
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"ends_at": string,"id"?: string,"professional_id": string,"starts_at": string,"tenant_id": string,"weekdays": (number)[]
+                    "created_at"?: string,"ends_at": string,"id"?: string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at"?: string,"weekdays": (number)[]
                   }
                   Update: {
-                    "created_at"?: string,"ends_at"?: string,"id"?: string,"professional_id"?: string,"starts_at"?: string,"tenant_id"?: string,"weekdays"?: (number)[]
+                    "created_at"?: string,"ends_at"?: string,"id"?: string,"professional_link_id"?: string,"starts_at"?: string,"tenant_id"?: string,"updated_at"?: string,"weekdays"?: (number)[]
                   }
                   Relationships: [
                     
                   ]
                 },"professional_schedule": {
                   Row: {
-                    "created_at": string,"ends_at": string,"id": string,"professional_id": string,"starts_at": string,"tenant_id": string,"updated_at": string,"weekdays": (number)[]
+                    "created_at": string,"ends_at": string,"id": string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at": string,"weekdays": (number)[]
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"ends_at": string,"id"?: string,"professional_id": string,"starts_at": string,"tenant_id": string,"updated_at"?: string,"weekdays": (number)[]
+                    "created_at"?: string,"ends_at": string,"id"?: string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at"?: string,"weekdays": (number)[]
                   }
                   Update: {
-                    "created_at"?: string,"ends_at"?: string,"id"?: string,"professional_id"?: string,"starts_at"?: string,"tenant_id"?: string,"updated_at"?: string,"weekdays"?: (number)[]
+                    "created_at"?: string,"ends_at"?: string,"id"?: string,"professional_link_id"?: string,"starts_at"?: string,"tenant_id"?: string,"updated_at"?: string,"weekdays"?: (number)[]
                   }
                   Relationships: [
                     
