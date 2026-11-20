@@ -11,14 +11,15 @@ set -eu
 
 sigla="${ATTA_SIGLA:-}"
 if [ -z "$sigla" ] && [ -z "${CI:-}" ]; then
-  echo "defina ATTA_SIGLA (BE1, BE2, BE3, INT, FE, FE2, TL ou QA): cada agente sobe a própria instância" >&2
+  echo "defina ATTA_SIGLA (BE1, BE2, BE3, BE4, INT, FE, FE2, FE3, TL ou QA): cada agente sobe a própria instância" >&2
   exit 2
 fi
 case "$sigla" in
   "") slot=0 ;;
   BE1) slot=1 ;; BE2) slot=2 ;; BE3) slot=3 ;; INT) slot=4 ;;
   FE) slot=5 ;; FE2) slot=6 ;; TL) slot=7 ;; QA) slot=8 ;;
-  *) echo "sigla desconhecida: $sigla (use BE1, BE2, BE3, INT, FE, FE2, TL ou QA)" >&2; exit 2 ;;
+  FE3) slot=9 ;; BE4) slot=10 ;;
+  *) echo "sigla desconhecida: $sigla (use BE1, BE2, BE3, BE4, INT, FE, FE2, FE3, TL ou QA)" >&2; exit 2 ;;
 esac
 
 base=$((43300 + slot * 100))
