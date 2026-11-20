@@ -74,4 +74,13 @@ describe("porta simulada da agenda", () => {
       "ausentes",
     ]);
   });
+
+  it("filtra pelos cards: estado do Check-in e sem documento (a regra do banco)", async () => {
+    const prontos = (await dados(porta.dia({ status: ["pronto"] }))).linhas;
+    expect(prontos.map((l) => l.status)).toEqual(["pronto"]);
+    const semDoc = (await dados(porta.dia({ semDocumento: true }))).linhas;
+    expect(semDoc.map((l) => l.paciente.nomeExibicao)).toEqual(["Eduardo Lima"]);
+    const resumo = await dados(porta.resumo({}));
+    expect(resumo.semDocumento).toBe(semDoc.length);
+  });
 });

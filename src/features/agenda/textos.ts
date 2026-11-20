@@ -14,6 +14,27 @@ export const textos = {
     titulo: "Nenhum agendamento hoje", // provisório (o simulador não tem o estado vazio)
     texto: "Os agendamentos do dia aparecem aqui.", // provisório
   },
+  cards: {
+    rotulo: "Resumo do dia", // provisório (nome da região para o leitor de tela)
+    hoje: {
+      titulo: "Agendamentos hoje", // PDD §10.2.2
+      concluidos: (n: number) => `${n} ${n === 1 ? "concluído" : "concluídos"}`, // simulador, captura 01 ("1 concluído"); plural provisório
+    },
+    mes: {
+      titulo: "Agendamentos no mês", // PDD §10.2.2
+      concluidos: "concluídos no mês", // PDD §10.2.2; simulador, captura 01
+      livres: "horários livres na agenda", // PDD §10.2.2; simulador, captura 01
+    },
+    checkin: {
+      titulo: "Check-in", // PDD §10.2.2
+      filtrar: (estado: string, n: number) => `${estado}: ${n}. Filtrar a lista`, // provisório (leitor de tela)
+    },
+    semDocumento: {
+      titulo: "Sem documento vinculado", // PDD §10.2.2
+      texto: "Vincule antes do horário", // simulador, captura 01 (PDD omisso)
+      filtrar: (n: number) => `Sem documento vinculado: ${n}. Filtrar a lista`, // provisório (leitor de tela)
+    },
+  },
   colunas: {
     horario: "Horário", // PDD §10.2.2
     paciente: "Paciente", // PDD §10.2.2
