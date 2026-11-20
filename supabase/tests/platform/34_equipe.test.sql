@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 grant execute on all functions in schema extensions to authenticated;
-select plan(49);
+select plan(52);
 
 create function pg_temp.como(p_sub uuid, p_role text, p_aal text default 'aal2',
                              p_tenant uuid default 'aaaaaaaa-0000-4000-8000-000000000001') returns void
@@ -44,6 +44,10 @@ insert into auth.users (id, email, aud, role, raw_user_meta_data) values
   ('05050505-0000-4000-8000-000000000005', 'gestor5@exemplo.test', 'authenticated', 'authenticated', '{}'),
   ('b1b1b1b1-0000-4000-8000-0000000000b1', 'titularbeta@exemplo.test', 'authenticated', 'authenticated', '{}'),
   ('b2b2b2b2-0000-4000-8000-0000000000b2', 'recepcaobeta@exemplo.test', 'authenticated', 'authenticated', '{}');
+-- os recém-convidados (o inviteUserByEmail grava invited_at); b2 foi convidado e já entra no sistema
+update auth.users set invited_at = now() where email in ('novo1@exemplo.test', 'novo2@exemplo.test',
+  'gestor3@exemplo.test', 'gestor4@exemplo.test', 'gestor5@exemplo.test', 'recepcaobeta@exemplo.test');
+update auth.users set last_sign_in_at = now() where email = 'recepcaobeta@exemplo.test';
 insert into platform.tenant (id, name) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'Clínica Alfa Ficticia'),
   ('bbbbbbbb-0000-4000-8000-000000000002', 'Clínica Beta Ficticia');
@@ -87,6 +91,10 @@ select throws_ok($$ select api.team_invite('03030303-0000-4000-8000-000000000003
   'P0001', 'ATTA-IN-0001', 'ADMIN não recebe matriz');
 select throws_ok($$ select api.team_invite('09090909-0000-4000-8000-000000000009', 'COLABORADOR') $$, 'P0002', 'ATTA-CORE-0005',
   'usuário inexistente é recusado');
+select throws_ok($$ select api.team_invite('b1b1b1b1-0000-4000-8000-0000000000b1', 'COLABORADOR') $$, 'P0001', 'ATTA-IN-0003',
+  'conta que não veio de convite não ganha vínculo (sugestão da Segurança)');
+select throws_ok($$ select api.team_invite('b2b2b2b2-0000-4000-8000-0000000000b2', 'COLABORADOR') $$, 'P0001', 'ATTA-IN-0003',
+  'conta que já entrou no sistema (de outra clínica) não ganha segundo vínculo');
 select lives_ok($$ select api.team_invite('03030303-0000-4000-8000-000000000003', 'ADMIN') $$, 'ADMIN convida o gestor adicional');
 select is(pg_temp.status(pg_temp.vinculo('03030303-0000-4000-8000-000000000003')), 'pending_verification',
   'gestor adicional fica Pendente até a conferência pela ATTA');
@@ -101,6 +109,12 @@ select lives_ok(format('select api.team_accept_invite(%L)', pg_temp.vinculo('010
 select is(pg_temp.status(pg_temp.vinculo('01010101-0000-4000-8000-000000000001')), 'active', 'aceito, o vínculo fica Ativo');
 select throws_ok(format('select api.team_accept_invite(%L)', pg_temp.vinculo('02020202-0000-4000-8000-000000000002')),
   'P0002', 'ATTA-CORE-0005', 'ninguém aceita o convite de outra pessoa');
+-- dois convites ao mesmo tempo: aceito o da A, o token já tem a clínica A; o da B é recusado com conflito claro
+select pg_temp.como('b1b1b1b1-0000-4000-8000-0000000000b1', 'ADMIN', 'aal2', 'bbbbbbbb-0000-4000-8000-000000000002');
+select set_config('atta_teste.convite_b', api.team_invite('01010101-0000-4000-8000-000000000001', 'COLABORADOR')::text, true);
+select pg_temp.como('01010101-0000-4000-8000-000000000001', 'COLABORADOR', 'aal1');
+select throws_ok(format('select api.team_accept_invite(%L)', current_setting('atta_teste.convite_b')),
+  'P0001', 'ATTA-IN-0003', 'aceite com o token de outra clínica é recusado (sem troca de clínica ativa)');
 select pg_temp.como('03030303-0000-4000-8000-000000000003', null, 'aal1', null);
 select throws_ok(format('select api.team_accept_invite(%L)', pg_temp.vinculo('03030303-0000-4000-8000-000000000003')),
   'P0001', 'ATTA-IN-0003', 'o gestor adicional não se ativa sozinho: só a ATTA aprova');
