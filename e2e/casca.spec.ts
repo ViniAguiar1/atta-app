@@ -1,15 +1,57 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { SESSAO_DA_GESTORA } from "./acesso";
 
-// MIG-40, regra do stage (PLANO e ADR 0001 §4): sem sessão, o painel leva à tela de entrar. A barra com sessão (cores,
-// foco, abas inteiras, fonte do ATTA) volta ao e2e com o login da gestora do seed no MIG-03b (Backend 1), que sobe o
-// Supabase local no CI; até lá ela está coberta pelo BarraDoPainel.test.tsx e pela validação do QA no #11.
-for (const caminho of ["/", "/painel", "/painel/agenda", "/painel/configuracoes", "/painel/inexistente"]) {
-  test(`${caminho} sem sessão vai para a tela de entrar`, async ({ page }) => {
-    await page.goto(caminho);
+// MIG-40 e MIG-03, regra do stage (PLANO e ADR 0001 §4): sem sessão, o painel leva à tela de entrar guardando a volta;
+// com sessão (a gestora do seed, ADMIN com 2º fator), a barra mostra a clínica e a pessoa da sessão real.
+const axe = (page: import("@playwright/test").Page) => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+const PROIBIDO = /ambiente de valida|fict[ií]ci|\bdemo|demonstra[çc]|\bteste\b|migra[çc]/i;
+
+test.describe("sem sessão", () => {
+  test("/ vai para a tela de entrar", async ({ page }) => {
+    await page.goto("/");
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByRole("heading", { level: 1, name: "Entrar no painel da clínica" })).toBeVisible();
   });
-}
+
+  for (const caminho of ["/painel", "/painel/agenda", "/painel/configuracoes"]) {
+    test(`${caminho} vai para a tela de entrar, guardando a volta`, async ({ page }) => {
+      await page.goto(caminho);
+      await expect(page).toHaveURL(new RegExp(`/login\\?volta=${encodeURIComponent(caminho)}$`));
+      await expect(page.getByRole("heading", { level: 1, name: "Entrar no painel da clínica" })).toBeVisible();
+    });
+  }
+});
+
+test.describe("com sessão", () => {
+  test.use({ storageState: SESSAO_DA_GESTORA });
+
+  test("a barra mostra a clínica e a pessoa da sessão, passa no axe e não tem texto de ambiente", async ({ page }) => {
+    await page.goto("/painel");
+    const barra = page.getByRole("banner");
+    await expect(barra).toContainText("Clínica Alfa Estética");
+    await expect(barra).toContainText("HP"); // Helena Prado, pelas iniciais
+    expect((await axe(page)).violations).toEqual([]);
+    expect(await page.locator("body").innerText()).not.toMatch(PROIBIDO);
+  });
+
+  test("/ e /login com sessão vão ao painel", async ({ page }) => {
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/painel$/);
+    await page.goto("/login");
+    await expect(page).toHaveURL(/\/painel$/);
+  });
+
+  test("o cookie da sessão é HttpOnly e SameSite=Lax", async ({ page }) => {
+    await page.goto("/painel");
+    const sessao = (await page.context().cookies()).filter((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+    expect(sessao.length).toBeGreaterThan(0);
+    for (const c of sessao) {
+      expect(c.httpOnly).toBe(true);
+      expect(c.sameSite).toBe("Lax");
+    }
+  });
+});
 
 test("rota fora do painel continua na página de não encontrada, sem indexar", async ({ page }) => {
   await page.goto("/inexistente");

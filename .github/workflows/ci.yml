@@ -40,7 +40,7 @@ jobs:
           arquivos="$(git diff --name-only "$BASE...$HEAD")"
           marcar() { if echo "$arquivos" | grep -qE "$2"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
           marcar banco '^(supabase/|src/lib/supabase/database\.types\.ts$|scripts/supabase-local\.sh$|\.github/workflows/)'
-          marcar web '^(src/|e2e/|public/|eslint-rules/|package\.json$|pnpm-lock\.yaml$|next\.config\.ts$|playwright\.config\.ts$|\.github/workflows/)'
+          marcar web '^(src/|e2e/|public/|eslint-rules/|supabase/|package\.json$|pnpm-lock\.yaml$|next\.config\.ts$|playwright\.config\.ts$|\.github/workflows/)'
 
   vetores:
     name: vetores do ATTA Sign imutáveis
@@ -111,14 +111,18 @@ jobs:
     if: needs.mudancas.outputs.web == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    env:
-      # valores fictícios: a página de saúde e a inicial não falam com o Supabase
-      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:43321
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ficticia_ci
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # o painel exige login (MIG-03): o e2e entra nas pessoas fictícias do supabase/seed.sql, no Supabase local do runner
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 3.2.0
+      - name: Supabase local (migrations e seed) e as chaves locais no ambiente
+        run: |
+          sh scripts/supabase-local.sh start
+          sh scripts/supabase-local.sh env >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
