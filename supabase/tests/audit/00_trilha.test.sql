@@ -6,7 +6,7 @@ create extension if not exists pgtap with schema extensions;
 -- só nesta transação: a dona (e o service_role) chamam as funções do pgTAP quando o teste assume a role deles
 grant usage on schema extensions to audit_owner;
 grant execute on all functions in schema extensions to audit_owner, service_role;
-select plan(45);
+select plan(50);
 
 -- ---------------------------------------------------------------- dona e posse
 select is((select rolcanlogin from pg_roles where rolname = 'audit_owner'), false, 'audit_owner não faz login');
@@ -49,6 +49,9 @@ select throws_ok($$ select audit.record_event('teste.leitura', 'platform.tenant'
 select throws_ok($$ select audit.record_event('teste.leitura', 'network.person', null, '{"cpf":"00000000000"}') $$, '22023', 'audit: chave proibida em p_details', 'cpf em p_details é recusado, sem eco do valor');
 select throws_ok($$ select audit.record_event('teste.leitura', 'network.person', null, '{"nome":"Fulano Ficticio"}') $$, '22023', 'audit: chave proibida em p_details', 'nome em p_details é recusado');
 select throws_ok($$ select audit.record_event('teste.leitura', 'platform.tenant', null, '{}', null, null, 'bbbbbbbb-0000-4000-8000-000000000002') $$, '42501', 'audit: tenant divergente do token', 'p_tenant_id diferente do token é recusado');
+select throws_ok($$ select audit.record_event('teste.leitura', 'network.person', null, '{"paciente":{"cpf":"00000000000"}}') $$, '22023', 'audit: chave proibida em p_details', 'cpf aninhado em objeto é recusado');
+select throws_ok($$ select audit.record_event('teste.leitura', 'network.person', null, '{"lista":[{"motivo":"x"},{"email":"ficticio@exemplo.test"}]}') $$, '22023', 'audit: chave proibida em p_details', 'email dentro de array é recusado');
+select lives_ok($$ select audit.record_event('teste.leitura', 'network.person', null, '{"motivo":"x","ids":["a","b"],"contexto":{"finalidade":"teste"}}') $$, 'details aninhado sem chave proibida passa');
 
 -- job, sem JWT: papel system, ator nulo, tenant pelo parâmetro
 select set_config('request.jwt.claims', '', true);
@@ -58,6 +61,7 @@ select is((select app_role || '|' || coalesce(actor::text, 'sem-ator') || '|' ||
 
 -- ---------------------------------------------------------------- hash encadeado
 select is(audit.verify_chain(), null, 'cadeia íntegra');
+select is((select last_hash from audit.chain_head), (select hash from audit.event order by seq desc limit 1), 'a cabeça aponta para o último evento');
 select ok((select bool_and(e.prev_hash = coalesce(p.hash, repeat('0', 64))) from audit.event e left join audit.event p on p.seq = (select max(seq) from audit.event x where x.seq < e.seq)), 'cada evento aponta para o hash do anterior');
 
 -- ---------------------------------------------------------------- append-only
@@ -85,8 +89,16 @@ alter table audit.event no force row level security;
 select throws_ok($$ update audit.event set details = '{}' $$, '42501', 'a trilha de auditoria é só de inserção (UPDATE)', 'sem o FORCE, o gatilho recusa o UPDATE');
 select throws_ok($$ delete from audit.event $$, '42501', 'a trilha de auditoria é só de inserção (DELETE)', 'sem o FORCE, o gatilho recusa o DELETE');
 
--- adulteração: a dona também desliga o gatilho (o que um invasor com a dona faria) e muda uma linha do meio
+-- a dona desliga o gatilho (o que um invasor com a dona faria)
 alter table audit.event disable trigger event_append_only;
+
+-- remoção do último evento sem acertar a cabeça: as linhas restantes batem, mas a cabeça denuncia
+delete from audit.event where seq = (select max(seq) from audit.event);
+reset role;
+select is(audit.verify_chain(), (select last_seq from audit.chain_head), 'último evento removido: verify_chain aponta o seq da cabeça');
+
+-- adulteração de uma linha do meio: verify_chain aponta o seq dela (vem antes do aviso da cabeça)
+set local role audit_owner;
 update audit.event set details = '{"motivo":"adulterado"}' where seq = (select min(seq) + 1 from audit.event);
 reset role;
 select is(audit.verify_chain(), (select min(seq) + 1 from audit.event), 'linha adulterada: verify_chain aponta o seq dela');

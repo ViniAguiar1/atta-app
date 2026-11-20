@@ -53,6 +53,16 @@ create table audit.event (
 create index event_tenant_created_idx on audit.event (tenant_id, created_at);
 create index event_entity_idx on audit.event (entity, entity_id);
 
+-- A cabeça da cadeia: uma linha só, travada com FOR UPDATE por quem grava. Em read committed, a trava espera e relê a
+-- versão mais nova; em repeatable read ou serializable, o Postgres devolve 40001 em vez de deixar a cadeia bifurcar
+-- (a foto da transação seria anterior à trava). Também deixa o verify_chain notar o último evento removido.
+create table audit.chain_head (
+  id boolean primary key default true check (id),
+  last_seq bigint,
+  last_hash text not null check (last_hash ~ '^[0-9a-f]{64}$')
+);
+insert into audit.chain_head (id, last_seq, last_hash) values (true, null, pg_catalog.repeat('0', 64));
+
 -- O texto que entra no hash: JSON com campos fixos e data em UTC com microssegundos (não depende do TimeZone da
 -- sessão). O jsonb tem ordem de chaves determinística no Postgres, então o mesmo evento dá sempre o mesmo texto.
 create function audit.event_digest(e audit.event)
@@ -93,13 +103,20 @@ create trigger action_append_only before update or delete on audit.action
   for each row execute function audit.reject_change();
 create trigger action_no_truncate before truncate on audit.action
   for each statement execute function audit.reject_change();
+-- a cabeça só se atualiza (pelo record_event); não se apaga nem se trunca
+create trigger chain_head_no_delete before delete on audit.chain_head
+  for each row execute function audit.reject_change();
+create trigger chain_head_no_truncate before truncate on audit.chain_head
+  for each statement execute function audit.reject_change();
 
 alter table audit.action enable row level security;
 alter table audit.action force row level security;
 alter table audit.event enable row level security;
 alter table audit.event force row level security;
+alter table audit.chain_head enable row level security;
+alter table audit.chain_head force row level security;
 
-revoke all on audit.action, audit.event from public, anon, authenticated, service_role, postgres;
+revoke all on audit.action, audit.event, audit.chain_head from public, anon, authenticated, service_role, postgres;
 -- migrations (postgres) acrescentam ações e as leem; nada além disso
 grant select, insert on audit.action to postgres;
 -- leitura da trilha pelo postgres: as funções de leitura em api (ADMIN, MIG-06) e os testes das trilhas leem por
@@ -109,6 +126,8 @@ grant select on audit.event to postgres;
 create policy owner_reads_actions on audit.action for select to audit_owner using (true);
 create policy owner_reads_events on audit.event for select to audit_owner using (true);
 create policy owner_appends_events on audit.event for insert to audit_owner with check (true);
+create policy owner_reads_head on audit.chain_head for select to audit_owner using (true);
+create policy owner_moves_head on audit.chain_head for update to audit_owner using (true) with check (true);
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- audit.record_event (ADR 0003 §1 a §3). Preenche sozinha momento, ator, papel, tenant, IP, id de correlação e o elo.
@@ -134,7 +153,7 @@ declare
   v_headers jsonb := coalesce(nullif(pg_catalog.current_setting('request.headers', true), ''), '{}')::jsonb;
   v_actor uuid;
   v_ip inet;
-  v_prev text;
+  v_head audit.chain_head;
   v_row audit.event;
 begin
   select a.kind into v_kind from audit.action a where a.action = p_action;
@@ -147,8 +166,9 @@ begin
   if p_details is not null and jsonb_typeof(p_details) <> 'object' then
     raise exception 'audit: p_details é um objeto' using errcode = '22023';
   end if;
-  if coalesce(p_details, '{}'::jsonb)
-       ?| array['cpf', 'cpf_hmac', 'name', 'full_name', 'social_name', 'email', 'phone', 'nome', 'telefone'] then
+  -- em qualquer nível: objeto aninhado e objeto dentro de array também contam
+  if pg_catalog.jsonb_path_exists(coalesce(p_details, '{}'::jsonb),
+       '$.** ? (@.type() == "object").keyvalue() ? (@.key like_regex "^(cpf|cpf_hmac|name|full_name|social_name|email|phone|nome|telefone)$")') then
     raise exception 'audit: chave proibida em p_details' using errcode = '22023';   -- sem eco do valor
   end if;
   if v_token_tenant is not null and p_tenant_id is not null and p_tenant_id <> v_token_tenant then
@@ -166,9 +186,8 @@ begin
     v_ip := null;
   end;
 
-  -- uma cadeia só: eventos simultâneos entram um de cada vez (trava da transação, solta no commit)
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('audit.event.chain', 0));
-  select e.hash into v_prev from audit.event e order by e.seq desc limit 1;
+  -- uma cadeia só: a cabeça travada serializa quem grava (solta no commit); ver o comentário de audit.chain_head
+  select * into v_head from audit.chain_head where id for update;
 
   v_row.seq := pg_catalog.nextval(pg_catalog.pg_get_serial_sequence('audit.event', 'seq'));
   v_row.id := gen_random_uuid();
@@ -184,17 +203,19 @@ begin
   v_row.after := p_after;
   v_row.ip := v_ip;
   v_row.request_id := pg_catalog.left(v_headers ->> 'x-request-id', 128);
-  v_row.prev_hash := coalesce(v_prev, pg_catalog.repeat('0', 64));
+  v_row.prev_hash := v_head.last_hash;
   v_row.hash := audit.event_digest(v_row);
 
   insert into audit.event overriding system value
   select v_row.*;
+  update audit.chain_head set last_seq = v_row.seq, last_hash = v_row.hash where id;
   return v_row.id;
 end
 $$;
 
--- Confere a cadeia inteira: devolve o seq do primeiro evento que não bate (hash recalculado ou elo com o anterior),
--- ou nulo se está íntegra. Não detecta a remoção do último evento: isso é a âncora fora do banco (MIG-05).
+-- Confere a cadeia inteira: devolve o seq do primeiro evento que não bate (hash recalculado ou elo com o anterior);
+-- se todos batem mas a cabeça não aponta para o último evento (último removido), devolve o seq da cabeça (ou 0);
+-- nulo se está íntegra. Quem apaga o último evento E acerta a cabeça só é pego pela âncora fora do banco (MIG-05).
 create function audit.verify_chain()
 returns bigint
 language sql
@@ -202,12 +223,16 @@ stable
 security definer
 set search_path = ''
 as $$
-  select min(c.seq) from (
-    select e.seq, e.hash, e.prev_hash, audit.event_digest(e) as recalculado,
-           coalesce(lag(e.hash) over (order by e.seq), pg_catalog.repeat('0', 64)) as anterior
-      from audit.event e
-  ) c
-  where c.hash <> c.recalculado or c.prev_hash <> c.anterior
+  select coalesce(
+    (select min(c.seq) from (
+       select e.seq, e.hash, e.prev_hash, audit.event_digest(e) as recalculado,
+              coalesce(lag(e.hash) over (order by e.seq), pg_catalog.repeat('0', 64)) as anterior
+         from audit.event e
+     ) c
+     where c.hash <> c.recalculado or c.prev_hash <> c.anterior),
+    (select coalesce(h.last_seq, 0) from audit.chain_head h
+      where h.last_hash <> coalesce((select e.hash from audit.event e order by e.seq desc limit 1), pg_catalog.repeat('0', 64)))
+  )
 $$;
 
 -- EXECUTE só para o postgres (dono das funções de api, private e atta_in); ninguém mais chama direto.
