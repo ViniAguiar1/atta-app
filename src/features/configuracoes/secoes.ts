@@ -19,7 +19,7 @@ export const GRUPOS: Grupo[] = [
   {
     titulo: "Agendamentos", // simulador
     secoes: [
-      { caminho: "agendamentos", titulo: "Agendamentos", exibir: "fora-da-producao" }, // simulador (PDD §10.2.1 remete a Configurações > Agendamentos)
+      { caminho: "agendamentos", titulo: "Agendamentos", exibir: "sempre" }, // simulador (PDD §10.2.1 remete a Configurações > Agendamentos)
       { caminho: "integracoes", titulo: "Integrações", exibir: "nunca" }, // PDD §10.4.5
       { caminho: "notificacoes", titulo: "Notificações", exibir: "nunca" }, // PDD §10.4.6
     ],
