@@ -90,8 +90,8 @@ reset role;
 select is((select count(*)::int from audit.event where action = 'atta_code.verify'
            and tenant_id = 'aaaaaaaa-0000-4000-8000-0000000000f6' and details = '{"found": true}'::jsonb), 6,
           'consulta encontrada vai à trilha com o tenant do documento, só com found');
-select is((select count(*)::int from audit.event where action = 'atta_code.verify' and tenant_id is null
-           and details = '{"found": false}'::jsonb), 7, 'consulta sem resultado também vai à trilha, sem tenant');
+select is((select count(*)::int from audit.event where action = 'atta_code.verify'
+           and (tenant_id is null or details <> '{"found": true}'::jsonb)), 0, 'consulta sem resultado não vai à trilha (não disputa a cabeça da cadeia)');
 
 set local role authenticated;
 select throws_ok($$ select * from api.atta_code_verify('ATTA-7K3M-9QPX-2B4D') $$, '42501', null,

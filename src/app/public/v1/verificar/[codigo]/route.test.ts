@@ -45,7 +45,9 @@ describe("GET /public/v1/verificar/{codigo}", () => {
 
   it("banco fora: 503; outro erro: 500, sem detalhe", async () => {
     verificarCodigo.mockResolvedValue({ ok: false, error: { code: "INDISPONIVEL", message: "Indisponível." } });
-    expect((await chamar("x")).status).toBe(503);
+    const indisponivel = await chamar("x");
+    expect(indisponivel.status).toBe(503);
+    expect(indisponivel.headers.get("retry-after")).toBe("60");
     verificarCodigo.mockResolvedValue({ ok: false, error: { code: "INTERNO", message: "Algo deu errado.", reason: "x" } });
     const r = await chamar("x");
     expect(r.status).toBe(500);

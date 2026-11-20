@@ -25,6 +25,8 @@ export type PoliticaDeLimite = Readonly<{ bucket: string; limite: number; janela
 export const LIMITES = {
   /** Verificação pública do Código ATTA: 30 por minuto por IP (ADR 0006 §6 do atta-platform; PDD v206 §18.6). */
   verificacaoPublicaPorIp: { bucket: "verify.ip", limite: 30, janelaSegundos: 60 },
+  /** Verificação pública, teto da rota inteira: protege o banco de um ataque distribuído (Tech Lead no #114). */
+  verificacaoPublicaGlobal: { bucket: "verify.global", limite: 600, janelaSegundos: 60 },
   /** Check-in, `iniciar`: 10 por IP a cada 10 min (ADR 0004 §2). */
   checkinIniciarPorIp: { bucket: "checkin.start.ip", limite: 10, janelaSegundos: 600 },
   /** Check-in, `iniciar`: 100 por portal a cada 10 min (ADR 0004 §2). */
