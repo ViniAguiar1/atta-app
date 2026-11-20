@@ -1,0 +1,110 @@
+/* Cópia sem edição de hub-atta/atta-platform design/tokens/tokens.css, commit ea816ed (2026-10-19). Não edite aqui: troca de
+   token é PR do Frontend no atta-app, com o contraste conferido (ADR 0001 §6), e entra também na fonte. */
+/* GERADO por scripts/tokens.py build a partir do tokens.json: não edite à mão, edite o tokens.json e rode o build.
+   Fonte: atta-platform/design/tokens/ (06 §1.8, D-06); o tokens-drift do node-app.yml confere a cópia nos frontends.
+   CSS padrão, todas as camadas em :root, para app e site (PDF e e-mail precisam de valores resolvidos). */
+
+/* Referência: os hex do guia, nome por nome (os nomes do protótipo). Nunca usados direto em componente. */
+:root {
+  --ref-atta-in: #444a3d;
+  --ref-atta-empresa: #9fa194;
+  --ref-hover: #a3a886;
+  --ref-sucesso: #acc583;
+  --ref-negativo: #bc418d;
+  --ref-info: #58abaf;
+  --ref-atencao: #e3c754;
+  --ref-txt1: #242423;
+  --ref-txt2: #5f5e5e;
+  --ref-txt3: #75796b;
+  --ref-borda: #E8E4DC;
+  --ref-fundo: #F9F8F6;
+  --ref-card: #efeeec;
+  --ref-branco: #ffffff;
+  --ref-ambar: #d1a661;
+  --ref-ambar-txt: #8c672b;
+  --ref-lilas: #9b8bb4;
+  --ref-lilas-txt: #5c4d75;
+  --ref-govbr: #1351b4;
+}
+
+/* Sistema: papéis semânticos (planning/05 §4.2), em :root no tokens.css. Grupo com $tailwind vai também para o @theme do tokens.theme.css (bg-brand, text-text-primary...); com $reset, tira o padrão do Tailwind daquele namespace: só existe classe de token, nenhuma cor genérica (DG 1.3). */
+:root {
+  --color-brand: var(--ref-atta-in);
+  --color-on-brand: var(--ref-branco);
+  --color-text-primary: var(--ref-txt1);
+  --color-text-secondary: var(--ref-txt2);
+  /* Só texto grande (≥ 24 px, ou ≥ 18,66 px em negrito): 4.21:1 sobre o fundo (planning/05 §4.6). Em legenda pequena, use text-secondary. */
+  --color-text-tertiary: var(--ref-txt3);
+  --color-surface-app: var(--ref-fundo);
+  --color-surface-card: var(--ref-card);
+  /* Card sobre o fundo do app (o .card do protótipo). */
+  --color-surface-raised: var(--ref-branco);
+  /* LF-01 B.1: só divisória e contorno decorativos (1.19:1 não distingue um campo do fundo). */
+  --color-border: var(--ref-borda);
+  /* LF-01 B.1: borda de input, checkbox e radio (WCAG 1.4.11); o anel de foco é o focus-ring. */
+  --color-border-functional: var(--ref-txt3);
+  /* Anel de foco de 2 px, sempre visível (planning/05 §4.5, DG 3.3). */
+  --color-focus-ring: var(--ref-atta-in);
+  --color-status-success: var(--ref-sucesso);
+  /* Substitui todo vermelho (DG 1.2). Como texto, só sobre surface-app ou surface-raised: sobre surface-card dá 4.23:1. */
+  --color-status-negative: var(--ref-negativo);
+  /* Nunca texto branco sobre ele nem ele como texto (2.67:1 e 2.52:1); fundo tingido com text-primary (planning/05 §4.6). */
+  --color-status-info: var(--ref-info);
+  /* Pré-assinado, em análise (DG 1.2). */
+  --color-status-pending: var(--ref-atencao);
+  /* Só na tag "Externo" (DG 1.6), sobre surface-app ou surface-raised: sobre surface-card o texto dá 4.16:1. */
+  --color-tag-external-bg: color-mix(in srgb, var(--ref-ambar) 10%, transparent);
+  --color-tag-external-text: var(--ref-ambar-txt);
+  /* Só em "Nunca respondida" (DG 1.6). */
+  --color-tag-never-answered-bg: color-mix(in srgb, var(--ref-lilas) 10%, transparent);
+  --color-tag-never-answered-text: var(--ref-lilas-txt);
+  /* Só no botão gov.br (DG 1.6). */
+  --color-govbr: var(--ref-govbr);
+
+  /* Corpo e todo número (DG 2.1). */
+  --font-body: 'Raleway', sans-serif;
+  /* Títulos h1–h3. LF-05: sem licença da Quiche, o fallback é o oficial; LF-02: h4–h6 em font-body semibold. */
+  --font-title: 'Prata', 'Playfair Display', serif;
+  /* Só a palavra "ATTA" (DG 2.1; LF-05). */
+  --font-atta: 'Allerta Stencil', 'Playfair Display', serif;
+  /* O "-in" e os labels de navegação (DG 2.1). */
+  --font-product: 'Montserrat', sans-serif;
+  /* Subtítulos e mensagens sob título (DG 2.1). */
+  --font-sub: 'Poppins', sans-serif;
+
+  /* Fonte do html no preflight do Tailwind. */
+  --default-font-family: var(--font-body);
+
+  /* LF-02: escala em rem, nunca px, para respeitar o zoom (planning/05 §4.3); o corpo do paciente usa text-lg no mínimo. Line-height não especificado (05 §4.3): o reset tira o par do Tailwind, o texto herda o 1.5 do preflight e o título ajusta com leading-*. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  /* Breakpoints do M3 (planning/05 §4.4); abaixo de medium é compact. */
+  --breakpoint-medium: 37.5rem;
+  --breakpoint-expanded: 52.5rem;
+  --breakpoint-large: 75rem;
+  --breakpoint-extra-large: 100rem;
+
+  /* Durações do motion funcional (planning/05 §6). O prefers-reduced-motion é política global do app (base.css e MotionConfig), não do token. */
+  /* Botão Assinar habilitado, indicador de salvo. */
+  --motion-fast: 150ms;
+  /* Badge da fila mudando de estado. */
+  --motion-base: 200ms;
+  /* Progresso do check-in. */
+  --motion-slow: 250ms;
+}
+
+/* Componente: exceções documentadas, lidas por var() no CSS do componente; não geram classe. */
+:root {
+  /* LF-01 A.1: o hover do primário mantém a marca e escurece 8 % (com elevação no componente), em vez de #a3a886, onde o branco dá 2.47:1. */
+  --button-primary-hover-bg: color-mix(in srgb, var(--ref-atta-in) 92%, var(--ref-txt1));
+}

@@ -1,0 +1,2 @@
+-- Dados fictícios do ambiente local (ADR 0001 §3): só CPF e CNPJ gerados para teste e nomes inventados.
+-- Vazio no MIG-01; cada trilha acrescenta o seu.
