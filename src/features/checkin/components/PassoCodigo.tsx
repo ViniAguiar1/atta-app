@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Botao } from "@/components/ui/Botao";
 import { confirmarCodigo, reenviarCodigo } from "../actions";
 import type { Situacao } from "../schema";
 import { TEXTOS } from "../textos";
 import { Titulo } from "./Titulo";
 
-// 30 s entre envios e até 3 reenvios (PDD §11.4). A tela só espelha: quem garante o limite é o servidor.
+// 30 s entre envios e até 3 reenvios (PDD §11.4). A tela só espelha: quem garante o limite é o servidor. A espera é
+// calculada pelo horário do último envio, não por decremento: com a aba em segundo plano o timer atrasa.
 const ESPERA_S = 30;
 const MAX_REENVIOS = 3;
 
@@ -23,16 +24,20 @@ export function PassoCodigo({ desafio, finalCelular, dica, aoConfirmar, aoCorrig
   const [codigo, setCodigo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [espera, setEspera] = useState(ESPERA_S);
+  const [enviadoEm, setEnviadoEm] = useState(() => Date.now());
+  const [agora, setAgora] = useState(enviadoEm);
+  const campo = useRef<HTMLInputElement>(null);
   const [reenvios, setReenvios] = useState(0);
   const [cancelado, setCancelado] = useState(false); // 5º erro: o código caiu e só um novo vale (PDD §11.4)
   const [ocupado, executar] = useTransition();
 
+  const espera = Math.max(0, ESPERA_S - Math.floor((agora - enviadoEm) / 1000));
+
   useEffect(() => {
     if (espera <= 0) return;
-    const t = setTimeout(() => setEspera((s) => s - 1), 1000);
+    const t = setTimeout(() => setAgora(Date.now()), 1000);
     return () => clearTimeout(t);
-  }, [espera]);
+  }, [espera, agora]);
 
   function confirmar(evento: React.FormEvent) {
     evento.preventDefault();
@@ -49,6 +54,7 @@ export function PassoCodigo({ desafio, finalCelular, dica, aoConfirmar, aoCorrig
             ? TEXTOS.indisponivel
             : TEXTOS.codigoNaoConfere,
       );
+      campo.current?.focus(); // volta ao campo para digitar de novo (o erro é lido pelo aria-describedby)
     });
   }
 
@@ -59,7 +65,9 @@ export function PassoCodigo({ desafio, finalCelular, dica, aoConfirmar, aoCorrig
       setErro(null);
       setCancelado(false);
       setReenvios((n) => n + 1);
-      setEspera(ESPERA_S);
+      const novo = Date.now();
+      setEnviadoEm(novo);
+      setAgora(novo);
       setAviso(`Enviamos um novo código para o celular terminado em ${r.data.finalCelular}.`);
     });
   }
@@ -75,6 +83,7 @@ export function PassoCodigo({ desafio, finalCelular, dica, aoConfirmar, aoCorrig
           Código
         </label>
         <input
+          ref={campo}
           id="codigo"
           name="codigo"
           inputMode="numeric"
