@@ -26,6 +26,7 @@ export async function confirmarPin(entrada: unknown): Promise<Resultado<Desfecho
   }
   await apagarGrant();
   if (!r.ok) return r;
+  if (r.data.status === "indisponivel") await apagarLink(); // o link não vale mais: o cookie sai na mesma resposta
   if (r.data.status === "bloqueado") return ok({ status: "bloqueado", minutos: minutosAte(r.data.bloqueadoAte) });
   return ok({ status: r.data.status });
 }
