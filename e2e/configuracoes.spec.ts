@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { SENHA, SESSAO_DA_GESTORA } from "./acesso";
+import { INICIO_DO_PAINEL, SENHA, SESSAO_DA_GESTORA } from "./acesso";
 
 // MIG-42: Configurações, exclusiva do ADMIN (PDD §10.4.3), com o menu lateral em grupos e Configurações › Agendamentos.
 // Porta real (MIG-10b) contra o Supabase local com o seed: a aba está em MODULOS_PRONTOS e o valor salvo fica no banco.
@@ -73,7 +73,7 @@ test("COLABORADOR não entra em Configurações", async ({ page }) => {
   await page.getByLabel("E-mail").fill("colaboradora.ficticia@exemplo.test");
   await page.getByLabel("Senha", { exact: true }).fill(SENHA);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page).toHaveURL(/\/painel$/);
+  await expect(page).toHaveURL(INICIO_DO_PAINEL);
   await page.goto("/painel/configuracoes/agendamentos");
-  await expect(page).toHaveURL(/\/painel$/);
+  await expect(page).toHaveURL(INICIO_DO_PAINEL);
 });
