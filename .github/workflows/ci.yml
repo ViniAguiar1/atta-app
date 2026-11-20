@@ -176,5 +176,9 @@ jobs:
           cat "$RUNNER_TEMP/supabase.log"
           [ "$(cat "$RUNNER_TEMP/supabase.rc")" = 0 ] || { echo "::error::o Supabase local não subiu"; exit 1; }
           sh scripts/supabase-local.sh env >> "$GITHUB_ENV"
+      # Cofre 'network' no e2e (celulares do Fluxo alternativo, MIG-42): a KEK de TESTE, fictícia e pública, derivada da
+      # fixture tests/fixtures/cofre-ci.ts (a produção recusa a impressão digital dela). Nenhuma chave real no CI.
+      - name: KEK de teste do Cofre para o e2e
+        run: echo "ATTA_REDE_CHAVE_MESTRA=k1:$(node -e "process.stdout.write(Buffer.from('atta-app-ci-kek-de-teste-ficticia','ascii').subarray(0,32).toString('hex'))")" >> "$GITHUB_ENV"
       - run: pnpm build
       - run: pnpm test:e2e
