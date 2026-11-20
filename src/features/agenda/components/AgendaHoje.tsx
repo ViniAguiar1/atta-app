@@ -3,25 +3,37 @@
 import { useEffect, useId, useState } from "react";
 import { DataState, type EstadoDeDados } from "@/components/ui/DataState";
 import type { Resultado } from "@/lib/errors";
-import { termoPronto, type DiaDaAgenda, type FiltroDoDia } from "../schema";
+import { termoPronto, type DiaDaAgenda, type FiltroDoDia, type ResumoDaAgenda, type Status } from "../schema";
 import { dataPorExtenso } from "../formatos";
 import { textos } from "../textos";
+import { ALTURA_DOS_CARDS_REM, CardsDoResumo, type FiltroDosCards } from "./CardsDoResumo";
 import { ALTURA_DA_LINHA_REM, TabelaDoDia } from "./TabelaDoDia";
 
 // Visão Hoje da Agenda (PDD v206 §10.2.2), tela de pouso da recepção: a linha da data no topo, a busca por nome ou CPF
 // e a tabela do dia com os quatro estados de dados pelo DataState. O primeiro dia vem do servidor; a busca vai por
-// server action (POST): nome e CPF nunca na URL (ADR 0001 §5). Cards, avisos, Todos/Concluídos, filtros e ações
-// entram nos PRs seguintes do MIG-41.
+// server action (POST): nome e CPF nunca na URL (ADR 0001 §5). Os cards do topo filtram a lista pelo servidor (o
+// "sem documento" é regra do banco). Avisos, Todos/Concluídos, filtros e ações entram nos PRs seguintes do MIG-41.
 
 type Props = {
   inicial: Resultado<DiaDaAgenda>;
+  resumoInicial: Resultado<ResumoDaAgenda>;
   buscar: (filtro: FiltroDoDia) => Promise<Resultado<DiaDaAgenda>>;
+  resumir: () => Promise<Resultado<ResumoDaAgenda>>;
 };
+
+/** O filtro dos cards como texto estável, para o efeito da busca depender de um valor simples. */
+const chaveDoFiltro = (f: FiltroDosCards) => (f === null ? "" : f.tipo === "status" ? `status:${f.status}` : "sem-documento");
+function argumentosDoFiltro(chave: string): FiltroDoDia {
+  if (chave.startsWith("status:")) return { status: [chave.slice("status:".length) as Status] };
+  return chave === "sem-documento" ? { semDocumento: true } : {};
+}
 
 const ESPERA_DA_BUSCA_MS = 300;
 
-export function AgendaHoje({ inicial, buscar }: Props) {
+export function AgendaHoje({ inicial, resumoInicial, buscar, resumir }: Props) {
   const [busca, setBusca] = useState("");
+  const [filtroDosCards, setFiltroDosCards] = useState<FiltroDosCards>(null);
+  const [resumo, setResumo] = useState<Resultado<ResumoDaAgenda> | null>(resumoInicial);
   const [tocado, setTocado] = useState(false); // o primeiro dia já veio do servidor: só busca depois de mexer
   const [tentativa, setTentativa] = useState(0);
   // A última lista que chegou fica na tela, com aria-busy, até a próxima resposta: a tabela não pisca a cada tecla.
@@ -33,13 +45,14 @@ export function AgendaHoje({ inicial, buscar }: Props) {
 
   const termo = busca.trim();
   const pronto = termo === "" || termoPronto(termo);
+  const chave = chaveDoFiltro(filtroDosCards);
 
   useEffect(() => {
     if (!tocado || !pronto) return; // termo curto ou CPF pela metade não sai
     let vigente = true; // resposta de uma busca já trocada é descartada
     const espera = setTimeout(async () => {
       setBuscando(true);
-      const r = await buscar(termo ? { busca: termo } : {});
+      const r = await buscar({ ...(termo ? { busca: termo } : {}), ...argumentosDoFiltro(chave) });
       if (!vigente) return;
       setBuscando(false);
       setFalhou(!r.ok);
@@ -49,18 +62,29 @@ export function AgendaHoje({ inicial, buscar }: Props) {
       vigente = false;
       clearTimeout(espera);
     };
-  }, [termo, pronto, tentativa, tocado, buscar]);
+  }, [termo, pronto, chave, tentativa, tocado, buscar]);
 
   const mudarBusca = (valor: string) => {
     setTocado(true);
     setBusca(valor);
   };
+  const filtrarPelosCards = (filtro: FiltroDosCards) => {
+    setTocado(true);
+    setFiltroDosCards(filtro);
+  };
+  const recarregarResumo = async () => {
+    setResumo(null);
+    setResumo(await resumir());
+  };
   const estado = estadoDe({
     dia,
     falhou,
     buscando,
-    comBusca: termo !== "" && pronto,
-    limparFiltros: () => mudarBusca(""),
+    comBusca: (termo !== "" && pronto) || filtroDosCards !== null,
+    limparFiltros: () => {
+      mudarBusca("");
+      setFiltroDosCards(null);
+    },
     tentarDeNovo: () => {
       setTocado(true);
       setTentativa((n) => n + 1);
@@ -86,6 +110,21 @@ export function AgendaHoje({ inicial, buscar }: Props) {
           )}
         </h1>
       </header>
+
+      <DataState
+        estado={
+          resumo === null
+            ? { tipo: "carregando" }
+            : resumo.ok
+              ? { tipo: "pronto" }
+              : { tipo: "erro", tentarDeNovo: () => void recarregarResumo() }
+        }
+        rotulo={textos.cards.rotulo}
+        esqueleto={{ linhas: 1, alturaRem: ALTURA_DOS_CARDS_REM }}
+        vazio={{ titulo: textos.cards.rotulo }}
+      >
+        {resumo?.ok && <CardsDoResumo resumo={resumo.data} filtro={filtroDosCards} aoFiltrar={filtrarPelosCards} />}
+      </DataState>
 
       <div className="flex w-full max-w-sm flex-col gap-1">
         <div className="relative">
