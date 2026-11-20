@@ -290,6 +290,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"membership_permission": {
+                  Row: {
+                    "action": string,"created_at": string,"granted_at": string,"granted_by": string | null,"id": string,"membership_id": string,"module": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"created_at"?: string,"granted_at"?: string,"granted_by"?: string | null,"id"?: string,"membership_id": string,"module": string,"tenant_id": string
+                  }
+                  Update: {
+                    "action"?: string,"created_at"?: string,"granted_at"?: string,"granted_by"?: string | null,"id"?: string,"membership_id"?: string,"module"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "membership_permission_membership_id_tenant_id_fkey"
+      columns: ["membership_id","tenant_id"]
+isOneToOne: false
+      referencedRelation: "membership"
+      referencedColumns: ["id","tenant_id"]
+    },{
+      foreignKeyName: "membership_permission_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenant"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"professional": {
                   Row: {
                     "council": string,"council_number": string,"council_uf": string,"cpf_enc": string,"cpf_hmac": string,"cpf_masked": string,"created_at": string,"dek_wrapped": string,"deleted_at": string | null,"display_name": string,"email_enc": string,"id": string,"kek_version": number,"phone_enc": string | null,"updated_at": string
