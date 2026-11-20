@@ -8,7 +8,7 @@
 -- Exceção nova: só com o ok da Segurança e do TL, com o motivo. Só dados fictícios.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(11);
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Exceções, com o motivo
@@ -25,6 +25,13 @@ grant select on seg_funcao_liberada to authenticated;
 
 create temp table seg_vazamento (persona text, tipo text, nome text, detalhe text) on commit drop;
 grant select, insert on seg_vazamento to authenticated;
+
+-- o código de cada recusa de função: para essas personas, só 42501 (sem permissão) e P0002 (não encontrado) são
+-- recusa limpa; outro código (ex.: P0001 de argumento) antes da permissão é oráculo (sugestão do TL no #102)
+create temp table seg_recusa (persona text, nome text, estado text) on commit drop;
+grant select, insert on seg_recusa to authenticated;
+create temp table seg_recusa_liberada (nome text, motivo text) on commit drop;
+grant select on seg_recusa_liberada to authenticated;
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Dados fictícios de uma clínica (como dono: passa por cima da RLS). Outras clínicas não importam: as personas não
@@ -50,7 +57,7 @@ begin
   for r in
     select format('%I.%I', n.nspname, c.relname) as nome
       from pg_class c join pg_namespace n on n.oid = c.relnamespace
-     where n.nspname in ('platform', 'documents', 'atta_in', 'api')
+     where n.nspname in ('platform', 'documents', 'atta_in', 'api', 'public')
        and c.relkind in ('r', 'p', 'v', 'm', 'f')
        and (has_table_privilege('authenticated', c.oid, 'SELECT') or has_any_column_privilege('authenticated', c.oid, 'SELECT'))
   loop
@@ -69,7 +76,7 @@ select p.oid::regprocedure::text,
                           from unnest(p.proargtypes) with ordinality u(t, o)), '')),
        case when p.prorettype = 'void'::regtype then 'void' when p.proretset then 'set' else 'scalar' end
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
- where n.nspname in ('platform', 'documents', 'atta_in', 'api')
+ where n.nspname in ('platform', 'documents', 'atta_in', 'api', 'public')
    and p.prokind = 'f'
    and p.prorettype <> 'trigger'::regtype
    and has_function_privilege('authenticated', p.oid, 'EXECUTE')
@@ -79,7 +86,7 @@ select p.oid::regprocedure::text,
 -- A varredura, rodando como a persona (authenticated, com o token simulado): a RLS e os grants valem de verdade
 -- ---------------------------------------------------------------------------------------------------------------
 create function pg_temp.seg_varrer(p_persona text) returns void language plpgsql as $$
-declare r record; n bigint; v text;
+declare r record; n bigint; v text; e text;
 begin
   for r in select a.nome from seg_alvo_tabela a
             where not exists (select 1 from seg_tabela_liberada l where l.nome = a.nome and l.persona in ('*', p_persona))
@@ -103,7 +110,9 @@ begin
         execute format('select (%s)::text', r.chamada) into v;
         if v is not null then insert into seg_vazamento values (p_persona, 'função', r.nome, 'devolveu valor'); end if;
       end if;
-    exception when others then null;   -- recusa (qualquer erro) é o esperado
+    exception when others then
+      get stacked diagnostics e = returned_sqlstate;   -- recusa é o esperado; o código vai para a seg_recusa
+      insert into seg_recusa values (p_persona, r.nome, e);
     end;
   end loop;
 end $$;
@@ -143,7 +152,16 @@ select is_empty($$ select nome || ' (' || detalhe || ')' from seg_vazamento wher
 select is_empty($$ select nome || ' (' || detalhe || ')' from seg_vazamento where persona = 'admin_aal1' and tipo = 'função' $$,
   'ADMIN sem 2º fator: nenhuma função exposta devolve dado nem age');
 
--- 6: a exceção do ADMIN sem 2º fator é mesmo só a própria clínica e o próprio vínculo
+-- 6 e 7: recusa limpa. Por enquanto em modo relatório: lista (diag) quem recusa com outro código, sem reprovar
+select diag(coalesce('recusa com outro código: ' || string_agg(distinct persona || ' ' || nome || ' ' || estado, '; '), 'nenhuma'))
+  from seg_recusa r where r.estado not in ('42501', 'P0002')
+   and not exists (select 1 from seg_recusa_liberada l where l.nome = r.nome);
+select ok(true, 'relatório das recusas com outro código (modo relatório)');
+select is_empty($$ select format('%I.%I', n.nspname, c.relname) from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                    where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f') $$,
+  'o schema public continua vazio (nenhuma tabela ou view)');
+
+-- 8: a exceção do ADMIN sem 2º fator é mesmo só a própria clínica e o próprio vínculo
 select set_config('request.jwt.claims', pg_temp.seg_token('5e900000-0000-4000-8000-000000000001',
   '{"tenant_id":"5e90aaaa-0000-4000-8000-000000000001","app_role":"ADMIN"}'), true);
 set local role authenticated;
@@ -152,7 +170,7 @@ select is((select count(*)::int from platform.tenant) + (select count(*)::int fr
 reset role;
 select set_config('request.jwt.claims', '', true);
 
--- 7 a 9: autoteste, com uma tabela e duas funções que vazam, criadas só nesta transação
+-- 9 a 11: autoteste, com uma tabela e duas funções que vazam, criadas só nesta transação
 create table atta_in.seg_autoteste_vaza (id int);
 alter table atta_in.seg_autoteste_vaza enable row level security;
 alter table atta_in.seg_autoteste_vaza force row level security;
