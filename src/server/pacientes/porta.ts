@@ -1,0 +1,116 @@
+import "server-only";
+import type { Resultado } from "@/lib/errors";
+import { portaPacientesSimulada } from "./simulado";
+
+// Contrato entre as telas de Pacientes e da Pasta do Paciente (MIG-43, Frontend 3) e a pessoa da rede (MIG-12, BE2:
+// api.patient_list, patient_search, patient_get, patient_register, patient_update e report_divergence). Diz o que a
+// tela precisa; a forma das funções em `api` é do Backend 2, aprovada pelo Tech Lead (ADR 0001 §4).
+// Até a porta real entrar, a implementação é a simulada, só com dado fictício e sem dica na tela. A real usa o cliente
+// de servidor com a sessão do usuário (nunca a secret key), abre os contatos com getCofre('network') e devolve a tela
+// pronta: nome de exibição, documento mascarado (ADR 0002 §6) e campos derivados calculados no servidor.
+// Vínculo em network_access = 'pending': só os campos que a própria clínica digitou, nunca dado da rede (dono, 20/11).
+
+/** Documento à mostra, sempre mascarado pelo servidor (`···.···.247-25`); a tela não remascara. */
+export type Identificacao =
+  | { tipo: "cpf"; mascarado: string }
+  | { tipo: "estrangeiro"; mascarado: string } // RNE ou RNM/CRNM (RN-PAC-02; dono, 20/11)
+  | { tipo: "incompleto" }; // sem documento: cadastro incompleto (RN-PAC-02)
+
+/** Marcadores de documento do painel (PDD §10.2.2): ● vinculado, ✓ assinado, ✗ recusado. */
+export type MarcaDeDocumento = "vinculado" | "assinado" | "recusado";
+
+export type Contato = { celular: string | null; email: string | null };
+
+/**
+ * Uma linha da lista de Pacientes (PDD §10, "Pacientes, lista": Paciente, Identificação, Contato, Último atendimento e
+ * Documentos; selo, origem e Formulário de Saúde não entram). Formato de cada célula: Simulador, capturas 09 e 10.
+ */
+export type LinhaDePaciente = {
+  id: string;
+  /** Nome de exibição: o social, quando houver (§10.1, "Nome social e identidade de gênero"). */
+  nome: string;
+  /** O nome mostrado é o social (o simulador marca com asterisco). */
+  usaNomeSocial: boolean;
+  /** Chip "Incompleto" (RN-PAC-02; estados do cadastro do §10.1), calculado no servidor, nunca na tela. */
+  incompleto: boolean;
+  identificacao: Identificacao;
+  /** AAAA-MM-DD; null quando não informado. */
+  nascimento: string | null;
+  /** null quando a clínica não tem contato deste paciente. */
+  contato: Contato | null;
+  /** O último atendimento concluído nesta clínica, no fuso dela; null quando não houve nenhum. */
+  ultimoAtendimento: { em: string /* AAAA-MM-DDTHH:mm, local */; procedimento: string; profissional: string } | null;
+  /** Documentos do paciente nesta clínica; [] quando não há. */
+  documentos: { nome: string; marca: MarcaDeDocumento }[];
+};
+
+/** Cursor da lista, em ordem de nome (keyset do api.patient_list). Opaco para a tela. */
+export type Cursor = { nome: string; id: string };
+
+/** `total`: pacientes ativos da clínica, para o rodapé "n de n ativo(s)"; null enquanto a API não devolver. */
+export type PaginaDePacientes = { itens: LinhaDePaciente[]; proxima: Cursor | null; total: number | null };
+
+export type OrigemDoCadastro = "recepcao" | "atta_me" | "importacao";
+
+/** Cabeçalho da Pasta do Paciente (§10: selo, origem e o resto ficam na Pasta, não na lista). */
+export type FichaDoPaciente = {
+  id: string;
+  nome: string;
+  nomeCivil: string;
+  nomeSocial: string | null;
+  nascimento: string | null; // AAAA-MM-DD
+  identificacao: Identificacao;
+  contato: Contato | null;
+  /** Selo "Identidade Verificada" (§10.1, RN-PAC-05/06): só vem do ATTA me; null sem selo válido. */
+  selo: { validoAte: string } | null;
+  origem: OrigemDoCadastro;
+  vinculadoEm: string;
+  /** pendente: a clínica vê só o que ela digitou, até o titular autorizar a portabilidade. */
+  acessoARede: "proprio" | "pendente" | "autorizado";
+};
+
+export type DocumentoDoCadastro =
+  | { tipo: "cpf"; numero: string }
+  | { tipo: "estrangeiro"; especie: "rne" | "rnm"; numero: string }
+  | { tipo: "sem_documento" };
+
+export type DadosDoCadastro = {
+  nomeCivil: string;
+  nomeSocial: string | null;
+  nascimento: string | null;
+  documento: DocumentoDoCadastro;
+  celular: string | null;
+  email: string | null;
+};
+
+/** O que a recepção pode mudar; toda mudança leva justificativa (RN-PAC-03). */
+export type MudancaDoCadastro = Partial<Pick<DadosDoCadastro, "nomeCivil" | "nomeSocial" | "nascimento" | "celular" | "email">>;
+
+/** Lista fechada da divergência de identidade (RN-PAC-08; dono, 20/11). */
+export const MOTIVOS_DE_DIVERGENCIA = [
+  "nome_nao_confere",
+  "data_nascimento_nao_confere",
+  "cpf_nao_e_do_paciente",
+  "outro",
+] as const;
+export type MotivoDeDivergencia = (typeof MOTIVOS_DE_DIVERGENCIA)[number];
+
+export type PortaPacientes = {
+  /** Pacientes vinculados à clínica da sessão, em ordem de nome, 50 por página. */
+  listar(apos?: Cursor): Promise<Resultado<PaginaDePacientes>>;
+  /**
+   * Busca entre os pacientes da clínica: CPF/RNE completo (pelo HMAC, nunca em claro no banco) ou parte do nome
+   * (2+ letras). Até 20 linhas. VALIDACAO: termo curto. Nunca acha quem é só da rede (sem oráculo, ADR 0021 A-24).
+   */
+  buscar(termo: string): Promise<Resultado<LinhaDePaciente[]>>;
+  /** NAO_ENCONTRADO: inexistente ou sem vínculo com esta clínica (a mesma resposta, de propósito). */
+  obter(id: string): Promise<Resultado<FichaDoPaciente>>;
+  /** CPF já na rede reaproveita a pessoa (RN-PAC-09). CONFLITO: já cadastrado nesta clínica (RN-PAC-01). */
+  cadastrar(dados: DadosDoCadastro): Promise<Resultado<{ id: string; reaproveitado: boolean }>>;
+  /** VALIDACAO: sem justificativa (RN-PAC-03). */
+  atualizar(id: string, mudanca: MudancaDoCadastro, justificativa: string): Promise<Resultado<{ salvoEm: string }>>;
+  /** A clínica só reporta; quem investiga é a ATTA, e nada bloqueia o atendimento (RN-PAC-08). */
+  reportarDivergencia(id: string, motivo: MotivoDeDivergencia): Promise<Resultado<{ protocolo: string }>>;
+};
+
+export const portaPacientes: PortaPacientes = portaPacientesSimulada;
