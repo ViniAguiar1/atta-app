@@ -21,7 +21,9 @@ begin
   perform set_config('request.jwt.claims',
     json_build_object('sub', v_user, 'role', 'authenticated', 'tenant_id', p_tenant, 'app_role', p_role,
                       -- ADMIN só com o 2º fator no token (MIG-03)
-                      'aal', case when p_role = 'ADMIN' then 'aal2' else 'aal1' end)::text, true);
+                      'aal', case when p_role = 'ADMIN' then 'aal2' else 'aal1' end,
+                      -- hora do login (MIG-03: sessão de no máximo 12 h, has_permission confere)
+                      'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
 end $$;
 
 -- cadastro com o contato da rede e, à parte, o contato local já cifrado com o envelope do vínculo

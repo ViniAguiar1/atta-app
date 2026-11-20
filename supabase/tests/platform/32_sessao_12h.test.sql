@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 grant execute on all functions in schema extensions to authenticated;
-select plan(5);
+select plan(6);
 
 insert into auth.users (id, email, aud, role) values
   ('a1a1a1a1-0000-4000-8000-0000000000a1', 'admin12h@exemplo.test', 'authenticated', 'authenticated');
@@ -29,7 +29,9 @@ select set_config('request.jwt.claims', pg_temp.token(interval '12 hours 1 minut
 select is(private.has_permission('team', 'view'), false, 'login de 12 h 1 min: recusado (vale o login mais antigo do amr)');
 select is((select count(*)::int from platform.membership), 1, 'login de 12 h 1 min: a equipe some, só o próprio vínculo');
 select set_config('request.jwt.claims', '{"sub":"a1a1a1a1-0000-4000-8000-0000000000a1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN","aal":"aal2","amr":[{"method":"password","timestamp":"nao-numero"}]}', true);
-select is(private.has_permission('team', 'view'), true, 'timestamp malformado no amr não derruba a função');
+select is(private.has_permission('team', 'view'), false, 'timestamp malformado no amr: sem hora de login, sem permissão');
+select set_config('request.jwt.claims', '{"sub":"a1a1a1a1-0000-4000-8000-0000000000a1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN","aal":"aal2"}', true);
+select is(private.has_permission('team', 'view'), false, 'token sem amr: falha fechada, sem permissão');
 reset role;
 
 select * from finish();
