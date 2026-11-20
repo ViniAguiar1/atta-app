@@ -165,7 +165,8 @@ select format('%I.%I', n.nspname, c.relname) as nome from pg_class c join pg_nam
  where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f', 'S')
    and not exists (select 1 from pg_depend d where d.classid = 'pg_class'::regclass and d.objid = c.oid and d.deptype = 'e')
 union all
-select p.oid::regprocedure::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+select format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid))
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
  where n.nspname = 'public'
    and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e');
 select is_empty($$ select nome from seg_public_objeto $$,
