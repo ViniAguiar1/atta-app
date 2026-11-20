@@ -9,7 +9,7 @@ const ESTILO: Record<Status, { chip: string; ponto: string }> = {
   agendado: { chip: "bg-surface-card text-text-primary", ponto: "bg-text-secondary" },
   em_preenchimento: { chip: "bg-status-info/15 text-text-primary", ponto: "bg-status-info" },
   pronto: { chip: "bg-brand-active/25 text-text-primary", ponto: "bg-brand-active" },
-  em_atendimento: { chip: "bg-brand-active text-on-brand", ponto: "bg-on-brand" },
+  em_atendimento: { chip: "bg-brand text-on-brand", ponto: "bg-on-brand" },
   concluido: { chip: "bg-status-success/15 text-text-primary", ponto: "bg-status-success" },
   ausente: { chip: "border border-border-functional text-text-primary", ponto: "bg-text-secondary" },
   cancelado: { chip: "border border-border-functional text-text-secondary", ponto: "bg-text-tertiary" },
