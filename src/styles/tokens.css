@@ -117,4 +117,8 @@
   /* LF-01 A.1: o hover do primário mantém a marca e clareia 15 % (#4c5048; branco 8.24:1), em vez de #a3a886, onde o branco
      dá 2.47:1. Com o #2c3128, escurecer rumo ao texto (#242423) não se via. */
   --button-primary-hover-bg: color-mix(in srgb, var(--ref-atta-in) 85%, var(--ref-branco));
+  /* FaixaInformativa (Simulador ATTA-in, capturas 19–23): o turquesa informativo clareado sobre branco, como no simulador
+     (#f0f4f4 de fundo e #e0e8e8 de contorno). O texto é text-primary: 16.0:1 sobre o fundo. */
+  --faixa-info-bg: color-mix(in srgb, var(--ref-info) 8%, var(--ref-branco));
+  --faixa-info-borda: color-mix(in srgb, var(--ref-info) 15%, var(--ref-branco));
 }
