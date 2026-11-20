@@ -1,6 +1,6 @@
 -- MIG-12 (b): as funções api.patient_* (dados fictícios: hmacs de texto inventado, nomes inventados).
 begin;
-select plan(35);
+select plan(45);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -43,6 +43,13 @@ create function pg_temp.trilha_update() returns text language sql security defin
 $$;
 create function pg_temp.detalhe_update() returns text language sql security definer as $$
   select details::text from audit.event where action = 'patient.update'
+$$;
+
+create function pg_temp.nome_na_rede(p_id uuid) returns text language sql security definer as $$
+  select full_name from network.person where id = p_id
+$$;
+create function pg_temp.antes_local() returns text language sql security definer as $$
+  select before::text from audit.event where action = 'patient.update' and details ->> 'scope' = 'local'
 $$;
 
 create function pg_temp.eventos(p_action text) returns int language sql security definer as $$
@@ -99,8 +106,17 @@ select throws_ok($$ select api.patient_update('00000000-0000-4000-8000-000000000
 -- B cadastra a mesma pessoa: reaproveita, sem mostrar nem sobrescrever o dado de rede
 select is(pg_temp.cadastrar(gen_random_uuid(), 'Nome Digitado Pela B', 'cpf-ficticio-11'), true,
           'CPF já na rede é reaproveitado (RN-PAC-09)');
-select is((select full_name from api.patient_get('00000000-0000-4000-8000-0000000000e1')), 'Marina Teste Fictícia',
-          'o dado de rede não é sobrescrito pelo que a B digitou');
+-- acesso pendente (dono, 20/11; ADR 0001 §1): a B vê só o que digitou, o CPF mascarado e o selo, sem contato
+select is((select full_name from api.patient_get('00000000-0000-4000-8000-0000000000e1')), 'Nome Digitado Pela B',
+          'pendente: a B lê o nome que ela digitou, não o da rede');
+select ok((select phone_enc is null and email_enc is null and dek_wrapped is null and kek_version is null
+           from api.patient_get('00000000-0000-4000-8000-0000000000e1')), 'pendente: sem contato nem envelope da rede');
+select is((select network_access from api.patient_get('00000000-0000-4000-8000-0000000000e1')), 'pending',
+          'pendente: a tela sabe que o acesso à rede ainda não foi autorizado');
+select is((select count(*)::int from api.patient_search(p_name => 'Marina')), 0,
+          'pendente: a busca da B pelo nome da rede não acha nada');
+select is((select count(*)::int from api.patient_search(p_name => 'Digitado Pela B')), 1,
+          'pendente: a busca da B pelo nome que ela digitou acha');
 
 -- A atualiza, sempre com motivo
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
@@ -120,6 +136,22 @@ select is(pg_temp.detalhe_update(), '{"reason": "paciente pediu a correção"}',
 select is((select count(*)::int from api.patient_list(p_limit => 1)), 1, 'primeira página com 1');
 select is((select count(*)::int from api.patient_list(p_after_name => 'Jo Simulado',
            p_after_id => '00000000-0000-4000-8000-0000000000e2', p_limit => 10)), 1, 'a página seguinte traz o resto');
+
+-- B edita só o que é dela: o dado de rede e o contato não se tocam
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000b', 'ADMIN');
+select ok((select phone_enc is null and dek_wrapped is null from api.patient_list()
+           where person_id = '00000000-0000-4000-8000-0000000000e1'), 'pendente: a lista da B não traz contato da rede');
+select throws_ok($$ select api.patient_update('00000000-0000-4000-8000-0000000000e1', 'paciente informou',
+                    p_phone_enc => '\x01ff') $$, 'P0001', 'ATTA-IN-0001', 'pendente: a B não grava contato');
+select lives_ok($$ select api.patient_update('00000000-0000-4000-8000-0000000000e1', 'paciente informou',
+                   'Nome Corrigido Pela B') $$, 'pendente: a B corrige o nome dela');
+select is(pg_temp.nome_na_rede('00000000-0000-4000-8000-0000000000e1'), 'Marina Teste Fictícia',
+          'pendente: o update da B não muda network.person');
+select is(pg_temp.antes_local(), '{"local_full_name": "Nome Digitado Pela B"}',
+          'pendente: o antes da auditoria da B não leva o valor de rede');
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
+select is((select full_name from api.patient_get('00000000-0000-4000-8000-0000000000e1')), 'Marina Teste Fictícia',
+          'a A, dona do cadastro, continua lendo o dado de rede');
 
 -- divergência e falha fechada
 select ok((select api.report_divergence('00000000-0000-4000-8000-0000000000e1', 'nome_nao_confere') is not null),

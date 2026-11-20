@@ -13,12 +13,12 @@ export type Database = {
           Functions: {
             "patient_get":
 { Args: { "p_person_id": string }; Returns: {
-              "birth_date": string,"cpf_masked": string,"dek_wrapped": string,"email_enc": string,"foreign_doc_masked": string,"foreign_doc_type": string,"full_name": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"linked_at": string,"origin": string,"person_id": string,"phone_enc": string,"social_name": string,"verified_until": string
+              "birth_date": string,"cpf_masked": string,"dek_wrapped": string,"email_enc": string,"foreign_doc_masked": string,"foreign_doc_type": string,"full_name": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"linked_at": string,"network_access": string,"origin": string,"person_id": string,"phone_enc": string,"social_name": string,"verified_until": string
             }[]
                            },
 "patient_list":
 { Args: { "p_after_id"?: string,"p_after_name"?: string,"p_limit"?: number }; Returns: {
-              "cpf_masked": string,"dek_wrapped": string,"display_name": string,"email_enc": string,"foreign_doc_masked": string,"kek_version": number,"linked_at": string,"person_id": string,"phone_enc": string
+              "cpf_masked": string,"dek_wrapped": string,"display_name": string,"email_enc": string,"foreign_doc_masked": string,"kek_version": number,"linked_at": string,"network_access": string,"person_id": string,"phone_enc": string
             }[]
                            },
 "patient_register":
