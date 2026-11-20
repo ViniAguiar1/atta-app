@@ -25,7 +25,7 @@ export async function entrarComSenha(_anterior: Resultado<never> | null, dados: 
     const status = error.status ?? 0;
     logger.info("auth.entrada", { ok: false, status });
     // na trilha, sem identificar a conta (nem o e-mail): só o motivo (S3-5)
-    if ([400, 401, 422, 429].includes(status)) await registrarAcesso("auth.login_failed", null, { reason: (error.code ?? String(status)).slice(0, 40) });
+    if ([400, 401, 422, 429].includes(status)) await registrarAcesso("auth.login_failed", null, { reason: (error.code ?? String(status)).slice(0, 40) }, await headers());
     // a mesma mensagem para e-mail inexistente e senha errada, de propósito
     if (status === 429) return falha("LIMITE", "Muitas tentativas.");
     if (status === 400 || status === 401 || status === 422) return falha("NAO_AUTENTICADO", "Credenciais inválidas.");
@@ -33,7 +33,7 @@ export async function entrarComSenha(_anterior: Resultado<never> | null, dados: 
   }
   logger.info("auth.entrada", { ok: true });
   const { data: entrou } = await supabase.auth.getClaims();
-  if (entrou?.claims?.sub) await registrarAcesso("auth.login", entrou.claims.sub, { method: "password", aal: String(entrou.claims.aal ?? "aal1") });
+  if (entrou?.claims?.sub) await registrarAcesso("auth.login", entrou.claims.sub, { method: "password", aal: String(entrou.claims.aal ?? "aal1") }, await headers());
   await marcarAtividade();
   const volta = entrada.data.volta ?? voltaDaTela(await headers());
   redirect(await destinoDepoisDoLogin(supabase, destinoSeguro(volta)));
@@ -82,7 +82,7 @@ export async function entrarComGoogle(dados: FormData): Promise<void> {
 export async function sair(): Promise<void> {
   const supabase = await criarClienteServidor();
   const { data } = await supabase.auth.getClaims();
-  if (data?.claims?.sub) await registrarAcesso("auth.logout", data.claims.sub);
+  if (data?.claims?.sub) await registrarAcesso("auth.logout", data.claims.sub, {}, await headers());
   await supabase.auth.signOut({ scope: "local" });
   (await cookies()).delete(COOKIE_ATIVIDADE);
   redirect(ROTA_LOGIN);

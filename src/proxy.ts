@@ -41,7 +41,8 @@ export async function proxy(request: NextRequest) {
       const login = inicioDoLogin(claims);
       const motivo = login === null || agora - login > SESSAO_MAXIMA_S ? "teto_12h" : "inatividade_30min";
       const usuario = claims.sub;
-      if (usuario) after(() => registrarAcesso("auth.session_expired", usuario, { reason: motivo }));
+      const cabecalhos = prepararCabecalhosDaRequisicao(request.headers, idDaRequisicao);
+      if (usuario) after(() => registrarAcesso("auth.session_expired", usuario, { reason: motivo }, cabecalhos));
       claims = undefined;
     } else {
       resposta.cookies.set(COOKIE_ATIVIDADE, String(agora), opcoesDoCookieDeAtividade(https));
