@@ -58,12 +58,12 @@ export function FluxoCheckin({ portal, clinica }: Props) {
 // Conferência de dados (MIG-51; PDD §11.5). Os dados vêm do servidor pelo grant do paciente, nunca da URL. O passo
 // seguinte (Formulário de Saúde, MIG-52) entra no próximo PR; até lá, "Está tudo certo" salva e confirma.
 function PassoDados({ novo }: { novo: boolean }) {
-  const [estado, setEstado] = useState<{ tipo: "carregando" } | { tipo: "erro" } | { tipo: "pronto"; dados: DadosDoPaciente }>({ tipo: "carregando" });
+  const [estado, setEstado] = useState<{ tipo: "carregando" } | { tipo: "erro"; semSessao: boolean } | { tipo: "pronto"; dados: DadosDoPaciente }>({ tipo: "carregando" });
   const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     let vivo = true;
-    carregarDados().then((r) => vivo && setEstado(r.ok ? { tipo: "pronto", dados: r.data } : { tipo: "erro" }));
+    carregarDados().then((r) => vivo && setEstado(r.ok ? { tipo: "pronto", dados: r.data } : { tipo: "erro", semSessao: r.error.code === "NAO_AUTENTICADO" }));
     return () => {
       vivo = false;
     };
@@ -73,7 +73,7 @@ function PassoDados({ novo }: { novo: boolean }) {
   if (estado.tipo === "erro")
     return (
       <div className="flex flex-col gap-4">
-        <p role="alert">{TEXTOS_CADASTRO.indisponivel}</p>
+        <p role="alert">{estado.semSessao ? TEXTOS_CADASTRO.sessaoExpirada : TEXTOS_CADASTRO.indisponivel}</p>
         <Botao
           onClick={() => {
             setEstado({ tipo: "carregando" });

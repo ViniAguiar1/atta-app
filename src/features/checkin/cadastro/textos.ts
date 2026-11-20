@@ -7,6 +7,7 @@ export const TEXTOS = {
   tudoCerto: "Está tudo certo", // PDD §11.5
   editar: "Editar informações", // PDD §11.5
   informarNomeSocial: "Informar nome social", // PDD §11.5
+  sessaoExpirada: "Sua sessão expirou por segurança — confirme seus dados de novo para continuar de onde parou.", // PDD §11.4
   cadastroNovo: "Não encontramos seu cadastro — vamos criar um novo, é rápido.", // PDD §11.4
   cepSemEndereco: "Não encontramos esse CEP. Preencha o endereço.", // provisório
   salvando: "Salvando…", // provisório

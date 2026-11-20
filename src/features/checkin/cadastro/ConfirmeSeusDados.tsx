@@ -49,7 +49,7 @@ export function ConfirmeSeusDados({ dados, novo = false, aoConcluir }: Props) {
         // CEP sem endereço limpa o endereço do CEP anterior: o paciente preenche à mão
         const endereco = r.ok ? r.data : { logradouro: "", bairro: "", cidade: "", uf: "" };
         setValores((v) => ({ ...v, ...endereco }));
-        setAviso(r.ok ? null : TEXTOS.cepSemEndereco);
+        setAviso(r.ok ? null : r.error.code === "NAO_AUTENTICADO" ? TEXTOS.sessaoExpirada : TEXTOS.cepSemEndereco);
       });
     }
   };
@@ -66,7 +66,7 @@ export function ConfirmeSeusDados({ dados, novo = false, aoConcluir }: Props) {
     }
     executar(async () => {
       const r = await salvarDados(enviar);
-      if (!r.ok) return setAviso(TEXTOS.indisponivel);
+      if (!r.ok) return setAviso(r.error.code === "NAO_AUTENTICADO" ? TEXTOS.sessaoExpirada : TEXTOS.indisponivel);
       setAviso(emailIgnorado ? `${TEXTOS.salvo} ${TEXTOS.emailIgnorado}` : TEXTOS.salvo);
       aoConcluir();
     });
@@ -79,7 +79,7 @@ export function ConfirmeSeusDados({ dados, novo = false, aoConcluir }: Props) {
       <TituloDoPasso>{TEXTOS.titulo}</TituloDoPasso>
       {novo && <p>{TEXTOS.cadastroNovo}</p>}
       <dl className="flex flex-col gap-4">
-        <Linha rotulo={ROTULOS.cpf} valor={cpfMascarado} />
+        <Linha rotulo={ROTULOS.cpf} valor={cpfMascarado} paraLeitor={`terminado em ${cpfMascarado.replace(/^[·.]+/, "")}`} />
         {CAMPOS.map((c) =>
           aberto(c.nome) ? (
             <CampoAberto key={c.nome} campo={c} valor={exibir(c, valores[c.nome] ?? "")} erro={erros.includes(c.nome)} aoMudar={mudar} />
@@ -122,11 +122,22 @@ export function ConfirmeSeusDados({ dados, novo = false, aoConcluir }: Props) {
   );
 }
 
-function Linha({ rotulo, valor }: { rotulo: string; valor: string }) {
+// paraLeitor: o CPF mascarado (···.···.247-25) seria lido como "ponto médio" seis vezes; o leitor ouve
+// "terminado em 247-25" e o texto visual fica fora da árvore de acessibilidade (Backend 1 e 3, ADR 0002 §6).
+function Linha({ rotulo, valor, paraLeitor }: { rotulo: string; valor: string; paraLeitor?: string }) {
   return (
     <div className="flex flex-col">
       <dt className="text-base text-text-secondary">{rotulo}</dt>
-      <dd>{valor}</dd>
+      <dd>
+        {paraLeitor ? (
+          <>
+            <span aria-hidden="true">{valor}</span>
+            <span className="sr-only">{paraLeitor}</span>
+          </>
+        ) : (
+          valor
+        )}
+      </dd>
     </div>
   );
 }

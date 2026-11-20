@@ -113,4 +113,19 @@ describe("Confirme Seus Dados (§11.5)", () => {
     expect(screen.getByLabelText("Celular")).toHaveValue("");
     expect(screen.getByLabelText("CEP")).toHaveValue("");
   });
+
+  it("o leitor de tela ouve 'terminado em' no CPF mascarado, não os pontos", () => {
+    render(<ConfirmeSeusDados dados={DADOS} aoConcluir={vi.fn()} />);
+    expect(screen.getByText("terminado em 247-25")).toHaveClass("sr-only");
+    expect(screen.getByText("···.···.247-25")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("sem sessão, o CEP mostra o literal do PDD §11.4 de sessão expirada", async () => {
+    acoes.buscarCep.mockResolvedValue({ ok: false, error: { code: "NAO_AUTENTICADO", message: "x" } });
+    render(<ConfirmeSeusDados dados={DADOS} aoConcluir={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Editar informações" }));
+    await userEvent.clear(screen.getByLabelText("CEP"));
+    await userEvent.type(screen.getByLabelText("CEP"), "20040020");
+    expect(await screen.findByText(/Sua sessão expirou por segurança/)).toBeInTheDocument();
+  });
 });
