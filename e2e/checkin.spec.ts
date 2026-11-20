@@ -20,8 +20,14 @@ test("do CPF ao código, sem CPF na URL e sem violação do axe em cada passo", 
 
   await page.getByLabel("Código").fill("123456");
   await page.getByRole("button", { name: "Confirmar" }).click();
-  await expect(page.getByRole("heading", { name: "Identidade confirmada" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Confirme Seus Dados" })).toBeVisible();
   expect((await axe(page)).violations).toEqual([]);
+
+  // §11.5: edição aberta (com o nome social marcado) também passa no axe
+  await page.getByRole("button", { name: "Editar informações" }).click();
+  await page.getByRole("checkbox", { name: "Informar nome social" }).check();
+  expect((await axe(page)).violations).toEqual([]);
+  expect(page.url()).toMatch(/\/checkin\/aurora$/);
 });
 
 // Com o prerender parcial, o notFound() chega depois do shell: o status fica 200 e a tela é a de 404.
