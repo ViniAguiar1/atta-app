@@ -71,8 +71,9 @@ create function pg_temp.agendar(p_id uuid, p_dias int default 0, p_link uuid def
   values (p_id, '00000000-0000-4000-8000-00000000000a', p_person, p_prov, p_link, p_type, p_modality, pg_temp.meio_dia(p_dias),
           pg_temp.meio_dia(p_dias) + interval '1 hour', p_return)
 $$;
+-- conta só os do teste: o seed local (ids eeee, supabase/seed.sql) já traz a agenda de hoje
 create function pg_temp.eventos(p_action text) returns int language sql security definer as $$
-  select count(*)::int from audit.event where action = p_action
+  select count(*)::int from audit.event where action = p_action and tenant_id::text not like 'eeee%'
 $$;
 -- link do Boarding Check emitido para o atendimento (como o MIG-13 fará)
 create function pg_temp.emitir_link(p_appointment uuid) returns void language sql security definer as $$
