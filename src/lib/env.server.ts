@@ -16,6 +16,11 @@ const servidor = z.object({
   ATTA_RNE_PEPPER: z.string().min(1).optional(),
   ATTA_SEAL_PRIVATE_KEY: z.string().min(1).optional(),
   ATTA_SEAL_KID: z.string().min(1).optional(),
+  // E-mail (MIG-30): simulador por padrão; "real" exige as três abaixo (src/server/integracoes/mensageria/montagem.ts).
+  ATTA_EMAIL_MODO: z.enum(["simulador", "real"]).optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
+  ATTA_EMAIL_REMETENTE: z.string().min(3).optional(),
 });
 
 export type EnvServidor = z.infer<typeof servidor>;
@@ -31,5 +36,9 @@ export function envServidor(): EnvServidor {
     ATTA_RNE_PEPPER: opcional("ATTA_RNE_PEPPER"),
     ATTA_SEAL_PRIVATE_KEY: opcional("ATTA_SEAL_PRIVATE_KEY"),
     ATTA_SEAL_KID: opcional("ATTA_SEAL_KID"),
+    ATTA_EMAIL_MODO: opcional("ATTA_EMAIL_MODO"),
+    RESEND_API_KEY: opcional("RESEND_API_KEY"),
+    RESEND_WEBHOOK_SECRET: opcional("RESEND_WEBHOOK_SECRET"),
+    ATTA_EMAIL_REMETENTE: opcional("ATTA_EMAIL_REMETENTE"),
   });
 }
