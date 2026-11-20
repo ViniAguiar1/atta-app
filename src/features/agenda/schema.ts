@@ -102,6 +102,16 @@ export const filtroDoDiaSchema = z.object({
 });
 export type FiltroDoDia = z.infer<typeof filtroDoDiaSchema>;
 
+/**
+ * A busca só sai com 2+ letras do nome ou com o CPF inteiro (11 dígitos), a mesma regra da lista de Pacientes (#49):
+ * CPF pela metade não vira HMAC e nunca vira busca por prefixo (ADR 0001 §5).
+ */
+export function termoPronto(termo: string): boolean {
+  const t = termo.trim();
+  if (/^[\d.\-\s]+$/.test(t)) return t.replace(/\D/g, "").length === 11;
+  return (t.match(/\p{L}/gu) ?? []).length >= 2;
+}
+
 /** Cards do topo (§10.2.2). Sempre contam o dia de hoje, menos a Confirmação (agendamentos futuros). */
 export const resumoSchema = z.object({
   hojeFaltam: z.number().int().nonnegative(),

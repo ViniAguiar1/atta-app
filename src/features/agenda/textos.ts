@@ -8,6 +8,7 @@ export const textos = {
   busca: {
     rotulo: "Buscar por nome ou CPF", // PDD §10.2.2 ("busca por nome ou CPF"); simulador, captura 01
     placeholder: "Buscar por nome ou CPF", // simulador, captura 01
+    termoCurto: "Digite ao menos 2 letras do nome ou o CPF completo.", // provisório
   },
   vazio: {
     titulo: "Nenhum agendamento hoje", // provisório (o simulador não tem o estado vazio)
