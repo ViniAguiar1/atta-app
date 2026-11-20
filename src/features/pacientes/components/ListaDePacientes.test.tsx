@@ -69,7 +69,8 @@ describe("lista de Pacientes (MIG-43; PDD §10, Pacientes, lista)", () => {
     const linha = within(screen.getByRole("row", { name: /Carla Siqueira/ }));
     expect(linha.getByText("Incompleto")).toBeInTheDocument();
     expect(linha.getByRole("rowheader")).toHaveTextContent("Carla Siqueira*, usa nome social");
-    for (const t of ["Sem documento", "Nasc. —", "Sem celular", "Sem e-mail", "Nenhum atendimento aqui", "Nenhum documento"]) {
+    expect(linha.getByText("Nascimento não informado")).toHaveClass("sr-only");
+    for (const t of ["Sem documento", "Sem celular", "Sem e-mail", "Nenhum atendimento aqui", "Nenhum documento"]) {
       expect(linha.getByText(t)).toBeInTheDocument();
     }
   });
@@ -92,6 +93,7 @@ describe("lista de Pacientes (MIG-43; PDD §10, Pacientes, lista)", () => {
     expect(screen.getByText("Digite ao menos 2 letras do nome ou o CPF completo.")).toBeInTheDocument();
     await userEvent.type(campo, "u");
     await waitFor(() => expect(buscar).toHaveBeenCalledWith({ termo: "ju" }));
+    await waitFor(() => expect(screen.getByText("1 paciente encontrado")).toHaveClass("sr-only"));
     await waitFor(() => expect(screen.queryByRole("row", { name: /Carla/ })).not.toBeInTheDocument());
   });
 

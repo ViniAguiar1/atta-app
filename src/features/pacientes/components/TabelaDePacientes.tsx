@@ -89,7 +89,14 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
               <td className={`${celula} whitespace-nowrap`}>
                 <span className="flex flex-col">
                   <Documento identificacao={p.identificacao} />
-                  <span className={secundario}>{textos.identificacao.nascimento(p.nascimento)}</span>
+                  {p.nascimento ? (
+                    <span className={secundario}>{textos.identificacao.nascimento(p.nascimento)}</span>
+                  ) : (
+                    <span className={secundario}>
+                      <span aria-hidden="true">{textos.identificacao.nascimento(null)}</span>
+                      <span className="sr-only">{textos.identificacao.semNascimentoFalado}</span>
+                    </span>
+                  )}
                 </span>
               </td>
               <td className={celula}>
