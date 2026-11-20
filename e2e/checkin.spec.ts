@@ -27,6 +27,6 @@ test("do CPF ao código, sem CPF na URL e sem violação do axe em cada passo", 
 // Com o prerender parcial, o notFound() chega depois do shell: o status fica 200 e a tela é a de 404.
 test("portal inexistente mostra a página de não encontrado, sem o formulário", async ({ page }) => {
   await page.goto("/checkin/nao-existe");
-  await expect(page.getByText("This page could not be found.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/não encontrada|404/i);
   await expect(page.getByLabel("CPF")).toHaveCount(0);
 });
