@@ -16,9 +16,10 @@ insert into platform.professional (id, display_name, council, council_uf, counci
 values ('00000000-0000-4000-8000-0000000003f1', 'Dra. Fictícia Termos', 'cro', 'SP', '54321', sha256('cpf-prof-termos'::bytea),
         '···.···.000-01', '\x01', '\x01', '\x01', 1);
 insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
-                                               envelope_id, dek_wrapped, kek_version, propass_completed_at)
+                                               envelope_id, dek_wrapped, kek_version, propass_completed_at,
+                                               privacy_notice_version, privacy_notice_ack_at)
 values ('00000000-0000-4000-8000-0000000003d1', '00000000-0000-4000-8000-0000000003a1', '00000000-0000-4000-8000-0000000003f1',
-        sha256('dra-termos@a.test'::bytea), '\x01', gen_random_uuid(), '\x01', 1, now());
+        sha256('dra-termos@a.test'::bytea), '\x01', gen_random_uuid(), '\x01', 1, now(), 'v1', now());
 
 -- modelos (direto como dono, como a publicação deixaria): obrigatório, opcional, rascunho, Termo de Autorização e um
 -- Ativo de outra clínica
