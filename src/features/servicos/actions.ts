@@ -4,19 +4,14 @@ import { z } from "zod";
 import { falha, falhaDeValidacao, ok, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { portaServicos, type TermoQueBloqueia } from "@/server/servicos/porta";
+import { mensagemDeTermos, REASON_SERVICO_COM_TERMOS } from "./termos";
 
 // Server action de excluir Serviço do catálogo. Decisão do dono (PLANO, R15; PDD §10.3.1 omisso): Serviço que é o
 // único procedimento de algum termo Ativo não sai; a resposta lista os termos que precisam de outro procedimento antes.
 // A trava de verdade é do banco (gatilho do Backend 6); a action consulta antes para a mensagem vir com a lista, e, se o
 // gatilho recusar mesmo assim (corrida: um termo ficou Ativo entre a consulta e a exclusão), consulta de novo.
 // O texto é provisório até a PO responder (textos-para-a-po.md, R15). Log sem os títulos.
-export const REASON_SERVICO_COM_TERMOS = "ATTA-IN-0004:clinic_service_id";
-
 const entradaSchema = z.object({ servicoId: z.uuid() });
-
-export function mensagemDeTermos(termos: readonly TermoQueBloqueia[]): string {
-  return `Antes de excluir este Serviço, vincule outro procedimento a: ${termos.map((t) => t.titulo).join(", ")}.`;
-}
 
 const conflitoDeTermos = (termos: readonly TermoQueBloqueia[]): Resultado<never> =>
   falha("CONFLITO", mensagemDeTermos(termos), undefined, REASON_SERVICO_COM_TERMOS);

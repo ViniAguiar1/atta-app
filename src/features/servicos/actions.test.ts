@@ -5,7 +5,8 @@ vi.mock("@/server/servicos/porta", () => ({
   portaServicos: { bloqueiosParaExcluir: mocks.bloqueiosParaExcluir, excluir: mocks.excluir },
 }));
 
-import { excluirServico, REASON_SERVICO_COM_TERMOS } from "./actions";
+import { excluirServico } from "./actions";
+import { REASON_SERVICO_COM_TERMOS } from "./termos";
 
 const ID = "00000000-0000-4000-8000-0000000000c1";
 const TERMOS = [
@@ -16,6 +17,16 @@ const RECUSA_DO_GATILHO = {
   ok: false as const,
   error: { code: "CONFLITO" as const, message: "x", reason: REASON_SERVICO_COM_TERMOS },
 };
+
+describe("arquivo use server", () => {
+  it("só exporta funções assíncronas (regra do Next para \"use server\")", async () => {
+    const modulo = await import("./actions");
+    for (const [nome, valor] of Object.entries(modulo)) {
+      expect(typeof valor, nome).toBe("function");
+      expect((valor as () => unknown).constructor.name, nome).toBe("AsyncFunction");
+    }
+  });
+});
 
 describe("excluirServico (action, decisão do dono R15)", () => {
   beforeEach(() => {
