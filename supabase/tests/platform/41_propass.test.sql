@@ -1,11 +1,12 @@
 -- MIG-14b (1): PROpass pelo link do convite (PDD v206 §10.4.3; ADR 0004 §3). Dados fictícios: bytes e nomes inventados.
 begin;
-select plan(36);
+select plan(44);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
   ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B'),
-  ('00000000-0000-4000-8000-00000000000c', 'Clínica Fictícia C');
+  ('00000000-0000-4000-8000-00000000000c', 'Clínica Fictícia C'),
+  ('00000000-0000-4000-8000-00000000000d', 'Clínica Fictícia D');
 
 create function pg_temp.entrar(p_tenant uuid, p_role text) returns void language plpgsql as $$
 declare
@@ -43,23 +44,13 @@ $$;
 
 -- o que o servidor manda depois de validar, conferir o conselho e cifrar
 create function pg_temp.enviar(p_segredo text, p_email text, p_cpf text, p_numero text,
-                               p_conselho_ok boolean default true) returns void language sql as $$
-  select api.propass_submit(sha256(p_segredo::bytea), gen_random_uuid(), 'Dra. Fictícia ' || p_numero, 'cro', 'SP',
-                            p_numero, sha256(p_cpf::bytea), '···.···.000-00', '\x01aa', '\x01a1',
-                            sha256(p_email::bytea), '\x01a2', '\x01bb', 1::smallint, p_conselho_ok, 'v1')
+                               p_conselho text default 'regularizado', p_nome text default null) returns text
+language sql as $$
+  select api.propass_submit(sha256(p_segredo::bytea), gen_random_uuid(), coalesce(p_nome, 'Dra. Fictícia ' || p_numero),
+                            'cro', 'SP', p_numero, sha256(p_cpf::bytea), '···.···.000-00', '\x01aa', '\x01a1',
+                            sha256(p_email::bytea), '\x01a2', '\x01bb', 1::smallint, p_conselho, 'v1')
 $$;
 
--- código, mensagem e detalhe do erro: o caso do conselho e o do CPF precisam sair iguais
-create function pg_temp.erro(p_sql text) returns text language plpgsql as $$
-declare
-  v_state text; v_msg text; v_detail text;
-begin
-  execute p_sql;
-  return 'sem erro';
-exception when others then
-  get stacked diagnostics v_state = returned_sqlstate, v_msg = message_text, v_detail = pg_exception_detail;
-  return v_state || '|' || v_msg || '|' || coalesce(v_detail, '');
-end $$;
 
 create function pg_temp.vivos(p_link uuid) returns int language sql security definer as $$
   select count(*)::int from platform.access_grant
@@ -78,6 +69,16 @@ $$;
 create function pg_temp.ciencia(p_link uuid) returns boolean language sql security definer as $$
   select privacy_notice_ack_at is not null and privacy_notice_version = 'v1' from platform.professional_tenant_link where id = p_link
 $$;
+create function pg_temp.falhas(p_segredo text) returns int language sql security definer as $$
+  select propass_failures from platform.access_grant where secret_hash = sha256(p_segredo::bytea)
+$$;
+create function pg_temp.conselho(p_numero text) returns text language sql security definer as $$
+  select council_status || '|' || (council_verified_at is not null)::text from platform.professional
+  where council_number = p_numero
+$$;
+create function pg_temp.revogado_por_tentativas() returns int language sql security definer as $$
+  select count(*)::int from audit.event where action = 'grant.revoke' and details ->> 'reason' = 'propass_attempts'
+$$;
 create function pg_temp.eventos(p_action text) returns int language sql security definer as $$
   select count(*)::int from audit.event where action = p_action
 $$;
@@ -94,7 +95,7 @@ select is((select idle from private.grant_policy('professional_propass')), null:
 select ok(not has_function_privilege('authenticated', 'api.propass_resolve(bytea)', 'EXECUTE'),
           'o navegador não abre o PROpass direto');
 select ok(not has_function_privilege('authenticated',
-          'api.propass_submit(bytea, uuid, text, text, text, text, bytea, text, bytea, bytea, bytea, bytea, bytea, smallint, boolean, text)',
+          'api.propass_submit(bytea, uuid, text, text, text, text, bytea, text, bytea, bytea, bytea, bytea, bytea, smallint, text, text)',
           'EXECUTE'), 'o navegador não grava o PROpass direto');
 select ok(not has_function_privilege('authenticated', 'private.propass_issue(uuid, uuid, bytea)', 'EXECUTE')
           and not has_function_privilege('service_role', 'private.propass_issue(uuid, uuid, bytea)', 'EXECUTE'),
@@ -109,7 +110,9 @@ select throws_ok($$ select api.professional_invite(gen_random_uuid(), sha256('x@
 select pg_temp.servidor();
 select is((select step from api.propass_resolve(sha256('link-a1'::bytea))), 'dados', 'o link abre na etapa dos dados');
 select ok((select tenant_name = 'Clínica Fictícia A' and invite_email_enc is not null and invite_envelope_id is not null
-           from api.propass_resolve(sha256('link-a1'::bytea))), 'traz a clínica e o e-mail do convite para mostrar travado');
+                  and invited_at is not null and expires_at = invited_at + interval '7 days'
+           from api.propass_resolve(sha256('link-a1'::bytea))),
+          'traz a clínica, o e-mail do convite para mostrar travado e a data do convite (7 dias até vencer)');
 select is(pg_temp.vivos('00000000-0000-4000-8000-0000000000c1'), 1, 'abrir não consome o link');
 
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
@@ -132,11 +135,12 @@ select pg_temp.envelhecer('link-a1-b', interval '1 hour');
 -- envio: e-mail travado, conselho conferido
 select throws_ok($$ select pg_temp.enviar('link-a1-b', 'outro@clinica-ficticia.test', 'cpf-1', '1001') $$,
                  'P0001', 'ATTA-IN-0001', 'e-mail diferente do convite é recusado');
-select throws_ok($$ select pg_temp.enviar('link-a1-b', 'dra1@clinica-ficticia.test', 'cpf-1', '1001', false) $$,
-                 'P0001', 'ATTA-IN-0001', 'sem a conferência do conselho, não grava');
-select lives_ok($$ select pg_temp.enviar('link-a1-b', 'dra1@clinica-ficticia.test', 'cpf-1', '1001') $$,
-                'o profissional grava os próprios dados');
+select throws_ok($$ select pg_temp.enviar('link-a1-b', 'dra1@clinica-ficticia.test', 'cpf-1', '1001', 'nao_confere') $$,
+                 'P0001', 'ATTA-IN-0001', 'conselho que não confere nunca grava');
+select is(pg_temp.enviar('link-a1-b', 'dra1@clinica-ficticia.test', 'cpf-1', '1001'), 'ok',
+          'o profissional grava os próprios dados');
 select is(pg_temp.profissionais(), 1, 'nasce o profissional');
+select is(pg_temp.conselho('1001'), 'regularizado|true', 'com consulta de verdade: regularizado, com a hora da conferência');
 select is((select step from api.propass_resolve(sha256('link-a1-b'::bytea))), 'termo',
           'o link segue para o Termo (a última etapa, parte 2)');
 select throws_ok($$ select pg_temp.enviar('link-a1-b', 'dra1@clinica-ficticia.test', 'cpf-1', '1001') $$,
@@ -147,48 +151,65 @@ select ok((select status = 'cadastro_concluido' and display_name = 'Dra. Fictíc
            from api.professional_get('00000000-0000-4000-8000-0000000000c1')), 'a clínica vê o cadastro concluído');
 select ok(pg_temp.ciencia('00000000-0000-4000-8000-0000000000c1'), 'a ciência do Aviso de Privacidade fica registrada, com a versão');
 
--- clínica B: o mesmo profissional (mesmo conselho e mesmo CPF) liga ao existente, sem mexer nos dados globais
+-- clínica B convida o MESMO e-mail: o mesmo profissional (conselho, CPF e e-mail) liga ao existente, sem mexer nos dados
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000b', 'ADMIN');
-select pg_temp.convidar('00000000-0000-4000-8000-0000000000c2', 'dra1.b@clinica-ficticia.test', 'link-b1');
+select pg_temp.convidar('00000000-0000-4000-8000-0000000000c2', 'dra1@clinica-ficticia.test', 'link-b1');
 select pg_temp.servidor();
-select lives_ok($$ select api.propass_submit(sha256('link-b1'::bytea), gen_random_uuid(), 'Outro Nome Fictício', 'cro', 'SP',
-                   '1001', sha256('cpf-1'::bytea), '···.···.000-00', '\x01ff', '\x01ff', sha256('dra1.b@clinica-ficticia.test'::bytea),
-                   '\x01ff', '\x01ff', 1::smallint, true, 'v1') $$, 'mesmo conselho e mesmo CPF: liga ao existente');
+select is(pg_temp.enviar('link-b1', 'dra1@clinica-ficticia.test', 'cpf-1', '1001', 'regularizado', 'Outro Nome Fictício'), 'ok',
+          'mesmo conselho, mesmo CPF e mesmo e-mail: liga ao existente');
 select is(pg_temp.profissionais(), 1, 'não nasce outro profissional');
 select is(pg_temp.nome_global('1001'), 'Dra. Fictícia 1001', 'os dados globais não mudam por um convite de outra clínica');
 
--- clínica C: conselho existente com outro CPF, e CPF existente com outro conselho: o mesmo erro, nada gravado
+-- clínica C (outro e-mail): toda divergência dá a mesma resposta, nada é gravado, e a 5ª recusa revoga o link
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000c', 'ADMIN');
 select pg_temp.convidar('00000000-0000-4000-8000-0000000000c3', 'golpe@clinica-ficticia.test', 'link-c1');
 select pg_temp.servidor();
-select is(pg_temp.erro($$ select pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-2', '1001') $$),
-          'P0001|ATTA-IN-0001|propass', 'conselho de outro com CPF diferente: recusado (Tech Lead)');
-select is(pg_temp.erro($$ select pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-1', '2002') $$),
-          'P0001|ATTA-IN-0001|propass', 'CPF de outro com conselho novo: o mesmo erro, sem dizer qual');
+select is(pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-1', '1001'), 'recusado',
+          'mesmo conselho e mesmo CPF, mas outro e-mail: recusado (Segurança, S2)');
+select is(pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-2', '1001'), 'recusado',
+          'conselho de outro com CPF diferente: a mesma resposta (Tech Lead)');
+select is(pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-1', '2002'), 'recusado',
+          'CPF de outro com conselho novo: a mesma resposta, sem dizer qual');
 select is(pg_temp.profissionais(), 1, 'nada foi gravado');
+select is(pg_temp.falhas('link-c1'), 3, 'cada recusa conta no link');
 select is((select step from api.propass_resolve(sha256('link-c1'::bytea))), 'dados', 'o vínculo da C segue sem profissional');
-
--- Boarding Check de um profissional da C (vínculo c3 já ligado não é preciso: o grant aponta para o vínculo)
+select pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-9', '1001');
+select is(pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-8', '1001'), 'recusado', 'a 5ª recusa');
+select throws_ok($$ select * from api.propass_resolve(sha256('link-c1'::bytea)) $$, '42501', 'ATTA-AUTH-0004',
+                 'na 5ª recusa o link é revogado: o link deixa de ser oráculo de CPF (Tech Lead)');
 select set_config('role', 'postgres', true);
+select ok(pg_temp.eventos('propass.refused') = 5 and pg_temp.revogado_por_tentativas() = 1,
+          'cada recusa e a revogação por tentativas vão para audit');
+
+-- Boarding Check de um profissional da C (o grant aponta para o vínculo)
 select api.grant_issue('professional_boarding', sha256('boarding-c1'::bytea), '00000000-0000-4000-8000-00000000000c',
                        gen_random_uuid(), p_professional_link_id => '00000000-0000-4000-8000-0000000000c3');
 select api.grant_mark_sent((select id from platform.access_grant where secret_hash = sha256('boarding-c1'::bytea)));
 select pg_temp.servidor();
 select lives_ok($$ select * from api.grant_resolve(sha256('boarding-c1'::bytea), 'professional_boarding') $$,
                 'o link do Boarding Check vale com o vínculo vivo');
-
--- vínculo excluído: o link morre
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000c', 'ADMIN');
 select api.professional_delete('00000000-0000-4000-8000-0000000000c3');
 select pg_temp.servidor();
-select throws_ok($$ select * from api.propass_resolve(sha256('link-c1'::bytea)) $$, '42501', 'ATTA-AUTH-0004',
-                 'a clínica excluiu o profissional: o link não abre');
 select throws_ok($$ select * from api.grant_resolve(sha256('boarding-c1'::bytea), 'professional_boarding') $$,
-                 '42501', 'ATTA-AUTH-0004', 'a clínica excluiu o profissional: o link do Boarding Check também morre');
+                 '42501', 'ATTA-AUTH-0004', 'a clínica excluiu o profissional: o link do Boarding Check morre');
+
+-- clínica D: sem consulta real ao conselho (R20), o PROpass grava 'nao_consultado', sem hora de conferência
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000d', 'ADMIN');
+select pg_temp.convidar('00000000-0000-4000-8000-0000000000c4', 'dr4@clinica-ficticia.test', 'link-d1');
+select pg_temp.servidor();
+select is(pg_temp.enviar('link-d1', 'dr4@clinica-ficticia.test', 'cpf-4', '4004', 'nao_consultado'), 'ok',
+          'sem consulta ao conselho, grava como não consultado');
+select is(pg_temp.conselho('4004'), 'nao_consultado|false', 'não consultado: sem afirmar a regularidade');
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000d', 'ADMIN');
+select api.professional_delete('00000000-0000-4000-8000-0000000000c4');
+select pg_temp.servidor();
+select throws_ok($$ select * from api.propass_resolve(sha256('link-d1'::bytea)) $$, '42501', 'ATTA-AUTH-0004',
+                 'a clínica excluiu o profissional: o link do PROpass não abre');
 
 -- auditoria
 select set_config('role', 'postgres', true);
-select is(pg_temp.eventos('propass.submit'), 2, 'cada PROpass gravado vai para audit');
+select is(pg_temp.eventos('propass.submit'), 3, 'cada PROpass gravado vai para audit');
 select ok(pg_temp.eventos('grant.revoke') >= 1 and pg_temp.eventos('propass.open') >= 1,
           'o reenvio e a abertura vão para audit');
 
