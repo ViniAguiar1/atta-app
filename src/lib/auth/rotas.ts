@@ -14,6 +14,9 @@ export const ROTA_2FA = "/painel/seguranca/2fa";
 export const EXIGE_2FA_DO_ADMIN = true;
 // Rotas de link (paciente, profissional, verificação): grant do link, nunca sessão de staff; fora da guarda.
 export const ROTAS_DE_LINK = ["/checkin", "/ficha", "/boarding", "/propass", "/verificar"] as const;
+// API pública, sem sessão nem grant (MIG-24; ADR 0006 §6): a verificação do Código ATTA, com limite por IP no servidor.
+export const ROTA_API_VERIFICACAO = "/public/v1/verificar";
+export const ROTAS_PUBLICAS_DE_API = [ROTA_API_VERIFICACAO] as const;
 
 export const exigeSessao = (caminho: string) => caminho === PREFIXO_PAINEL || caminho.startsWith(`${PREFIXO_PAINEL}/`);
 
