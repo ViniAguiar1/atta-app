@@ -1,6 +1,6 @@
 -- MIG-10: configurações em cascata (porte dos testes do ENG-186: test_config_cascade, test_rls e test_settings).
 begin;
-select plan(48);
+select plan(49);
 
 -- duas clínicas fictícias e um Serviço fictício (o catálogo de Serviços chega no MIG-11)
 insert into platform.tenant (id, name) values
@@ -19,7 +19,8 @@ begin
   end if;
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims',
-    json_build_object('sub', v_user, 'role', 'authenticated', 'tenant_id', p_tenant, 'app_role', p_role)::text, true);
+    json_build_object('sub', v_user, 'role', 'authenticated', 'tenant_id', p_tenant, 'app_role', p_role,
+      'aal', 'aal2')::text, true); -- sessão com o 2º fator: o ADMIN sem aal2 não tem permissão (MIG-03)
 end $$;
 
 create function pg_temp.remover_vinculo() returns void language plpgsql as $$
@@ -72,6 +73,13 @@ select results_eq(
             ('janela_de_confirmacao_h', 'int', 72::bigint, null::boolean),
             ('tolerancia_da_ausencia_min', 'int', 120::bigint, null::boolean) $$,
   'catálogo com os padrões do PDD: 72 h, 2 h e fluxo alternativo habilitado');
+
+-- ADMIN sem o 2º fator (aal1) não lê nem grava configuração (regra do dono, MIG-03; has_permission)
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
+select set_config('request.jwt.claims',
+  (current_setting('request.jwt.claims')::jsonb || '{"aal":"aal1"}')::text, true);
+select throws_ok($$ select pg_temp.efetivo('janela_de_confirmacao_h') $$, '42501', 'ATTA-AUTH-0004',
+                 'ADMIN em aal1 é recusado');
 
 -- sem nada gravado, tudo vem do sistema -------------------------------------------------------------------------------
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
