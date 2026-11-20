@@ -70,6 +70,9 @@ export type Database = {
 "professional_resend_invite":
 { Args: { "p_invite_email_enc"?: string,"p_invite_email_hmac"?: string,"p_link_id": string }; Returns: undefined
                            },
+"rate_limit_hit":
+{ Args: { "p_bucket": string,"p_key_hash": string,"p_limit": number,"p_window_seconds": number }; Returns: boolean
+                           },
 "report_divergence":
 { Args: { "p_person_id": string,"p_reason": string }; Returns: string
                            }
