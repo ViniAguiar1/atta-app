@@ -55,7 +55,8 @@ describe("lista de Pacientes (MIG-43; PDD §10, Pacientes, lista)", () => {
   it("cada célula no formato do simulador", () => {
     montar();
     const linha = within(screen.getByRole("row", { name: /Juliana Prates/ }));
-    expect(linha.getByLabelText("CPF terminado em 247-25")).toBeInTheDocument();
+    expect(linha.getByText("CPF terminado em 247-25")).toHaveClass("sr-only");
+    expect(linha.getByText("···.···.247-25")).toHaveAttribute("aria-hidden", "true");
     expect(linha.getByText("Nasc. 17/09/1990")).toBeInTheDocument();
     expect(linha.getByText("(11) 98765-4321")).toBeInTheDocument();
     expect(linha.getByText("20/11/2026 às 11:00")).toBeInTheDocument();
