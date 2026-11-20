@@ -8,9 +8,13 @@
 --
 -- Regra num lugar só (ADR 0004 §3): a validade e a revogação de todo grant ficam em private.grant_policy e
 -- private.grant_is_valid (e nas constantes de src/server/grant/politica.ts, que espelham estas):
---   - patient_checkin: 30 min sem uso, renovada a cada ação, com teto de 2 h;
---   - professional_boarding: provisório até a PO decidir, teto de 12 h. A regra "até o atendimento sair de
---     em_atendimento" entra aqui mesmo quando o atendimento existir (MIG-11), sem mudar quem chama.
+--   - patient_checkin: 30 min sem uso, renovada a cada ação, com teto de 2 h (ADR 0004 §3);
+--   - professional_boarding: 8 h a partir do envio do link pelo WhatsApp (PDD RN-FIC-07, §10.2.3 e §13.4: "8 (oito)
+--     horas a partir do envio via WhatsApp (decisão da PO)"), ou a conclusão, ou o cancelamento, o que vier primeiro.
+--     O teto conta de sent_at, que a fila de mensagens preenche quando confirma o envio (api.grant_mark_sent); até lá,
+--     o grant do profissional não vale. A revogação na conclusão e no cancelamento entra na transição de estado do
+--     atendimento (MIG-11/13). O PIN (5 erros seguidos bloqueiam 15 min; 10 no total revogam) entra no MIG-23
+--     (Backend 3), nesta mesma função.
 -- O appointment_id ainda não tem FK: atta_in.appointment chega no MIG-11 e a FK entra lá. O professional_id ganha a
 -- FK para platform.professional no MIG-14a.
 
@@ -23,7 +27,8 @@ create table platform.access_grant (
   appointment_id uuid not null,
   secret_hash bytea not null,
   created_at timestamptz not null default now(),
-  expires_at timestamptz not null,          -- teto absoluto da finalidade, gravado na emissão
+  expires_at timestamptz not null,          -- teto absoluto: emissão + teto (paciente) ou envio + teto (profissional)
+  sent_at timestamptz,                      -- profissional: quando a fila confirmou o envio do link
   last_used_at timestamptz,
   revoked_at timestamptz,
   constraint access_grant_purpose_check check (purpose in ('patient_checkin', 'professional_boarding')),
@@ -48,7 +53,7 @@ language sql immutable set search_path = ''
 as $$
   select case p_purpose when 'patient_checkin' then interval '30 minutes' end,
          case p_purpose when 'patient_checkin' then interval '2 hours'
-                        when 'professional_boarding' then interval '12 hours' end
+                        when 'professional_boarding' then interval '8 hours' end
 $$;
 
 create function private.grant_is_valid(p_grant_id uuid, p_purpose text) returns boolean
@@ -63,10 +68,15 @@ begin
     return false;
   end if;
   select * into v_policy from private.grant_policy(v.purpose);
-  if v_policy.ceiling is null or now() >= v.expires_at or now() >= v.created_at + v_policy.ceiling then
+  if v_policy.ceiling is null or now() >= v.expires_at
+     or (v.purpose = 'patient_checkin' and now() >= v.created_at + v_policy.ceiling) then
     return false;
   end if;
   if v_policy.idle is not null and now() >= coalesce(v.last_used_at, v.created_at) + v_policy.idle then
+    return false;
+  end if;
+  -- profissional: só depois do envio do link, e até 8 h dele (RN-FIC-07)
+  if v.purpose = 'professional_boarding' and (v.sent_at is null or now() >= v.sent_at + v_policy.ceiling) then
     return false;
   end if;
   return true;
@@ -81,6 +91,7 @@ revoke all on function private.grant_is_valid(uuid, text) from public, anon, aut
 -- ---------------------------------------------------------------------------------------------------------------
 insert into audit.action (action, kind) values
   ('grant.issue', 'change'),
+  ('grant.sent', 'change'),
   ('grant.revoke', 'change')
 on conflict (action) do nothing;
 
@@ -136,6 +147,25 @@ begin
 end;
 $$;
 
+-- A fila de mensagens confirma o envio do link do profissional: o grant passa a valer, por 8 h a partir daqui. Só uma
+-- vez, e só para o link do profissional.
+create function api.grant_mark_sent(p_grant_id uuid) returns void
+language plpgsql volatile security definer set search_path = ''
+as $$
+declare
+  v platform.access_grant;
+begin
+  update platform.access_grant g
+  set sent_at = now(), expires_at = now() + (select ceiling from private.grant_policy(g.purpose))
+  where g.id = p_grant_id and g.purpose = 'professional_boarding' and g.sent_at is null and g.revoked_at is null
+  returning * into v;
+  if not found then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'grant';
+  end if;
+  perform audit.record_event('grant.sent', 'platform.access_grant', v.id, '{}', null, null, v.tenant_id);
+end;
+$$;
+
 -- Revoga (sair, PIN errado demais, atendimento encerrado). Idempotente; grant desconhecido não dá erro (sem oráculo).
 create function api.grant_revoke(p_secret_hash bytea) returns void
 language plpgsql volatile security definer set search_path = ''
@@ -156,6 +186,8 @@ $$;
 revoke all on function api.grant_issue(text, bytea, uuid, uuid, uuid, uuid) from public, anon, authenticated;
 revoke all on function api.grant_resolve(bytea, text) from public, anon, authenticated;
 revoke all on function api.grant_revoke(bytea) from public, anon, authenticated;
+revoke all on function api.grant_mark_sent(uuid) from public, anon, authenticated;
 grant execute on function api.grant_issue(text, bytea, uuid, uuid, uuid, uuid) to service_role;
 grant execute on function api.grant_resolve(bytea, text) to service_role;
 grant execute on function api.grant_revoke(bytea) to service_role;
+grant execute on function api.grant_mark_sent(uuid) to service_role;

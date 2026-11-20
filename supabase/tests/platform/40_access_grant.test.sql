@@ -1,6 +1,6 @@
 -- MIG-13a: grant de sessão (ADR 0004 §3). Dados fictícios: hashes de texto inventado, ids inventados.
 begin;
-select plan(27);
+select plan(32);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -12,11 +12,15 @@ values ('00000000-0000-4000-8000-0000000000e1', 'Paciente Fictício', true);
 create function pg_temp.envelhecer(p_hash bytea, p_criado interval, p_uso interval) returns void
 language sql security definer as $$
   update platform.access_grant set created_at = now() - p_criado, last_used_at = now() - p_uso,
+                                   sent_at = case when sent_at is not null then now() - p_criado end,
                                    expires_at = now() - p_criado + (select ceiling from private.grant_policy(purpose))
   where secret_hash = p_hash
 $$;
 create function pg_temp.eventos(p_action text) returns int language sql security definer as $$
   select count(*)::int from audit.event where action = p_action and tenant_id = '00000000-0000-4000-8000-00000000000a'
+$$;
+create function pg_temp.id_do(p_hash bytea) returns uuid language sql security definer as $$
+  select id from platform.access_grant where secret_hash = p_hash
 $$;
 create function pg_temp.ultimo_uso(p_hash bytea) returns timestamptz language sql security definer as $$
   select last_used_at from platform.access_grant where secret_hash = p_hash
@@ -42,6 +46,9 @@ select ok(not has_function_privilege('anon', 'api.grant_revoke(bytea)', 'EXECUTE
           and not has_function_privilege('authenticated', 'api.grant_revoke(bytea)', 'EXECUTE'),
           'anon e authenticated sem EXECUTE em grant_revoke');
 select ok(has_function_privilege('service_role', 'api.grant_resolve(bytea, text)', 'EXECUTE'), 'service_role resolve');
+select ok(not has_function_privilege('anon', 'api.grant_mark_sent(uuid)', 'EXECUTE')
+          and not has_function_privilege('authenticated', 'api.grant_mark_sent(uuid)', 'EXECUTE'),
+          'anon e authenticated sem EXECUTE em grant_mark_sent');
 select ok(not has_function_privilege('authenticated', 'private.grant_is_valid(uuid, text)', 'EXECUTE'),
           'authenticated sem EXECUTE na regra de validade');
 select is((select count(*)::int from information_schema.parameters
@@ -96,15 +103,22 @@ select throws_ok($$ select * from api.grant_resolve(sha256('segredo-p4'::bytea),
 select lives_ok($$ select api.grant_revoke(sha256('segredo-desconhecido'::bytea)) $$,
                 'revogar segredo desconhecido não dá erro (sem oráculo)');
 
--- profissional (provisório até a PO): teto de 12 h
+-- profissional: só depois do envio do link, e até 8 h dele (PDD RN-FIC-07)
 select api.grant_issue('professional_boarding', sha256('segredo-b1'::bytea), '00000000-0000-4000-8000-00000000000a',
                        '00000000-0000-4000-8000-0000000000d1', p_professional_id => '00000000-0000-4000-8000-0000000000f1');
-select pg_temp.envelhecer(sha256('segredo-b1'::bytea), interval '11 hours', interval '5 hours');
-select lives_ok($$ select * from api.grant_resolve(sha256('segredo-b1'::bytea), 'professional_boarding') $$,
-                'profissional: 11 h depois ainda vale (sem limite de inatividade)');
-select pg_temp.envelhecer(sha256('segredo-b1'::bytea), interval '12 hours 1 minute', interval '1 minute');
 select throws_ok($$ select * from api.grant_resolve(sha256('segredo-b1'::bytea), 'professional_boarding') $$,
-                 '42501', 'ATTA-AUTH-0004', 'profissional: passou do teto de 12 h, vence');
+                 '42501', 'ATTA-AUTH-0004', 'profissional: antes de a fila confirmar o envio, o link não vale');
+select lives_ok($$ select api.grant_mark_sent(pg_temp.id_do(sha256('segredo-b1'::bytea))) $$, 'a fila confirma o envio');
+select throws_ok($$ select api.grant_mark_sent(pg_temp.id_do(sha256('segredo-b1'::bytea))) $$,
+                 'P0001', 'ATTA-IN-0001', 'o envio só se marca uma vez');
+select pg_temp.envelhecer(sha256('segredo-b1'::bytea), interval '7 hours 59 minutes', interval '5 hours');
+select lives_ok($$ select * from api.grant_resolve(sha256('segredo-b1'::bytea), 'professional_boarding') $$,
+                'profissional: 7 h 59 depois do envio ainda vale (sem limite de inatividade)');
+select pg_temp.envelhecer(sha256('segredo-b1'::bytea), interval '8 hours 1 minute', interval '1 minute');
+select throws_ok($$ select * from api.grant_resolve(sha256('segredo-b1'::bytea), 'professional_boarding') $$,
+                 '42501', 'ATTA-AUTH-0004', 'profissional: passou de 8 h do envio, vence (RN-FIC-07)');
+select throws_ok($$ select api.grant_mark_sent(pg_temp.id_do(sha256('segredo-p1'::bytea))) $$,
+                 'P0001', 'ATTA-IN-0001', 'grant do paciente não tem envio a marcar');
 
 -- auditoria com o tenant explícito (o service_role não tem JWT)
 select ok(pg_temp.eventos('grant.issue') = 3, 'cada emissão vai para audit, com a clínica');

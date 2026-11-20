@@ -1,5 +1,5 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { COOKIE_GRANT, type Finalidade, gerarSegredo, hashDoSegredo, opcoesDoCookie } from "./politica";
 
 /**
@@ -10,7 +10,8 @@ export async function gravarGrant(finalidade: Finalidade): Promise<Buffer> {
   const segredo = gerarSegredo();
   const hash = hashDoSegredo(segredo);
   if (!hash) throw new Error("grant: segredo fora do formato");
-  (await cookies()).set(COOKIE_GRANT, segredo, opcoesDoCookie(finalidade));
+  const https = (await headers()).get("x-forwarded-proto") === "https";
+  (await cookies()).set(COOKIE_GRANT, segredo, opcoesDoCookie(finalidade, https));
   return hash;
 }
 
