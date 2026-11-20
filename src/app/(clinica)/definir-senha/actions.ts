@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { decidirGuarda, PREFIXO_PAINEL, ROTA_LOGIN } from "@/lib/auth/rotas";
@@ -7,6 +8,7 @@ import { senhaNova } from "@/lib/auth/senha";
 import { falha, falhaDeValidacao, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { registrarAcesso } from "@/server/auditoria/acesso";
 
 const entrada = z.object({ senha: senhaNova, confirmacao: z.string() }).refine((d) => d.senha === d.confirmacao, {
   path: ["confirmacao"],
@@ -29,6 +31,15 @@ export async function definirSenha(_anterior: Resultado<never> | null, dados: Fo
     return falha("INDISPONIVEL", "Não foi possível gravar a senha agora. Tente de novo.");
   }
   logger.info("auth.senha_definida", { ok: true });
+  // convite: o servidor do convite (MIG-06) grava o id do vínculo em app_metadata.atta_convite (só o admin escreve).
+  // Aceitar antes de renovar: o hook só dá a clínica a vínculo ativo. Falhou (gestor adicional ainda pendente, vínculo
+  // já aceito), segue para a guarda.
+  const convite = (sessao.claims.app_metadata as { atta_convite?: unknown } | undefined)?.atta_convite;
+  if (typeof convite === "string" && /^[0-9a-f-]{36}$/.test(convite)) {
+    const { error: erroAceite } = await supabase.schema("api").rpc("team_accept_invite", { p_membership_id: convite });
+    if (erroAceite) logger.warn("auth.convite_nao_aceito", { code: erroAceite.code, detalhe: erroAceite.details });
+  }
+  await registrarAcesso("auth.password_reset", sessao.claims.sub, { reason: typeof convite === "string" ? "convite" : "recuperacao" }, await headers());
   // a renovação pega o vínculo mais novo (convite aceito) para o hook pôr a clínica no token
   await supabase.auth.refreshSession();
   const { data } = await supabase.auth.getClaims();
