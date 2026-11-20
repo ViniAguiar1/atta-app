@@ -32,12 +32,19 @@ export function signEvidence(evidence: string, kid: string, privateKeyPem: strin
 }
 
 // Data ISO 8601 em UTC (como o manifesto e o payload gravam); outra forma não é aceita
-const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+const ISO_UTC = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?Z$/;
 
+// O Date.parse aceita data impossível com o formato certo (30/02 vira 02/03): cada campo precisa voltar igual.
 function instante(valor: unknown): number | null {
-  if (typeof valor !== "string" || !ISO_UTC.test(valor)) return null;
+  if (typeof valor !== "string") return null;
+  const m = ISO_UTC.exec(valor);
+  if (!m) return null;
   const ms = Date.parse(valor);
-  return Number.isFinite(ms) ? ms : null;
+  if (!Number.isFinite(ms)) return null;
+  const d = new Date(ms);
+  const campos = [d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(),
+    d.getUTCSeconds()];
+  return campos.every((c, i) => c === Number(m[i + 1])) ? ms : null;
 }
 
 /**
