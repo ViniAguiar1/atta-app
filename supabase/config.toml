@@ -257,6 +257,8 @@ otp_expiry = 3600
 
 # E-mails do Auth (MIG-03c): o link leva ao /auth/confirm com o token_hash, que o servidor confere (verifyOtp) e abre a
 # sessão no cookie, sem token na URL do navegador. Texto provisório: o PDD e o simulador não têm o e-mail.
+# Os .html são gerados por scripts/modelos-email (modelo-base + textos; o teste confere): não edite à mão. O logo vem
+# de {{ .SiteURL }}/email/atta-in.png (public/ do próprio app).
 [auth.email.template.recovery]
 subject = "Criar nova senha · ATTA-in"
 content_path = "./supabase/templates/recovery.html"
