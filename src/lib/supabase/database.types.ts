@@ -50,7 +50,7 @@ export type Database = {
                            },
 "patient_list":
 { Args: { "p_after_id"?: string,"p_after_name"?: string,"p_limit"?: number }; Returns: {
-              "cpf_masked": string,"dek_wrapped": string,"display_name": string,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"kek_version": number,"linked_at": string,"network_access": string,"person_id": string,"phone_enc": string
+              "birth_date": string,"cpf_masked": string,"dek_wrapped": string,"display_is_social": boolean,"display_name": string,"documents": Json,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"last_appointment": Json,"linked_at": string,"network_access": string,"person_id": string,"phone_enc": string,"total_active": number,"verified_until": string
             }[]
                            },
 "patient_register":
@@ -60,7 +60,7 @@ export type Database = {
                            },
 "patient_search":
 { Args: { "p_doc_hmac"?: string,"p_name"?: string }; Returns: {
-              "cpf_masked": string,"display_name": string,"foreign_doc_masked": string,"is_verified": boolean,"linked_at": string,"person_id": string
+              "birth_date": string,"cpf_masked": string,"dek_wrapped": string,"display_is_social": boolean,"display_name": string,"documents": Json,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"last_appointment": Json,"linked_at": string,"network_access": string,"person_id": string,"phone_enc": string,"total_active": number,"verified_until": string
             }[]
                            },
 "patient_update":
