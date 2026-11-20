@@ -1,6 +1,7 @@
 -- MIG-04 (endurecimento, achado S4-1 da Security Engineer) · ADR 0003 §2: a trilha recusa dado pessoal e de saúde.
 -- p_details: lista de chaves proibidas ampliada (cpf_masked, rne, birth_date, whatsapp, e-mail/HMAC, foreign_doc_*,
--- local_*). p_before/p_after: sem identificador em claro (cpf, rne, HMACs) nem dado de saúde (value, answers, dek).
+-- local_*, *_hmac, pin_mac, *secret*), sem diferenciar maiúsculas. p_before/p_after: sem identificador em claro (cpf, rne,
+-- HMACs, pin_mac, segredos) nem dado de saúde (value, answers, dek).
 -- Em qualquer um dos três: valor com forma de CPF é recusado. Nenhuma mensagem repete o valor. Sempre para a frente.
 
 set role audit_owner;
@@ -42,18 +43,23 @@ begin
   end if;
   -- em qualquer nível (objeto aninhado e dentro de array): dado pessoal não entra no motivo (ADR 0003 §2; S4-1)
   if pg_catalog.jsonb_path_exists(coalesce(p_details, '{}'::jsonb),
-       '$.** ? (@.type() == "object").keyvalue() ? (@.key like_regex "^(cpf|cpf_hmac|cpf_masked|rne|rne_hmac|name|full_name|social_name|email|email_hmac|phone|whatsapp|nome|telefone|birth_date|data_nascimento|foreign_doc_.*|local_.*)$")') then
+       '$.** ? (@.type() == "object").keyvalue() ? (@.key like_regex "^(cpf|cpf_masked|rne|name|full_name|social_name|email|phone|whatsapp|nome|telefone|birth_date|data_nascimento|foreign_doc_.*|local_.*|.*_hmac|pin_mac|.*secret.*)$" flag "i")') then
     raise exception 'audit: chave proibida em p_details' using errcode = '22023';   -- sem eco do valor
   end if;
   -- antes e depois: identificador em claro e dado de saúde nunca entram, nem cifrados (ADR 0003 §2)
   if pg_catalog.jsonb_path_exists(coalesce(p_before, '{}'::jsonb) || coalesce(p_after, '{}'::jsonb),
-       '$.** ? (@.type() == "object").keyvalue() ? (@.key like_regex "^(cpf|cpf_hmac|rne|rne_hmac|email_hmac|value|value_enc|answers|respostas|dek_wrapped)$")') then
+       '$.** ? (@.type() == "object").keyvalue() ? (@.key like_regex "^(cpf|rne|.*_hmac|pin_mac|.*secret.*|value|value_enc|answers|respostas|dek_wrapped)$" flag "i")') then
     raise exception 'audit: chave proibida em p_before/p_after' using errcode = '22023';
   end if;
-  -- valor com forma de CPF (com ou sem máscara de digitação) em qualquer campo: recusado, mesmo com chave inocente
+  -- valor com forma de CPF (com ou sem máscara de digitação) em qualquer lugar do texto, com limite de dígito (um CPF no
+  -- meio de um motivo livre também conta). Ficam de fora os textos que são UUID ou hash hex, que têm corridas de dígitos
+  -- por acaso e são justamente o que a trilha guarda nos details.
   if pg_catalog.jsonb_path_exists(
        pg_catalog.jsonb_build_array(coalesce(p_details, '{}'::jsonb), coalesce(p_before, '{}'::jsonb), coalesce(p_after, '{}'::jsonb)),
-       '$.** ? (@.type() == "string" && @ like_regex "^[0-9]{3}[.]?[0-9]{3}[.]?[0-9]{3}-?[0-9]{2}$")') then
+       '$.** ? (@.type() == "string"
+                && @ like_regex "(^|[^0-9])[0-9]{3}[.]?[0-9]{3}[.]?[0-9]{3}-?[0-9]{2}([^0-9]|$)"
+                && !(@ like_regex "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" flag "i")
+                && !(@ like_regex "^[0-9a-f]{32,}$" flag "i"))') then
     raise exception 'audit: valor com forma de CPF' using errcode = '22023';
   end if;
   if v_token_tenant is not null and p_tenant_id is not null and p_tenant_id <> v_token_tenant then
