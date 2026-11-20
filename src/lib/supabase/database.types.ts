@@ -11,7 +11,12 @@ export type Database = {
             [_ in never]: never
           }
           Functions: {
-            "atta_in_template_list":
+            "atta_in_service_delete_blockers":
+{ Args: { "p_service_id": string }; Returns: {
+              "template_id": string,"title": string
+            }[]
+                           },
+"atta_in_template_list":
 { Args: Record<PropertyKey, never>; Returns: {
               "allowed_actions": Json,"clinic_service_ids": (string)[],"current_version": number,"frequency": string,"id": string,"kind": string,"required": boolean,"status": string,"title": string,"updated_at": string,"validity_months": number
             }[]
