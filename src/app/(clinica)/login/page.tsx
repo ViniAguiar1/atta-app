@@ -14,7 +14,8 @@ export const metadata: Metadata = { title: "Entrar · ATTA-in" };
 export default function Pagina() {
   return (
     <TelaDoSite>
-      <p className="flex items-end leading-none" aria-label="ATTA-in">
+      <p className="flex items-end leading-none">
+        <span className="sr-only">ATTA-in</span>
         {/* a marca grande do artefato: fora da escala de texto (que para em 2.5rem), de propósito */}
         <span aria-hidden="true" className="font-atta text-[4.25rem] medium:text-[5.25rem]">
           ATTA
