@@ -100,3 +100,18 @@ test("cadastro público com a chave publicável é recusado", async ({ request }
   expect(resposta.status()).toBeGreaterThanOrEqual(400);
   expect(((await resposta.json()) as { error_code?: string }).error_code).toBe("signup_disabled");
 });
+
+// Com o cadastro público fechado, conta nova só pelo servidor (convite da equipe, MIG-06): o convite pela API de
+// administração, com a chave secreta da instância local, continua criando o usuário.
+test("com o signup fechado, o convite pelo servidor continua criando a conta", async ({ request }) => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const chave = process.env.SUPABASE_SECRET_KEY;
+  test.skip(!url || !chave || !/^http:\/\/127\.0\.0\.1:/.test(url), "sem Supabase local no ambiente");
+  const cab = { apikey: chave ?? "", authorization: `Bearer ${chave}`, "content-type": "application/json" };
+  const email = `convite.${Date.now()}@exemplo.test`;
+  const convite = await request.post(`${url}/auth/v1/invite`, { headers: cab, data: { email } });
+  expect(convite.status()).toBe(200);
+  const { id } = (await convite.json()) as { id: string };
+  expect(id).toMatch(/^[0-9a-f-]{36}$/);
+  await request.delete(`${url}/auth/v1/admin/users/${id}`, { headers: cab }); // não deixa usuário sobrando no banco local
+});
