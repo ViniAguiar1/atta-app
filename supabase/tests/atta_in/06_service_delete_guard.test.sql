@@ -1,7 +1,7 @@
 -- MIG-20 (parte 4): excluir Serviço que é o único procedimento de termo Ativo é recusado. Decisão do dono (PLANO,
 -- R15); trava da ADR 0001 §1. Só dado fictício.
 begin;
-select plan(20);
+select plan(22);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-0000000000a6', 'Clínica Fictícia Exclusão A'),
@@ -128,6 +128,15 @@ select results_eq($$ select title from api.atta_in_service_delete_blockers('0000
 select is(pg_temp.excluir('00000000-0000-4000-8000-00000000d004'), 1, 'Serviço só de Rascunho e de Inativo: passa');
 select is(pg_temp.excluir('00000000-0000-4000-8000-00000000d005'), 1, 'o Termo de Autorização fica de fora da regra');
 select is(pg_temp.excluir('00000000-0000-4000-8000-00000000d006'), 1, 'Serviço sem termo: passa');
+update atta_in.clinic_service set deleted_at = '2001-01-01T00:00:00Z' where id = '00000000-0000-4000-8000-00000000d002';
+select ok((select deleted_at = now() from atta_in.clinic_service where id = '00000000-0000-4000-8000-00000000d002'),
+          'reexcluir mantém a hora da primeira exclusão');
+select set_config('role', 'postgres', true);
+update atta_in.clinic_service set deleted_at = null where id = '00000000-0000-4000-8000-00000000d006';
+select pg_temp.entrar('00000000-0000-4000-8000-0000000000a6', 'ADMIN');
+update atta_in.clinic_service set deleted_at = '2001-01-01T00:00:00Z' where id = '00000000-0000-4000-8000-00000000d006';
+select ok((select deleted_at = now() from atta_in.clinic_service where id = '00000000-0000-4000-8000-00000000d006'),
+          'a hora da exclusão vem do banco, não do valor que o app manda');
 select lives_ok($$ update atta_in.clinic_service set active = false where id = '00000000-0000-4000-8000-00000000d001' $$,
                 'desativar o Serviço (active = false) fica fora da regra');
 select lives_ok($$ update atta_in.clinic_service set name = 'Nome fictício trocado'
