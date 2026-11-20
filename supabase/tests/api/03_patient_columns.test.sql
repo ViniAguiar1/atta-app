@@ -1,6 +1,6 @@
 -- MIG-12: colunas da tela de Pacientes (MIG-43), iguais na lista e na busca. Dados fictícios.
 begin;
-select plan(16);
+select plan(17);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -91,6 +91,9 @@ select ok((select phone_enc = '\x01b7' and dek_wrapped = '\x01b8' and envelope_i
            from api.patient_list()), 'pending: contato e envelope são os locais da B');
 select ok((select not is_verified and verified_until is null from api.patient_list()),
           'pending: o selo da rede não aparece, mesmo com verificação aprovada');
+select ok((select not is_verified and verified_until is null and full_name = 'Nome Local da B'
+           from api.patient_get('00000000-0000-4000-8000-0000000000e1')),
+          'pending: o patient_get (Pasta) também não mostra o selo da rede');
 select is((select count(*)::int from api.patient_search(p_name => 'Mari')), 0,
           'pending: a busca da B pelo nome da rede não acha nada');
 select is((select display_name from api.patient_search(p_name => 'Local da B')), 'Nome Local da B',
