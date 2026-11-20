@@ -3,7 +3,7 @@
 import { Botao } from "@/components/ui/Botao";
 import type { Situacao } from "../schema";
 import { TEXTOS } from "../textos";
-import { Titulo } from "./Titulo";
+import { TituloDoPasso as Titulo } from "@/components/ui/TituloDoPasso";
 
 // Desfecho depois do código (PDD §11.4 e §11.9). "seguir" e "cadastro_novo" levam ao cadastro (MIG-51), que entra no
 // próximo PR; até lá a tela só confirma a identidade.

@@ -5,7 +5,7 @@ import { Botao } from "@/components/ui/Botao";
 import { iniciarCheckin } from "../actions";
 import { cpfValido, mascararCpf } from "../schema";
 import { TEXTOS } from "../textos";
-import { Titulo } from "./Titulo";
+import { TituloDoPasso as Titulo } from "@/components/ui/TituloDoPasso";
 
 type Props = { portal: string; aoEnviar: (desafio: string, finalCelular: string) => void };
 

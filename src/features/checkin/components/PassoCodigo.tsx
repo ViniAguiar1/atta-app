@@ -5,7 +5,7 @@ import { Botao } from "@/components/ui/Botao";
 import { confirmarCodigo, reenviarCodigo } from "../actions";
 import type { Situacao } from "../schema";
 import { TEXTOS } from "../textos";
-import { Titulo } from "./Titulo";
+import { TituloDoPasso as Titulo } from "@/components/ui/TituloDoPasso";
 
 // 30 s entre envios (PDD §11.4). O limite de 3 reenvios a cada 15 min é do servidor (janela que reabre sozinha):
 // a tela não conta reenvios e mostra o LIMITE que ele devolver (Considerações da PO v93, §25). A espera é

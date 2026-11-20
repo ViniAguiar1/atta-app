@@ -2,6 +2,7 @@ import "server-only";
 import { falha, ok } from "@/lib/errors";
 import { SITUACOES, type Situacao } from "@/features/checkin/schema";
 import type { PortaCheckin } from "./porta";
+import { gravarSessaoSimulada } from "./sessao-simulada";
 
 // Implementação simulada do check-in, para as telas andarem antes do MIG-13 e do MIG-31. Só dado fictício: os CPFs
 // são gerados (dígito verificador válido, ninguém real) e a clínica é a do Simulador ATTA-in.
@@ -25,7 +26,7 @@ const CLINICAS: Record<string, string> = { aurora: "Clínica Aurora Estética" }
 const desafioDe = (situacao: Situacao) =>
   `${String(SITUACOES.indexOf(situacao)).padStart(8, "0")}${crypto.randomUUID().slice(8)}`;
 
-const situacaoDe = (desafio: string): Situacao | undefined => SITUACOES[Number(desafio.slice(0, 8))];
+export const situacaoDe = (desafio: string): Situacao | undefined => SITUACOES[Number(desafio.slice(0, 8))];
 
 export const portaSimulada: PortaCheckin = {
   async clinica(portal) {
@@ -42,6 +43,7 @@ export const portaSimulada: PortaCheckin = {
     if (!situacao) return falha("NAO_ENCONTRADO", "Código vencido.");
     if (codigo === CODIGO_QUE_ESGOTA) return falha("LIMITE", "Tentativas esgotadas.");
     if (codigo !== CODIGO_SIMULADO) return falha("CONFLITO", "Código não confere.");
+    if (situacao === "seguir" || situacao === "cadastro_novo") await gravarSessaoSimulada(desafio);
     return ok({ situacao });
   },
   async reenviar(desafio) {
