@@ -24,8 +24,10 @@ ORIGEM="${TREM_ORIGEM:-$HOME/Development/atta-app}"
 DIR="${TREM_DIR:-$HOME/Development/atta-app-wt/trem}"
 ESPERA_CI="${TREM_ESPERA_CI:-1200}"
 # Sensível (PLANO: segurança, auth, RLS, saúde, auditoria, assinatura): exige também o Tech Lead e o Security Engineer.
-# Lista do Tech Lead (revisão do #45): também o cliente do Supabase, a esteira, a config da Vercel e do Next e os scripts.
-SENSIVEL_RE="${TREM_SENSIVEL_RE:-^supabase/(migrations|tests)/|^src/server/|^src/lib/supabase/|/auth/|auth\.|saude|audit|crypto|atta-sign|assinatura|grant|^(src/)?(middleware|proxy)\.ts$|^\.github/workflows/|^vercel\.json$|^next\.config\.ts$|^scripts/}"
+# Listas do Tech Lead e do Security Engineer (revisões do #45): também o cliente do Supabase e a config dele, a esteira,
+# a config da Vercel e do Next, os scripts, as dependências, as jornadas do paciente e do profissional, a camada HTTP,
+# o logger e as integrações.
+SENSIVEL_RE="${TREM_SENSIVEL_RE:-^supabase/(migrations|tests)/|^supabase/config\.toml$|^src/server/|^src/lib/supabase/|/auth/|auth\.|saude|audit|crypto|atta-sign|assinatura|grant|^(src/)?(middleware|proxy)\.ts$|^\.github/workflows/|^vercel\.json$|^next\.config\.ts$|^scripts/|^package\.json$|^pnpm-lock\.yaml$|^src/app/\(paciente\)/|boarding|checkin|propass|ficha|^src/lib/seguranca|^src/lib/http|logger|integracoes}"
 
 gh_() { GH_CONFIG_DIR="$HOME/.config/gh" gh "$@"; }
 log() { printf '%s  %s\n' "$(date '+%H:%M:%S')" "$*"; }
@@ -50,7 +52,7 @@ apelidos() {
     "Frontend 3" | FE3) echo "Frontend 3|FE3" ;; "Frontend 4" | FE4) echo "Frontend 4|FE4" ;;
     "Frontend 5" | FE5) echo "Frontend 5|FE5" ;; "Frontend 6" | FE6) echo "Frontend 6|FE6" ;;
     "Tech Lead" | TL) echo "Tech Lead|TL" ;; "Tech Lead Frontend" | TLF) echo "Tech Lead Frontend|TLF" ;;
-    "Security Engineer" | SEC) echo "Security Engineer|SEC" ;; "QA 2" | QA2) echo "QA 2|QA2" ;;
+    "Security Engineer" | SEC | "Segurança") echo "Security Engineer|SEC|Segurança" ;; "QA 2" | QA2) echo "QA 2|QA2" ;;
     QA) echo "QA" ;; DevEx | DEVEX) echo "DevEx|DEVEX" ;;
     *) echo "$1" ;;
   esac
@@ -59,6 +61,9 @@ apelidos() {
 # --- leitura do GitHub ----------------------------------------------------------------------------------------------
 
 pr_json() { gh_ pr view "$1" -R "$REPO" --json number,title,state,isDraft,baseRefName,headRefName,headRefOid,headRepositoryOwner,labels,body,files,comments; }
+
+# autor da linha "Autor: X · Revisor: Y · QA: W"
+autor() { jq -r '.body' <<<"$1" | grep -E 'Autor:' | tail -1 | sed -E 's/.*Autor:[[:space:]]*//; s/[[:space:]]*·.*//; s/[[:space:]]+$//'; }
 
 # revisores da linha "Autor: X · Revisor: Y e Z · QA: W"
 revisores() {
@@ -69,8 +74,8 @@ revisores() {
 
 sensivel() { jq -r '.files[].path' <<<"$1" | grep -q -E "$SENSIVEL_RE"; }
 
-# patch-id das mudanças do PR num head (diff merge-base(main, H)..H, pela API de comparação; vale para head antigo)
-patch_id() { gh_ api -H "Accept: application/vnd.github.diff" "repos/$REPO/compare/main...$1" | git patch-id --stable | cut -d' ' -f1; }
+# patch-id (--verbatim) das mudanças do PR num head (diff merge-base(main, H)..H, pela API de comparação; vale para head antigo)
+patch_id() { gh_ api -H "Accept: application/vnd.github.diff" "repos/$REPO/compare/main...$1" | git patch-id --verbatim | cut -d' ' -f1; }
 
 # head que o revisor aprovou: o SHA citado no ✅, se existir; senão, pela linha do tempo do PR (GraphQL): o commit de
 # antes do primeiro force-push depois do ✅ (se ele já existia na hora do ✅) ou o último head até a hora do ✅.
@@ -96,7 +101,8 @@ head_aprovado() {
 }
 
 # Aprovação vale para o head atual se é o último veredito daquele revisor e as mudanças do PR no head aprovado são
-# idênticas às do head atual (git patch-id --stable; regra do Tech Lead). Rebase limpo mantém o ✅; conflito resolvido
+# idênticas às do head atual (git patch-id --verbatim: espaço e indentação contam, porque mudam YAML e strings; regras do
+# Tech Lead e do Security Engineer). Rebase limpo mantém o ✅; conflito resolvido
 # ou commit novo pede ✅ de novo.
 aprovado_por() {
   local json="$1" quem="$2" n head ultimo corpo quando ha
@@ -113,7 +119,7 @@ aprovado_por() {
 
 # devolve "ok" ou o motivo de não poder entrar
 pronto() {
-  local json="$1" n quem r faltam=""
+  local json="$1" n quem r faltam="" aut
   n="$(jq -r .number <<<"$json")"
   [ "$(jq -r .state <<<"$json")" = OPEN ] || { echo "não está aberto"; return; }
   [ "$(jq -r .isDraft <<<"$json")" = false ] || { echo "é rascunho"; return; }
@@ -125,8 +131,13 @@ pronto() {
   quem="$(revisores "$json")"
   [ -n "$quem" ] || { echo "sem a linha 'Revisor:' no corpo do PR"; return; }
   if sensivel "$json"; then quem="$(printf '%s\nTech Lead\nSecurity Engineer\n' "$quem" | awk '!v[$0]++')"; fi
+  aut="$(apelidos "$(autor "$json")")"
   while IFS= read -r rev; do
     [ -n "$rev" ] || continue
+    # o autor não aprova o próprio PR (sugestão do Security Engineer): o ✅ dele não conta
+    if [ "|$aut|" != "||" ] && printf '%s' "$(apelidos "$rev")" | tr '|' '\n' | grep -q -x -F -f <(printf '%s' "$aut" | tr '|' '\n'); then
+      faltam="$faltam ${rev}(é o autor)"; continue
+    fi
     r="$(aprovado_por "$json" "$rev")"
     [ "$r" = sim ] || faltam="$faltam ${rev}($r)"
   done <<<"$quem"
