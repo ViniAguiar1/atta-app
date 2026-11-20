@@ -95,8 +95,9 @@ alter table atta_in.special_date force row level security;
 
 revoke all on atta_in.business_hours, atta_in.clinic_service, atta_in.professional_service, atta_in.special_date
   from public, anon, authenticated;
-grant select, insert, update, delete on atta_in.business_hours, atta_in.professional_service, atta_in.special_date
-  to authenticated;
+grant select, insert, update, delete on atta_in.business_hours, atta_in.professional_service to authenticated;
+-- data específica se cria e se remove, sem edição (PDD §10.2.2): sem UPDATE, e as duas operações vão para a auditoria
+grant select, insert, delete on atta_in.special_date to authenticated;
 grant select, insert, update on atta_in.clinic_service to authenticated;   -- Serviço sai por exclusão lógica
 
 create policy business_hours_select on atta_in.business_hours for select to authenticated

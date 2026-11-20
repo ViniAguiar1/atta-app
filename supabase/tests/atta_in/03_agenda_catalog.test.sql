@@ -1,6 +1,6 @@
 -- MIG-11 (a): horário de funcionamento, Serviços, Serviços autorizados e datas específicas (dados fictícios).
 begin;
-select plan(19);
+select plan(22);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -30,6 +30,9 @@ begin
                       -- ADMIN só com o 2º fator no token (MIG-03)
                       'aal', case when p_role = 'ADMIN' then 'aal2' else 'aal1' end)::text, true);
 end $$;
+create function pg_temp.eventos_op(p_op text) returns int language sql security definer as $$
+  select count(*)::int from audit.event where action = 'special_date.change' and details ->> 'op' = p_op
+$$;
 create function pg_temp.eventos() returns int language sql security definer as $$
   select count(*)::int from audit.event where action = 'special_date.change'
 $$;
@@ -94,6 +97,10 @@ select throws_ok($$ insert into atta_in.special_date (tenant_id, starts_on, ends
                             'Nome comprido demais para caber nos quarenta', 'lembrete') $$, '23514', null,
                  'nome acima de 40 caracteres');
 select is(pg_temp.eventos(), 1, 'a criação de data específica vai para a auditoria');
+select throws_ok($$ update atta_in.special_date set kind = 'lembrete' where name = 'Recesso' $$, '42501', null,
+                 'data específica não se edita (PDD §10.2.2): o UPDATE é recusado');
+select lives_ok($$ delete from atta_in.special_date where name = 'Recesso' $$, 'data específica se remove');
+select is(pg_temp.eventos_op('delete'), 1, 'a remoção de data específica vai para a auditoria');
 
 -- Colaborador: vê e cadastra data específica (agenda), mas não muda horário nem Serviço
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
