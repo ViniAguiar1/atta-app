@@ -14,6 +14,7 @@ export type Finalidade =
   | "alerta_equipe" // eventos de Configurações › Notificações (10.4.6)
   | "resumo_equipe" // resumo diário/semanal (10.4.6)
   | "convite_equipe"
+  | "convite_propass" // convite do PROpass ao profissional (10.4.3)
   | "aviso_cobranca" // régua de inadimplência (10.4.8)
   | "relatorio_importacao" // inconsistências da importação (10.1)
   | "documentos_assinados"; // envio sob pedido pela recepção (11.13)
