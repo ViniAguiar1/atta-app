@@ -53,7 +53,47 @@ export type Database = {
           }
         },"platform": {
           Tables: {
-            [_ in never]: never
+            "membership": {
+                  Row: {
+                    "app_role": string,"created_at": string,"deleted_at": string | null,"id": string,"status": string,"tenant_id": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "app_role": string,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"status"?: string,"tenant_id": string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "app_role"?: string,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "membership_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenant"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"tenant": {
+                  Row: {
+                    "cnpj": string | null,"created_at": string,"deleted_at": string | null,"id": string,"kind": string,"name": string,"parent_tenant_id": string | null,"timezone": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cnpj"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"name": string,"parent_tenant_id"?: string | null,"timezone"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "cnpj"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"name"?: string,"parent_tenant_id"?: string | null,"timezone"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tenant_parent_tenant_id_fkey"
+      columns: ["parent_tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenant"
+      referencedColumns: ["id"]
+    }
+                  ]
+                }
           }
           Views: {
             [_ in never]: never
