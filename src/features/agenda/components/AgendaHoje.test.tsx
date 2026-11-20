@@ -109,14 +109,41 @@ describe("Agenda › Hoje", () => {
     expect(estadoDeDados(container)).toBe("pronto");
   });
 
-  it("enquanto a busca não volta, mostra carregando", async () => {
+  it("enquanto a busca não volta, a lista de antes fica na tela com aria-busy", async () => {
     const dia = await diaSimulado();
     let responder: (r: Resultado<DiaDaAgenda>) => void = () => {};
     const buscar = vi.fn(() => new Promise<Resultado<DiaDaAgenda>>((r) => (responder = r)));
     const { container } = render(<AgendaHoje inicial={ok(dia)} buscar={buscar} />);
     await digitar("Juliana");
-    expect(estadoDeDados(container)).toBe("carregando");
-    await act(async () => responder(ok(dia)));
     expect(estadoDeDados(container)).toBe("pronto");
+    expect(screen.getByRole("region", { name: textos.rotuloDaLista }).getAttribute("aria-busy")).toBe("true");
+    await act(async () => responder(ok(dia)));
+    expect(screen.getByRole("region", { name: textos.rotuloDaLista }).getAttribute("aria-busy")).toBeNull();
+  });
+
+  it("termo curto e CPF pela metade não buscam e explicam embaixo do campo; CPF inteiro busca", async () => {
+    const dia = await diaSimulado();
+    const buscar = vi.fn<(f: { busca?: string }) => Promise<Resultado<DiaDaAgenda>>>().mockResolvedValue(ok(dia));
+    render(<AgendaHoje inicial={ok(dia)} buscar={buscar} />);
+    for (const termo of ["j", "431.572", "4315728"]) {
+      await digitar(termo);
+      expect(buscar).not.toHaveBeenCalled();
+      const campo = screen.getByRole("searchbox", { name: textos.busca.rotulo });
+      expect(campo.getAttribute("aria-describedby")).toBeTruthy();
+      expect(screen.getByText(textos.busca.termoCurto)).toBeDefined();
+    }
+    await digitar("431.572.801-20");
+    expect(buscar).toHaveBeenLastCalledWith({ busca: "431.572.801-20" });
+    expect(screen.queryByText(textos.busca.termoCurto)).toBeNull();
+  });
+
+  it("sem a data (falha no primeiro carregamento), o h1 mostra o nome do módulo", () => {
+    render(<AgendaHoje inicial={falha("INDISPONIVEL", "fora")} buscar={vi.fn()} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(textos.titulo);
+  });
+
+  it("títulos de coluna no verde do ATTA-in (PDD §10)", async () => {
+    render(<AgendaHoje inicial={ok(await diaSimulado())} buscar={vi.fn()} />);
+    for (const th of screen.getAllByRole("columnheader")) expect(th.className).toContain("text-brand");
   });
 });

@@ -3,6 +3,7 @@ import { finalDoCpf, horario } from "../formatos";
 import { textos } from "../textos";
 import { ChipDeStatus, SeloAtrasado } from "./ChipDeStatus";
 
+// Títulos de coluna na fonte do corpo, sem maiúsculas, no verde do ATTA-in (PDD v206 §10, padrões visuais).
 // Tabela da visão Hoje (PDD v206 §10.2.2): Horário ↑, Paciente, Procedimento, Profissional, Documentos e Status; na
 // visão Hoje a coluna Data fica oculta. As linhas já vêm do servidor por horário. A coluna Ações (lápis e ⋮) entra
 // com as ações, no PR seguinte: botão que ainda não leva a nada fica de fora.
@@ -10,7 +11,7 @@ import { ChipDeStatus, SeloAtrasado } from "./ChipDeStatus";
 /** Altura de cada linha (h-16 = 4 rem, a do simulador); o esqueleto do DataState usa a mesma. */
 export const ALTURA_DA_LINHA_REM = 4;
 
-export function TabelaDoDia({ linhas, fuso }: { linhas: LinhaDaAgenda[]; fuso: string }) {
+export function TabelaDoDia({ linhas, fuso, ocupado = false }: { linhas: LinhaDaAgenda[]; fuso: string; ocupado?: boolean }) {
   const c = textos.colunas;
   return (
     // A página não rola de lado: quem rola é a tabela (Guia §3 e §6). Região focável para rolar pelo teclado (axe
@@ -19,16 +20,17 @@ export function TabelaDoDia({ linhas, fuso }: { linhas: LinhaDaAgenda[]; fuso: s
       role="region"
       aria-label={textos.rotuloDaLista}
       tabIndex={0}
+      aria-busy={ocupado || undefined}
       className="relative overflow-x-auto rounded-md border border-border bg-surface-raised"
     >
       <table className="w-full min-w-[56rem] border-collapse text-left">
         <thead className="text-sm">
           <tr className="border-b border-border">
-            <th scope="col" aria-sort="ascending" className="px-4 py-3 font-medium whitespace-nowrap">
+            <th scope="col" aria-sort="ascending" className="px-4 py-3 font-medium whitespace-nowrap text-brand">
               {c.horario} <span aria-hidden="true">↑</span>
             </th>
             {[c.paciente, c.procedimento, c.profissional, c.documentos, c.status].map((coluna) => (
-              <th key={coluna} scope="col" className="px-4 py-3 font-medium">
+              <th key={coluna} scope="col" className="px-4 py-3 font-medium text-brand">
                 {coluna}
               </th>
             ))}
