@@ -60,6 +60,8 @@ jobs:
             push:refs/heads/trem/*) sh scripts/checa-migrations.sh origin/main HEAD ;;
             *) sh scripts/checa-migrations.sh ;;
           esac
+      - name: testes da checagem de migrations (date do GNU; no Mac, o do BSD)
+        run: sh scripts/checa-migrations.test.sh
 
   vetores:
     name: vetores do ATTA Sign imutáveis
