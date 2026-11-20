@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { signEvidence, verifySeal } from "../../src/server/atta-sign/seal";
+import { createHmac } from "node:crypto";
+import { emailHmac, emailHmacWith, normalizeEmail } from "../../src/server/crypto/email";
 import { cpfHmac, cpfHmacWith, isForeignDocKind, isValidCpf, isValidRne, maskCpf, maskRne, normalizeCpf, normalizeRne, rneHmac, rneHmacWith } from "../../src/server/crypto/cpf";
 
 const vector = (name: string) => JSON.parse(readFileSync(join(__dirname, "../vectors/crypto_v1", `${name}.json`), "utf8"));
@@ -60,6 +62,34 @@ describe("CPF e RNE (ADR 0002 §6; dados sintéticos)", () => {
     expect(() => rneHmac("V1234567")).toThrow(/ATTA_RNE_PEPPER/);
     process.env.ATTA_RNE_PEPPER = "07".repeat(32);
     expect(rneHmac("V1234567").equals(rneHmacWith(pepper, "V1234567"))).toBe(true);
+  });
+});
+
+describe("e-mail para busca (ADR 0002 §6)", () => {
+  const pepper = hex("7065707065722d73696e74657469636f2d64652d74657374652d6174696e3532"); // o do vetor, sintético
+
+  it("normalizeEmail: trim e minúsculas; forma inválida vira null", () => {
+    expect(normalizeEmail("  Fulano.Ficticio@Exemplo.TEST ")).toBe("fulano.ficticio@exemplo.test");
+    for (const bad of ["", "sem-arroba", "a@b", "a b@exemplo.test", "a@@exemplo.test", "a@exemplo..test", `${"x".repeat(250)}@e.test`]) {
+      expect(normalizeEmail(bad)).toBeNull();
+    }
+  });
+
+  it("emailHmac = HMAC-SHA256(ATTA_CPF_PEPPER, 'atta.email.v1|' + e-mail) e é igual para grafias da mesma caixa", () => {
+    const esperado = createHmac("sha256", pepper).update("atta.email.v1|fulano@exemplo.test").digest();
+    expect(emailHmacWith(pepper, "fulano@exemplo.test").equals(esperado)).toBe(true);
+    process.env.ATTA_CPF_PEPPER = pepper.toString("hex");
+    expect(emailHmac(normalizeEmail(" FULANO@exemplo.test")!).equals(esperado)).toBe(true);
+    expect(() => emailHmacWith(pepper, "Fulano@exemplo.test")).toThrow(); // exige a forma normalizada
+  });
+
+  it("emailHmac e cpfHmac não colidem: o rótulo separa os domínios", () => {
+    const cpf = "12345678901";
+    const email = `${cpf}@exemplo.test`;
+    expect(emailHmacWith(pepper, email).equals(cpfHmacWith(pepper, cpf))).toBe(false);
+    // sem o rótulo seria só HMAC(pepper, e-mail); com ele, nunca é a mesma entrada de um CPF (11 dígitos sem rótulo)
+    const semRotulo = createHmac("sha256", pepper).update(email).digest();
+    expect(emailHmacWith(pepper, email).equals(semRotulo)).toBe(false);
   });
 });
 
