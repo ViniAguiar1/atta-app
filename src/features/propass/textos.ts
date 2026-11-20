@@ -24,7 +24,8 @@ export const TEXTOS = {
   colunaConselho: "Conselho", // simulador
   colunaRegistro: "Registro", // simulador
   colunaNome: "Nome", // simulador
-  naoConsultado: "A conferência do seu registro no conselho ainda não foi feita. A ATTA confere e avisa a clínica.", // provisório (R20)
+  naoConsultado: // provisório (decisão do dono, 20/11; vai à PO): conclui, mas só é agendado depois da conferência
+    "A conferência do seu registro no conselho é feita pela equipe ATTA. Você já pode concluir; a clínica só agenda seus atendimentos depois dessa conferência.",
   conselhoNaoConfere: "Não encontramos registro ativo com esse conselho, número e UF. Confira os dados.", // provisório
   linkSemValidade: "Este convite não vale mais.", // provisório (link de 7 dias, PDD §10.4.3)
   linkSemValidadeAjuda: "Peça à clínica que reenvie o link do PROpass.", // provisório
