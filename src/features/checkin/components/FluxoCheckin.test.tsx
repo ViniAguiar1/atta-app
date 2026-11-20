@@ -52,7 +52,7 @@ describe("FluxoCheckin", () => {
     render(<FluxoCheckin portal="aurora" clinica="Clínica Aurora Estética" />);
     await userEvent.type(screen.getByLabelText("CPF"), "52998224725");
     await userEvent.click(screen.getByRole("button", { name: "Enviar código" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Não encontramos atendimento hoje para este CPF. Procure a recepção.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não encontramos atendimento para hoje nesta clínica. Procure a recepção.");
   });
 
   it("no 5º erro o código cai: pede um novo e trava o Confirmar", async () => {
@@ -63,7 +63,32 @@ describe("FluxoCheckin", () => {
     await userEvent.click(screen.getByRole("button", { name: "Enviar código" }));
     await userEvent.type(await screen.findByLabelText("Código"), "999999");
     await userEvent.click(screen.getByRole("button", { name: "Confirmar" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Este código não vale mais.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Este código não vale mais. Peça um novo.");
     expect(screen.getByRole("button", { name: "Confirmar" })).toBeDisabled();
+  });
+
+  it("ausente mostra o texto do simulador e volta ao início", async () => {
+    acoes.iniciarCheckin.mockResolvedValue({ ok: true, data: { desafio: DESAFIO, finalCelular: "4321" } });
+    acoes.confirmarCodigo.mockResolvedValue({ ok: true, data: { situacao: "ausente" } });
+    render(<FluxoCheckin portal="aurora" clinica="Clínica Aurora Estética" />);
+    await userEvent.type(screen.getByLabelText("CPF"), "47382169022");
+    await userEvent.click(screen.getByRole("button", { name: "Enviar código" }));
+    await userEvent.type(await screen.findByLabelText("Código"), "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    expect(await screen.findByRole("heading", { name: "Este atendimento foi marcado como ausente." })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Voltar para o início" }));
+    expect(screen.getByLabelText("CPF")).toHaveValue("");
+  });
+
+  it("código errado devolve o foco ao campo", async () => {
+    acoes.iniciarCheckin.mockResolvedValue({ ok: true, data: { desafio: DESAFIO, finalCelular: "4321" } });
+    acoes.confirmarCodigo.mockResolvedValue({ ok: false, error: { code: "CONFLITO", message: "x" } });
+    render(<FluxoCheckin portal="aurora" clinica="Clínica Aurora Estética" />);
+    await userEvent.type(screen.getByLabelText("CPF"), "52998224725");
+    await userEvent.click(screen.getByRole("button", { name: "Enviar código" }));
+    await userEvent.type(await screen.findByLabelText("Código"), "000000");
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText("Código")).toHaveFocus();
   });
 });

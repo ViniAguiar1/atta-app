@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Allerta_Stencil, Poppins, Prata, Raleway } from "next/font/google";
+import { Allerta_Stencil, Montserrat, Poppins, Prata, Raleway } from "next/font/google";
 import "@/styles/globals.css";
 
 // Fontes do Guia de Design, auto-hospedadas pelo next/font (nenhum pedido ao Google no navegador): Raleway no corpo
@@ -8,7 +8,10 @@ import "@/styles/globals.css";
 const raleway = Raleway({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], display: "swap", variable: "--ff-raleway" });
 const prata = Prata({ subsets: ["latin"], weight: "400", display: "swap", variable: "--ff-prata" });
 const poppins = Poppins({ subsets: ["latin", "latin-ext"], weight: "400", display: "swap", variable: "--ff-poppins" });
-const allerta = Allerta_Stencil({ subsets: ["latin"], weight: "400", display: "swap", variable: "--ff-allerta-stencil" });
+// Allerta e Montserrat sem preload: só aparecem na aba ATTA e no cabeçalho do paciente; o fallback dos tokens cobre.
+const allerta = Allerta_Stencil({ subsets: ["latin"], weight: "400", display: "swap", variable: "--ff-allerta-stencil", preload: false });
+// Montserrat no "-in" da marca ATTA-in (Guia de Design §2.1).
+const montserrat = Montserrat({ subsets: ["latin", "latin-ext"], weight: "500", display: "swap", variable: "--ff-montserrat", preload: false });
 
 export const metadata: Metadata = {
   title: "ATTA-in",
@@ -18,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${raleway.variable} ${prata.variable} ${poppins.variable} ${allerta.variable}`}>
+    <html lang="pt-BR" className={`${raleway.variable} ${prata.variable} ${poppins.variable} ${allerta.variable} ${montserrat.variable}`}>
       <body className="bg-surface-app text-base text-text-primary">{children}</body>
     </html>
   );

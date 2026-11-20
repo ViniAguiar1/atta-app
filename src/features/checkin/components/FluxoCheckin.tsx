@@ -21,7 +21,11 @@ export function FluxoCheckin({ portal, clinica, dica }: Props) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-8 px-5 py-6 text-lg">
       <header className="flex items-baseline justify-between gap-4">
-        <span className="font-title text-2xl text-brand">ATTA-in</span>
+        {/* "ATTA" em Allerta Stencil e "-in" em Montserrat (Guia de Design §2.1) */}
+        <span className="text-2xl text-brand">
+          <span className="font-atta">ATTA</span>
+          <span className="font-product">-in</span>
+        </span>
         <span className="text-right text-base text-text-secondary">{clinica}</span>
       </header>
       <main>
@@ -37,7 +41,7 @@ export function FluxoCheckin({ portal, clinica, dica }: Props) {
             aoCorrigirCpf={() => setPasso({ nome: "cpf" })}
           />
         )}
-        {passo.nome === "resultado" && <TelaResultado situacao={passo.situacao} />}
+        {passo.nome === "resultado" && <TelaResultado situacao={passo.situacao} aoVoltar={() => setPasso({ nome: "cpf" })} />}
       </main>
     </div>
   );

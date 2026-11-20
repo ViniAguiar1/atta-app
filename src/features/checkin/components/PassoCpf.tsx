@@ -21,7 +21,7 @@ export function PassoCpf({ portal, aoEnviar }: Props) {
     iniciar(async () => {
       const r = await iniciarCheckin({ portal, cpf });
       if (r.ok) return aoEnviar(r.data.desafio, r.data.finalCelular);
-      setErro(r.error.code === "NAO_ENCONTRADO" ? `${TEXTOS.semAtendimento}. Procure a recepção.` : r.error.code === "VALIDACAO" ? TEXTOS.cpfInvalido : TEXTOS.indisponivel);
+      setErro(r.error.code === "NAO_ENCONTRADO" ? TEXTOS.semAtendimentoAntesDoCodigo : r.error.code === "VALIDACAO" ? TEXTOS.cpfInvalido : TEXTOS.indisponivel);
     });
   }
 
