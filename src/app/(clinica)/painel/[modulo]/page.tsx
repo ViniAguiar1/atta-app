@@ -16,10 +16,11 @@ export default async function Page({ params }: { params: Promise<{ modulo: strin
   if (!encontrado) notFound();
   return (
     <section aria-labelledby="titulo-do-modulo">
-      <h1 id="titulo-do-modulo" className="font-title text-2xl">
+      {/* PDD §10: a tela do módulo não repete o nome da aba ativa; o h1 fica só para o leitor de tela */}
+      <h1 id="titulo-do-modulo" className="sr-only">
         {encontrado.rotulo}
       </h1>
-      <p className="mt-2 text-text-secondary">{textos.emConstrucao}</p>
+      <p className="text-text-secondary">{textos.emConstrucao}</p>
     </section>
   );
 }

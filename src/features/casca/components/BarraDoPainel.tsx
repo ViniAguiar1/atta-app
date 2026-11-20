@@ -11,6 +11,9 @@ import { abaAtiva, abasDoPapel } from "../abas";
 // Barra de módulos do painel (Guia de Design §4.1 e o Simulador ATTA-in). Escura por padrão; o monograma alterna para a
 // clara, a cada clique, por mouse, toque ou teclado, com rótulo que diz a próxima ação. Lembrar a escolha entre
 // sessões não está definido (Guia §4.1), então ela vale só enquanto a página está aberta.
+// Foco: na barra escura o anel global (cor da marca) some no fundo da marca, então ali ele vira o claro (on-brand).
+// Largura: abaixo de large as abas descem para uma linha própria; de large em diante ficam na linha da barra sem
+// encolher, e quem cede espaço é o nome da clínica (reticências). A pessoa aparece pelas iniciais; o nome vai ao leitor.
 // Cores: o Guia v21 pede #2c3128 na barra e #6c7563 na aba ativa, que ainda não estão nos tokens (pedido com o CTO);
 // até lá a barra usa o token de marca e a aba ativa um tom do texto sobre a marca.
 export function BarraDoPainel({ sessao, contadores = {} }: { sessao: SessaoDoPainel; contadores?: Record<string, number> }) {
@@ -19,28 +22,32 @@ export function BarraDoPainel({ sessao, contadores = {} }: { sessao: SessaoDoPai
   const ativa = abaAtiva(caminho);
   const abas = abasDoPapel(sessao.papel);
 
-  const barra = clara ? "border border-brand/30 bg-surface-app text-brand" : "bg-brand text-on-brand";
+  const barra = clara ? "border border-brand/30 bg-surface-app text-brand" : "bg-brand text-on-brand [&_:focus-visible]:outline-on-brand";
   const abaAtivaCls = clara ? "bg-brand/5 underline decoration-brand/45 underline-offset-8" : "bg-on-brand/15 font-semibold";
   const abaInativa = clara ? "text-brand hover:bg-brand/5" : "text-on-brand/80 hover:bg-on-brand/10 hover:text-on-brand";
 
   return (
-    <header className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-t-md px-3 py-1.5 ${barra}`}>
-      <div className="flex min-h-14 items-center gap-3">
+    <header className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-t-md px-3 py-1.5 large:flex-nowrap ${barra}`}>
+      {/* flex-1 com base 0: o nome não empurra o sino para outra linha no celular; ele encolhe com reticências */}
+      <div className="flex min-h-14 min-w-0 flex-1 items-center gap-3">
         <button
           type="button"
           onClick={() => setClara((valor) => !valor)}
           aria-pressed={clara}
           aria-label={clara ? t.barraEscura : t.barraClara}
-          className="flex size-11 items-center justify-center rounded-md"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md"
         >
           <Monograma />
         </button>
-        <span className="font-title text-lg whitespace-nowrap">{sessao.clinica}</span>
+        <span title={sessao.clinica} className="truncate font-title text-lg">
+          {sessao.clinica}
+        </span>
       </div>
 
-      {/* no celular as abas ficam numa linha própria, rolável; no painel (expanded), entre o nome e o sino */}
-      <nav aria-label={t.modulos} className="order-last w-full min-w-0 overflow-x-auto pb-1 expanded:order-none expanded:w-auto expanded:flex-1 expanded:pb-0">
-        <ul className="flex items-center gap-1 whitespace-nowrap">
+      {/* abaixo de large as abas ficam numa linha própria (rolável só no celular); de large em diante, entre o nome e o sino */}
+      <nav aria-label={t.modulos} className="order-last w-full min-w-0 overflow-x-auto pb-1 large:order-none large:w-auto large:flex-none large:overflow-visible large:pb-0">
+        {/* p-1: a nav rolável corta o que passa da borda; a folga deixa o anel de foco (2 px + 2 px) inteiro */}
+        <ul className="flex items-center gap-1 p-1 whitespace-nowrap">
           {abas.map((aba, i) => {
             const separador = aba.grupo === "gestao" && abas[i - 1]?.grupo === "operacao";
             const atual = ativa?.href === aba.href;
@@ -51,7 +58,7 @@ export function BarraDoPainel({ sessao, contadores = {} }: { sessao: SessaoDoPai
                 <Link
                   href={aba.href}
                   aria-current={atual ? "page" : undefined}
-                  className={`flex min-h-11 items-center gap-2 rounded-md px-3 text-sm ${atual ? abaAtivaCls : abaInativa}`}
+                  className={`flex min-h-11 items-center gap-2 rounded-md px-3 text-sm ${aba.marca ? "font-atta" : ""} ${atual ? abaAtivaCls : abaInativa}`}
                 >
                   {aba.rotulo}
                   {contador ? (
@@ -67,7 +74,7 @@ export function BarraDoPainel({ sessao, contadores = {} }: { sessao: SessaoDoPai
         </ul>
       </nav>
 
-      <div className="ml-auto flex min-h-14 items-center gap-3 expanded:ml-0">
+      <div className="ml-auto flex min-h-14 shrink-0 items-center gap-3">
         <Link href="/painel/notificacoes" aria-label={t.sino(sessao.notificacoes)} className="relative flex size-11 items-center justify-center rounded-md">
           <IconeSino />
           {sessao.notificacoes > 0 && (
@@ -76,11 +83,11 @@ export function BarraDoPainel({ sessao, contadores = {} }: { sessao: SessaoDoPai
             </span>
           )}
         </Link>
-        <div className="flex items-center gap-2">
+        <div title={sessao.pessoa.nome} className="flex items-center">
           <span aria-hidden="true" className={`flex size-9 items-center justify-center rounded-full text-xs ${clara ? "bg-brand text-on-brand" : "bg-on-brand text-brand"}`}>
             {iniciais(sessao.pessoa.nome)}
           </span>
-          <span>{sessao.pessoa.nome}</span>
+          <span className="sr-only">{sessao.pessoa.nome}</span>
         </div>
       </div>
     </header>

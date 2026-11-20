@@ -4,13 +4,14 @@
 // Métricas é do gestor e pode ser liberada ao Colaborador (PDD v206 §10.4.3 e §10.5); Configurações é sempre exclusiva
 // do ADMIN (§10.4.3). A matriz fina por módulo entra no MIG-06. Quem autoriza de fato é a RLS: a aba só esconde.
 export type Papel = "ADMIN" | "COLABORADOR";
-export type Aba = { rotulo: string; href: string; grupo: "operacao" | "gestao"; somenteAdmin?: boolean };
+// marca: a palavra ATTA vai sempre na fonte de marca (Guia de Design §2).
+export type Aba = { rotulo: string; href: string; grupo: "operacao" | "gestao"; somenteAdmin?: boolean; marca?: boolean };
 
 export const ABAS: Aba[] = [
   { rotulo: "Agendamentos", href: "/painel/agenda", grupo: "operacao" },
   { rotulo: "Pacientes", href: "/painel/pacientes", grupo: "operacao" },
   { rotulo: "Termos & Docs", href: "/painel/documentos", grupo: "operacao" },
-  { rotulo: "ATTA", href: "/painel/atta", grupo: "operacao" },
+  { rotulo: "ATTA", href: "/painel/atta", grupo: "operacao", marca: true },
   { rotulo: "Métricas", href: "/painel/metricas", grupo: "gestao", somenteAdmin: true },
   { rotulo: "Configurações", href: "/painel/configuracoes", grupo: "gestao", somenteAdmin: true },
 ];
