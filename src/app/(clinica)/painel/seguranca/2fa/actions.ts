@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { destinoSeguro } from "@/lib/auth/rotas";
@@ -55,6 +56,6 @@ export async function confirmarCodigo(_anterior: Resultado<never> | null, dados:
       : falha("NAO_AUTENTICADO", "Código incorreto.");
   }
   const { data } = await supabase.auth.getClaims();
-  if (data?.claims?.sub) await registrarAcesso(ativacao ? "auth.mfa_enrolled" : "auth.mfa_verified", data.claims.sub, { method: "totp" });
+  if (data?.claims?.sub) await registrarAcesso(ativacao ? "auth.mfa_enrolled" : "auth.mfa_verified", data.claims.sub, { method: "totp" }, await headers());
   redirect(destinoSeguro(lido.data.volta));
 }
