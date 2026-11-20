@@ -19,7 +19,7 @@ async function preencher() {
 describe("PROpass, passos 1 e 2", () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(cleanup);
-  const abrir = () => render(<FluxoPropass clinica="Clínica Aurora Estética" email="bruna.reis@exemplo.com.br" conviteEm="2026-11-20 16:20" />);
+  const abrir = () => render(<FluxoPropass clinica="Clínica Aurora Estética" email="bruna.reis@exemplo.test" conviteEm="2026-11-20 16:20" />);
 
   it("mostra o e-mail travado e não chama o servidor com campo inválido", async () => {
     abrir();
@@ -50,5 +50,13 @@ describe("PROpass, passos 1 e 2", () => {
     await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
     expect(await screen.findByText(/Não encontramos registro ativo/)).toBeInTheDocument();
     await vi.waitFor(() => expect(screen.getByLabelText("Número de registro")).toHaveFocus()); // foco no próximo quadro
+  });
+
+  it("falha do servidor é anunciada (role=alert)", async () => {
+    acoes.conferirDados.mockResolvedValue({ ok: false, error: { code: "INDISPONIVEL", message: "x" } });
+    abrir();
+    await preencher();
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não conseguimos continuar agora");
   });
 });

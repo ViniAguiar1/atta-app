@@ -15,7 +15,7 @@ const SEM_LINK = falha("NAO_ENCONTRADO", "Não encontrado.");
 export const portaPropassSimulada: PortaPropass = {
   async resolver(hashDoLink) {
     if (!valido(hashDoLink)) return SEM_LINK;
-    return ok({ clinica: "Clínica Aurora Estética", emailDoConvite: "bruna.reis@exemplo.com.br", conviteEm: "2026-11-20 16:20", etapa: "dados" });
+    return ok({ clinica: "Clínica Aurora Estética", emailDoConvite: "bruna.reis@exemplo.test", conviteEm: "2026-11-20 16:20", etapa: "dados" });
   },
   async conferirConselho(hashDoLink, registro) {
     if (!valido(hashDoLink)) return SEM_LINK;
