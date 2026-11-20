@@ -106,6 +106,11 @@ export function ListaDePacientes({ inicial, listar, buscar }: Props) {
         )}
       </div>
 
+      {/* a contagem da busca é anunciada ao leitor de tela; a lista em si não vira região viva */}
+      <p role="status" className="sr-only">
+        {buscando && achados !== null && !carregando ? textos.busca.achados(achados.length) : ""}
+      </p>
+
       <div aria-busy={carregando}>
         <DataState estado={estado} rotulo={textos.estado} esqueleto={{ linhas: 6, alturaRem: 4 }} vazio={textos.vazio}>
           <TabelaDePacientes pacientes={itens} />
