@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { SENHA, SESSAO_DA_GESTORA } from "./acesso";
 
 // MIG-42: Configurações, exclusiva do ADMIN (PDD §10.4.3), com o menu lateral em grupos e Configurações › Agendamentos.
-// Porta simulada até o MIG-10b: a aba continua fora de MODULOS_PRONTOS (regra do Tech Lead Frontend).
+// Porta real (MIG-10b) contra o Supabase local com o seed: a aba está em MODULOS_PRONTOS e o valor salvo fica no banco.
 const axe = (page: import("@playwright/test").Page) => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
 
 test.describe("ADMIN", () => {
@@ -19,6 +19,26 @@ test.describe("ADMIN", () => {
     await expect(page.getByText("Validade total do link: 4 h")).toBeVisible();
     expect((await axe(page)).violations).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  });
+
+  test("a aba Configurações aparece para o ADMIN, e o valor salvo continua depois de recarregar", async ({ page }) => {
+    await page.goto("/painel/configuracoes/agendamentos");
+    await expect(page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link", { name: "Configurações" })).toHaveAttribute("aria-current", "page");
+    const janela = page.getByLabel("Abrir a confirmação (horas antes)");
+    const outro = (await janela.inputValue()) === "48" ? "72" : "48";
+    await janela.fill(outro);
+    await janela.press("Enter");
+    await expect(page.getByText("Salvo.")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Abrir a confirmação (horas antes)")).toHaveValue(outro);
+  });
+
+  test("regra cruzada do banco aparece no campo", async ({ page }) => {
+    await page.goto("/painel/configuracoes/agendamentos");
+    const lembrete2 = page.getByLabel("Segundo lembrete (min antes)");
+    await lembrete2.fill("120"); // o 1º é 60: o 2º precisa vir depois dele
+    await lembrete2.press("Enter");
+    await expect(page.getByText(/O segundo lembrete precisa vir depois do primeiro/)).toBeVisible();
   });
 
   test("valor fora do limite é recusado no campo", async ({ page }) => {

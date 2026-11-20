@@ -1,13 +1,13 @@
 import "server-only";
 import type { Resultado } from "@/lib/errors";
-import { portaConfiguracoesSimulada } from "./simulado";
+import { portaConfiguracoesReal } from "./real";
 
 // Contrato entre Configurações (MIG-42, Frontend) e a cascata do MIG-10/10b (Backend 2; ✅ do Backend 2 e do Tech Lead no
 // #41). Leitura: atta_in.settings_screen (valor efetivo, origem, padrão e limites de cada chave); chave que a tela não
 // conhece é ignorada. Escrita: atta_in.set_setting no nível da unidade, com a sessão do usuário (nunca a secret key), e
 // a chave relida no settings_screen para devolver o Parametro completo. Erros pelo falhaDoBanco (ADR 0001 §5, #37):
 // ATTA-AUTH-0004 → SEM_PERMISSAO; ATTA-IN-0001 → VALIDACAO; ATTA-IN-0003 → CONFLITO com a regra no reason
-// ("ATTA-IN-0003:lembrete_2_min"); ATTA-CORE-0005 → NAO_ENCONTRADO. Até o MIG-10b entrar, a implementação é a simulada.
+// ("ATTA-IN-0003:lembrete_2_min"); ATTA-CORE-0005 → NAO_ENCONTRADO. A real está em real.ts (MIG-10b, #57); a simulada fica só para os testes de unidade.
 export type ChaveDeParametro =
   | "link_envio_antecedencia_h"
   | "link_validade_apos_h"
@@ -40,4 +40,4 @@ export type PortaConfiguracoes = {
   removerCelular(id: string): Promise<Resultado<{ id: string }>>;
 };
 
-export const portaConfiguracoes: PortaConfiguracoes = portaConfiguracoesSimulada;
+export const portaConfiguracoes: PortaConfiguracoes = portaConfiguracoesReal;
