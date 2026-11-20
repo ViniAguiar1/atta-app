@@ -42,7 +42,14 @@ security definer
 set search_path = ''
 as $$
 begin
-  if old.deleted_at is not null or new.deleted_at is null then
+  if old.deleted_at is not null then
+    -- já excluído: a hora da primeira exclusão não se reescreve
+    if new.deleted_at is not null then
+      new.deleted_at := old.deleted_at;
+    end if;
+    return new;
+  end if;
+  if new.deleted_at is null then
     return new;
   end if;
 
@@ -59,6 +66,8 @@ begin
   if exists (select 1 from private.service_delete_blockers(new.tenant_id, new.id)) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0004', detail = 'clinic_service_id';
   end if;
+  -- a hora da exclusão é a do banco; o valor que o app manda é só o sinal de excluir (sugestão do Backend 2/4)
+  new.deleted_at := pg_catalog.now();
   return new;
 end;
 $$;
