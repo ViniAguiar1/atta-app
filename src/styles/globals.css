@@ -17,6 +17,42 @@
   --font-product: var(--ff-montserrat), sans-serif;
 }
 
+/* Superfície da marca do site nas telas de entrar (artefato "Site ATTA-in", página "Entrar"; pedido do dono, 20/11).
+   Dentro de .sobre-marca os tokens semânticos se invertem: texto claro, botão e link claros (bg-brand vira o off-white,
+   text-on-brand vira o verde), anel de foco branco. Campo continua branco com texto grafite, e o erro vai numa caixa
+   branca (o vinho sobre o verde não passa no AA). Contraste: branco sobre o cartão (#454a42) 9.09:1; texto secundário
+   (branco a 82 %) 6.75:1; botão #2c3128 sobre #F9F8F6 12.55:1; vinho sobre branco 8.98:1. */
+.sobre-marca {
+  --color-text-primary: var(--ref-branco);
+  --color-text-secondary: color-mix(in srgb, var(--ref-branco) 82%, transparent);
+  --color-brand: var(--ref-fundo);
+  --color-on-brand: var(--ref-atta-in);
+  --color-focus-ring: var(--ref-branco);
+  --button-primary-hover-bg: var(--ref-branco);
+  color: var(--color-text-primary);
+}
+.sobre-marca input {
+  color: var(--ref-txt1);
+  background-color: var(--ref-branco);
+}
+.sobre-marca [data-sobre-campo] {
+  color: var(--ref-txt1);
+}
+.sobre-marca [role="alert"] {
+  border-radius: var(--radius-sm);
+  background-color: var(--ref-branco);
+  padding: 0.5rem 0.75rem;
+  color: var(--ref-negativo);
+}
+/* o fundo da página: o verde da marca, fixo (dentro de .sobre-marca o bg-brand vira o off-white) */
+main.sobre-marca {
+  background-color: var(--ref-atta-in);
+}
+.cartao-do-site {
+  border: 1px solid color-mix(in srgb, var(--ref-branco) 12%, transparent);
+  background-color: color-mix(in srgb, var(--ref-atta-in) 88%, var(--ref-branco));
+}
+
 @layer base {
   /* Foco sempre visível: anel de 2 px no token de foco (Guia de Design §3; planning/05 §4.5). */
   :focus-visible {

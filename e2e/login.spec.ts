@@ -11,13 +11,17 @@ for (const [nome, viewport] of [["painel", { width: 1280, height: 800 }], ["celu
     await page.setViewportSize(viewport);
     await page.goto("/login");
     await expect(page.getByRole("heading", { level: 1, name: "Entrar no painel da clínica" })).toBeVisible();
-    await expect(page.getByText("Acesso da equipe por convite do gestor. Profissionais não têm login: recebem o Boarding Check por WhatsApp.")).toBeVisible();
+    await expect(page.getByText("Acesso da equipe por convite do gestor da clínica.")).toBeVisible();
     await expect(page.getByLabel("E-mail")).toHaveAttribute("type", "email");
     await expect(page.getByLabel("Senha", { exact: true })).toHaveAttribute("type", "password");
     await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
     expect((await axe(page)).violations).toEqual([]);
     expect(await page.locator("body").innerText()).not.toMatch(PROIBIDO);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    // só a página do artefato (correção do dono): sem o cabeçalho e o rodapé do site
+    await expect(page.getByRole("banner")).toHaveCount(0);
+    await expect(page.getByRole("contentinfo")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Esqueci a senha" })).toBeVisible();
   });
 }
 

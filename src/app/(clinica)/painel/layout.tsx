@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { BarraDoPainel } from "@/features/casca/components/BarraDoPainel";
+import { CascaDoPainel } from "@/features/casca/components/CascaDoPainel";
 import { sessaoDoPainel } from "@/features/casca/sessao";
 import { ROTA_LOGIN } from "@/lib/auth/rotas";
 import { sair } from "../login/actions";
@@ -9,15 +10,19 @@ import { sair } from "../login/actions";
 // Casca do painel da clínica (MIG-40): a barra de módulos colada no topo, de ponta a ponta, e a tela logo abaixo, direto no
 // fundo da página (pedido do dono, 20/11: sem moldura, sem margem externa, sem cantos nem borda no contêiner). O espaçamento
 // interno do conteúdo fica o de sempre. A sessão é por requisição: a barra fica no Suspense (cacheComponents). Sem sessão,
-// a tela de entrar (o proxy já desvia; aqui é a segunda trava).
+// a tela de entrar (o proxy já desvia; aqui é a segunda trava). Em /painel/seguranca (2º fator) a casca sai da frente e a
+// tela usa a moldura do site (CascaDoPainel).
 export default function LayoutDoPainel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-surface-app">
-      <Suspense fallback={<div aria-hidden="true" className="min-h-[4.25rem] bg-brand" />}>
-        <Barra />
-      </Suspense>
-      <main className="px-4 py-6 medium:px-6">{children}</main>
-    </div>
+    <CascaDoPainel
+      barra={
+        <Suspense fallback={<div aria-hidden="true" className="min-h-[4.25rem] bg-brand" />}>
+          <Barra />
+        </Suspense>
+      }
+    >
+      {children}
+    </CascaDoPainel>
   );
 }
 
