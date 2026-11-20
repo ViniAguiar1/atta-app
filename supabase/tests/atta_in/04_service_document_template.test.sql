@@ -79,7 +79,7 @@ select is(api.template_set_services(pg_temp.modelo('TCLE fictício de limpeza'),
 select is(api.template_set_services(pg_temp.modelo('TCLE fictício de limpeza'),
           array['00000000-0000-4000-8000-00000000a002', '00000000-0000-4000-8000-00000000a001',
                 '00000000-0000-4000-8000-00000000a001']::uuid[]), 2, 'N:N, repetido conta uma vez');
-select lives_ok($$ select * from api.template_publish(pg_temp.modelo('TCLE fictício de limpeza')) $$, 'publica');
+select lives_ok($$ select * from api.atta_in_template_publish(pg_temp.modelo('TCLE fictício de limpeza')) $$, 'publica');
 select throws_ok($$ select api.template_set_services(pg_temp.modelo('TCLE fictício de limpeza'), '{}') $$,
                  'P0001', 'ATTA-IN-0001', '§10.3.1: modelo Ativo precisa de pelo menos um procedimento');
 select is(api.template_set_services(pg_temp.modelo('TCLE fictício de limpeza'),
