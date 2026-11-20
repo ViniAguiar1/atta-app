@@ -109,13 +109,50 @@ describe("selo Ed25519 (sem vetor no atta-core: ida e volta e manifesto)", () =>
   ];
   const evidence = readFileSync(join(__dirname, "../vectors/atta_sign_v1/caso-01-tcle-minimo/evidence_sha256.txt"), "ascii").trim();
 
+  const assinadoEm = "2026-11-20T14:00:00.000Z";
+
   it("verifica pelo manifesto e falha com hash, kid ou assinatura trocados", () => {
     const s = signEvidence(evidence, "staging-seal-2026-11", pem);
-    expect(verifySeal(evidence, s, manifest)).toBe(true);
-    expect(verifySeal(evidence.slice(0, -1) + (evidence.endsWith("0") ? "1" : "0"), s, manifest)).toBe(false);
-    expect(verifySeal(evidence, { ...s, kid: "outro" }, manifest)).toBe(false);
+    expect(verifySeal(evidence, s, manifest, assinadoEm)).toBe(true);
+    expect(verifySeal(evidence.slice(0, -1) + (evidence.endsWith("0") ? "1" : "0"), s, manifest, assinadoEm)).toBe(false);
+    expect(verifySeal(evidence, { ...s, kid: "outro" }, manifest, assinadoEm)).toBe(false);
     const sig = Buffer.from(s.sig_b64, "base64");
     sig[0]! ^= 1;
-    expect(verifySeal(evidence, { ...s, sig_b64: sig.toString("base64") }, manifest)).toBe(false);
+    expect(verifySeal(evidence, { ...s, sig_b64: sig.toString("base64") }, manifest, assinadoEm)).toBe(false);
+  });
+
+  it("confere a janela de validade do kid contra o signed_at (MIG-24)", () => {
+    const s = signEvidence(evidence, "staging-seal-2026-11", pem);
+    const aposentada = [{ ...manifest[0]!, valid_until: "2026-11-21T00:00:00.000Z" }];
+    expect(verifySeal(evidence, s, manifest, "2026-11-20T00:00:00.000Z")).toBe(true); // início inclusivo
+    expect(verifySeal(evidence, s, manifest, "2026-11-19T23:59:59.999Z")).toBe(false); // antes da chave existir
+    expect(verifySeal(evidence, s, aposentada, "2026-11-20T23:59:59.999Z")).toBe(true);
+    expect(verifySeal(evidence, s, aposentada, "2026-11-21T00:00:00.000Z")).toBe(false); // fim exclusivo
+    expect(verifySeal(evidence, s, aposentada, "2027-01-01T00:00:00.000Z")).toBe(false); // depois da aposentadoria
+  });
+
+  it("entrada malformada devolve false, sem lançar (MIG-24)", () => {
+    const s = signEvidence(evidence, "staging-seal-2026-11", pem);
+    const ruins: unknown[] = [
+      [{ ...manifest[0]!, public_key_spki_b64: "não é base64 de chave" }],
+      [{ ...manifest[0]!, public_key_spki_b64: 42 }],
+      [{ ...manifest[0]!, valid_from: "ontem" }],
+      [{ ...manifest[0]!, valid_until: "2026-13-40T99:00:00Z" }],
+      [null],
+      null,
+      { kid: "staging-seal-2026-11" },
+    ];
+    for (const m of ruins) {
+      expect(() => verifySeal(evidence, s, m as never, assinadoEm)).not.toThrow();
+      expect(verifySeal(evidence, s, m as never, assinadoEm)).toBe(false);
+    }
+    for (const data of ["", "2026-11-20", "2026-11-20T14:00:00+03:00", "amanhã"]) {
+      expect(verifySeal(evidence, s, manifest, data)).toBe(false);
+    }
+    expect(verifySeal(evidence, { ...s, sig_b64: 7 as never }, manifest, assinadoEm)).toBe(false);
+    expect(verifySeal(evidence, null as never, manifest, assinadoEm)).toBe(false);
+    // chave pública que não é Ed25519 no lugar certo do manifesto
+    const ec = generateKeyPairSync("ec", { namedCurve: "P-256" }).publicKey.export({ format: "der", type: "spki" });
+    expect(verifySeal(evidence, s, [{ ...manifest[0]!, public_key_spki_b64: ec.toString("base64") }], assinadoEm)).toBe(false);
   });
 });
