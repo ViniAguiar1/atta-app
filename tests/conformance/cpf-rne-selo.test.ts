@@ -38,8 +38,10 @@ describe("CPF e RNE (ADR 0002 §6; dados sintéticos)", () => {
     expect(isValidCpf("12345678901")).toBe(false); // os do vetor têm DV inválido de propósito
   });
 
-  it("maskCpf no formato do ADR 0006 §3 (o mesmo do payload do caso-02)", () => {
-    expect(maskCpf("98765432100")).toBe("***.***.321-00");
+  it("maskCpf com o ponto médio do simulador (U+00B7), só os 5 últimos dígitos", () => {
+    expect(maskCpf("52998224725")).toBe("\u00b7\u00b7\u00b7.\u00b7\u00b7\u00b7.247-25"); // ···.···.247-25, o exemplo do Tech Lead
+    expect(maskCpf("98765432100")).toBe("···.···.321-00");
+    expect(maskCpf("98765432100")).not.toContain("*");
     expect(() => maskCpf("987.654.321-00")).toThrow();
   });
 
@@ -53,7 +55,7 @@ describe("CPF e RNE (ADR 0002 §6; dados sintéticos)", () => {
     expect(isValidRne("1234")).toBe(false);
     expect(isForeignDocKind("rne") && isForeignDocKind("rnm")).toBe(true);
     expect(isForeignDocKind("passaporte")).toBe(false);
-    expect(maskRne("V1234567")).toBe("*****567");
+    expect(maskRne("V1234567")).toBe("·····567");
     const pepper = Buffer.alloc(32, 7);
     expect(rneHmacWith(pepper, "V1234567").equals(rneHmacWith(pepper, normalizeRne("v123456-7")!))).toBe(true);
     // o RNE usa o pepper dele, nunca o do CPF

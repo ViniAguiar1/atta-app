@@ -5,12 +5,14 @@
  *   - isValidRne: só essa estrutura (não há DV a conferir);
  *   - o tipo (`rne` | `rnm`) é coluna própria, fora do HMAC: o número é a identidade, o tipo é metadado;
  *   - rneHmac: HMAC-SHA256 com pepper próprio (`ATTA_RNE_PEPPER`, nunca o do CPF);
- *   - maskRne: só os 3 últimos à mostra.
+ *   - maskRne: só os 3 últimos à mostra, com o ponto médio do maskCpf.
  * Nenhuma mensagem de erro repete o valor.
  */
 import "server-only";
 import { createHmac } from "node:crypto";
 import { pepperFromEnv } from "./pepper";
+
+const MASK_CHAR = "\u00b7"; // o mesmo ponto médio do maskCpf
 
 export const FOREIGN_DOC_KINDS = ["rne", "rnm"] as const; // rnm cobre RNM e CRNM
 export type ForeignDocKind = (typeof FOREIGN_DOC_KINDS)[number];
@@ -44,5 +46,5 @@ export function rneHmac(rne: string): Buffer {
 
 export function maskRne(rne: string): string {
   if (!CANONICAL.test(rne)) throw new RangeError("RNE/RNM fora da forma canônica");
-  return "*".repeat(rne.length - 3) + rne.slice(-3);
+  return MASK_CHAR.repeat(rne.length - 3) + rne.slice(-3);
 }
