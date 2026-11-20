@@ -443,14 +443,14 @@ isOneToOne: false
           Tables: {
             "document": {
                   Row: {
-                    "appointment_id": string | null,"cancel_reason": string | null,"cancelled_at": string | null,"cancelled_by": string | null,"created_at": string,"created_by": string | null,"folder_section": string | null,"id": string,"person_id": string | null,"professional_link_id": string | null,"replaced_by_document_id": string | null,"status": string,"template_version_id": string | null,"tenant_id": string,"updated_at": string
+                    "appointment_id": string | null,"auto_excluded_at": string | null,"cancel_reason": string | null,"cancelled_at": string | null,"cancelled_by": string | null,"created_at": string,"created_by": string | null,"folder_section": string | null,"id": string,"person_id": string | null,"professional_link_id": string | null,"replaced_by_document_id": string | null,"status": string,"template_version_id": string | null,"tenant_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "appointment_id"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id": string,"updated_at"?: string
+                    "appointment_id"?: string | null,"auto_excluded_at"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "appointment_id"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id"?: string,"updated_at"?: string
+                    "appointment_id"?: string | null,"auto_excluded_at"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
