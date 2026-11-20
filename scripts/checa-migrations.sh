@@ -8,7 +8,10 @@
 #       mapeia (ADR 0001 §5): código fora dela vira INTERNO na tela.
 #
 # Uso:  sh scripts/checa-migrations.sh                       só (a), na árvore atual
-#       sh scripts/checa-migrations.sh origin/main [HEAD]    (a) e (b): rode antes do push, depois de `git fetch`
+#       sh scripts/checa-migrations.sh origin/main [HEAD]    (a), (b) e (c): rode antes do push, depois de `git fetch`
+#       ATTA_PR=<número do PR> faz a mensagem sugerir a versão exata (no CI, vem do evento do PR).
+# Versão nova (ADR 0001 §3): o maior entre a hora UTC exata e a última versão da main + o número do PR em segundos,
+# recalculada no rebase. Nunca um número redondo. Ex.: main em 20261120174500 e PR #65 → 20261120174605.
 set -eu
 
 dir=supabase/migrations
@@ -21,13 +24,36 @@ CODIGOS_OK="P0001 P0002 42501 23505 23514 23502 23503 22023 40001"
 NOMES_OK="raise_exception no_data_found insufficient_privilege unique_violation check_violation not_null_violation foreign_key_violation invalid_parameter_value serialization_failure"
 NIVEIS="exception notice warning info log debug using sqlstate"
 
+# conversão AAAAMMDDhhmmss ↔ segundos, com o date do GNU (runner) ou do BSD (Mac)
+if date -u -d @0 >/dev/null 2>&1; then
+  para_epoch() { date -u -d "$(echo "$1" | sed -E 's/^(....)(..)(..)(..)(..)(..)$/\1-\2-\3 \4:\5:\6/')" +%s; }
+  de_epoch() { date -u -d "@$1" +%Y%m%d%H%M%S; }
+else
+  para_epoch() { date -u -j -f %Y%m%d%H%M%S "$1" +%s; }
+  de_epoch() { date -u -r "$1" +%Y%m%d%H%M%S; }
+fi
+
+# texto com a versão a usar (ADR 0001 §3), a partir da última versão conhecida
+sugestao() {
+  agora="$(date -u +%Y%m%d%H%M%S)"
+  pr="${ATTA_PR:-}"
+  if [ -n "$1" ] && [ -n "$pr" ] && e="$(para_epoch "$1" 2>/dev/null)"; then
+    alvo="$(de_epoch $((e + pr)))"
+    [ "$alvo" -gt "$agora" ] || alvo="$agora"
+    echo "use $alvo (o maior entre a hora UTC exata e $1 + $pr s do PR #$pr; ADR 0001 §3, recalcule no rebase)"
+  else
+    echo "use o maior entre a hora UTC exata (date -u +%Y%m%d%H%M%S) e ${1:-a última versão da main} + o número do seu PR em segundos (ADR 0001 §3; nunca número redondo)"
+  fi
+}
+
 versao() { basename "$1" | sed -n -E 's/^([0-9]+)_.*\.sql$/\1/p'; }
 
 # (a) versões repetidas na árvore atual (no CI do PR, a árvore é a do PR já juntado com a main)
 if [ -d "$dir" ]; then
   for v in $(ls "$dir" | sed -n -E 's/^([0-9]+)_.*\.sql$/\1/p' | sort | uniq -d); do
     arquivos=""; for f in "$dir/${v}"_*.sql; do arquivos="$arquivos ${f##*/}"; done
-    echo "::error::versão de migration repetida: $v ($arquivos ). Renomeie a do seu PR para uma versão nova (date -u +%Y%m%d%H%M%S)."
+    maior="$(ls "$dir" | sed -n -E 's/^([0-9]+)_.*\.sql$/\1/p' | sort -n | tail -1)"
+    echo "::error::versão de migration repetida: $v ($arquivos ). Renomeie a do seu PR: $(sugestao "$maior")."
     erro=1
   done
 fi
@@ -40,10 +66,10 @@ if [ -n "$base" ]; then
     if git cat-file -e "$base:$f" 2>/dev/null; then continue; fi
     v="$(versao "$f")"
     if [ -z "$v" ]; then
-      echo "::error::$f: nome sem versão; use <versão>_<nome>.sql, com a versão maior que ${ultima:-a última da main}"
+      echo "::error::$f: nome sem versão; use <versão>_<nome>.sql: $(sugestao "$ultima")."
       erro=1
     elif [ -n "$ultima" ] && [ "$v" -le "$ultima" ]; then
-      echo "::error::$f: a versão $v não é maior que a última da main ($ultima). Gere uma versão maior que $ultima (por exemplo, date -u +%Y%m%d%H%M%S) e renomeie o arquivo."
+      echo "::error::$f: a versão $v não é maior que a última da main ($ultima). Renomeie o arquivo: $(sugestao "$ultima")."
       erro=1
     fi
   done
