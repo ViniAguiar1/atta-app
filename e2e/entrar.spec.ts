@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { codigoTotp, SENHA } from "./acesso";
+import { codigoTotp, INICIO_DO_PAINEL, SENHA } from "./acesso";
 
 // MIG-03: o login de ponta a ponta com as pessoas do supabase/seed.sql (só banco local e CI). A tela em si (textos,
 // axe, Mostrar, POST) está no login.spec.ts do Frontend.
@@ -21,7 +21,7 @@ test("COLABORADOR entra sem 2º fator e volta para onde ia", async ({ page }) =>
 
 test("31 min sem atividade: a sessão é encerrada e o painel volta à tela de entrar", async ({ page, context, baseURL }) => {
   await entrar(page, "colaboradora.ficticia@exemplo.test");
-  await expect(page).toHaveURL(/\/painel$/);
+  await expect(page).toHaveURL(INICIO_DO_PAINEL);
   const host = new URL(baseURL ?? "http://127.0.0.1:3000").hostname;
   const velho = String(Math.floor(Date.now() / 1000) - 31 * 60);
   await context.addCookies([{ name: "atta_atividade", value: velho, domain: host, path: "/", httpOnly: true, sameSite: "Lax" }]);
@@ -44,7 +44,7 @@ test("Voltar no 2º fator encerra a sessão e volta à tela de entrar", async ({
 
 test("volta para fora do painel é ignorada", async ({ page }) => {
   await entrar(page, "colaboradora.ficticia@exemplo.test", "/login?volta=%2F%2Fevil.example%2Fpainel");
-  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/painel$/);
+  await expect(page).toHaveURL(new RegExp(`127\\.0\\.0\\.1:\\d+${INICIO_DO_PAINEL.source}`));
 });
 
 test("conta sem clínica cai em /sem-clinica, e Sair encerra a sessão", async ({ page }) => {
@@ -72,7 +72,7 @@ test("ADMIN sem 2º fator: o painel leva à ativação, e o código do app liber
   await expect(page.locator("main").getByRole("alert")).toHaveText("Código incorreto.");
   await page.getByLabel("Código").fill(codigoTotp(chave));
   await page.getByRole("button", { name: "Confirmar" }).click();
-  await expect(page).toHaveURL(/\/painel$/);
+  await expect(page).toHaveURL(INICIO_DO_PAINEL);
   await apagarFatores(page, "eeee0000-0000-4000-8000-0000000000a2"); // o teste pode rodar de novo no mesmo banco
 });
 

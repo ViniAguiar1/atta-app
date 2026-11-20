@@ -1,3 +1,4 @@
+import { INICIO_DO_PAINEL } from "./acesso";
 import { expect, type APIRequestContext, test } from "@playwright/test";
 
 // MIG-03c: "Esqueci a senha" de ponta a ponta, com o Mailpit do Supabase local (porta da API + 3). A pessoa é a do seed
@@ -50,7 +51,7 @@ test("Esqueci a senha: o link do e-mail leva à nova senha, e ela passa a valer"
   await page.getByLabel("Nova senha", { exact: true }).fill(NOVA);
   await page.getByLabel("Repita a nova senha").fill(NOVA);
   await page.getByRole("button", { name: "Salvar senha" }).click();
-  await expect(page).toHaveURL(/\/painel$/);
+  await expect(page).toHaveURL(INICIO_DO_PAINEL);
 
   // o link é de uso único
   await page.context().clearCookies();
@@ -62,7 +63,7 @@ test("Esqueci a senha: o link do e-mail leva à nova senha, e ela passa a valer"
   await page.getByLabel("E-mail").fill(EMAIL);
   await page.getByLabel("Senha", { exact: true }).fill(NOVA);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page).toHaveURL(/\/painel$/);
+  await expect(page).toHaveURL(INICIO_DO_PAINEL);
 });
 
 test("Esqueci a senha com e-mail sem conta: a mesma resposta, e nenhum e-mail sai", async ({ page, request }) => {

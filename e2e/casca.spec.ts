@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { SENHA, SESSAO_DA_GESTORA } from "./acesso";
+import { INICIO_DO_PAINEL, SENHA, SESSAO_DA_GESTORA } from "./acesso";
 
 // MIG-40 e MIG-03, regra do stage (PLANO e ADR 0001 §4): sem sessão, o painel leva à tela de entrar guardando a volta;
 // com sessão (a gestora do seed, ADMIN com 2º fator), a barra mostra a clínica e a pessoa da sessão real.
@@ -28,6 +28,7 @@ test.describe("com sessão", () => {
 
   test("a barra mostra a clínica e a pessoa da sessão, passa no axe e não tem texto de ambiente", async ({ page }) => {
     await page.goto("/painel");
+    await expect(page).toHaveURL(INICIO_DO_PAINEL); // o /painel leva à primeira aba do papel; espera a tela final
     const barra = page.getByRole("banner");
     await expect(barra).toContainText("Clínica Alfa Estética");
     await expect(barra).toContainText("HP"); // Helena Prado, pelas iniciais
@@ -37,9 +38,9 @@ test.describe("com sessão", () => {
 
   test("/ e /login com sessão vão ao painel", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveURL(/\/painel$/);
+    await expect(page).toHaveURL(INICIO_DO_PAINEL);
     await page.goto("/login");
-    await expect(page).toHaveURL(/\/painel$/);
+    await expect(page).toHaveURL(INICIO_DO_PAINEL);
   });
 
   test("o cookie da sessão é HttpOnly e SameSite=Lax", async ({ page }) => {
@@ -60,7 +61,7 @@ test("o menu da pessoa tem Sair / trocar usuário, que encerra a sessão e volta
   await page.getByLabel("E-mail").fill("colaboradora.ficticia@exemplo.test");
   await page.getByLabel("Senha", { exact: true }).fill(SENHA);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page).toHaveURL(/\/painel$/);
+  await expect(page).toHaveURL(INICIO_DO_PAINEL);
   const menu = page.getByRole("banner").getByRole("button", { name: /^Menu d/ });
   await menu.click();
   await expect(menu).toHaveAttribute("aria-expanded", "true");
