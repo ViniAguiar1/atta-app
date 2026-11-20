@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { SESSAO_DA_GESTORA } from "./acesso";
+import { SENHA, SESSAO_DA_GESTORA } from "./acesso";
 
 // MIG-40 e MIG-03, regra do stage (PLANO e ADR 0001 §4): sem sessão, o painel leva à tela de entrar guardando a volta;
 // com sessão (a gestora do seed, ADMIN com 2º fator), a barra mostra a clínica e a pessoa da sessão real.
@@ -51,6 +51,24 @@ test.describe("com sessão", () => {
       expect(c.sameSite).toBe("Lax");
     }
   });
+});
+
+// Menu da pessoa (PDD §10: "o menu da pessoa logada (perfil e sair)"; simulador: "Sair / trocar usuário"). Entra do zero
+// com a colaboradora (sem 2º fator), para o Sair não derrubar a sessão salva da gestora que os outros testes usam.
+test("o menu da pessoa tem Sair / trocar usuário, que encerra a sessão e volta à tela de entrar", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("E-mail").fill("colaboradora.ficticia@exemplo.test");
+  await page.getByLabel("Senha", { exact: true }).fill(SENHA);
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page).toHaveURL(/\/painel$/);
+  const menu = page.getByRole("banner").getByRole("button", { name: /^Menu d/ });
+  await menu.click();
+  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  expect((await axe(page)).violations).toEqual([]);
+  await page.getByRole("button", { name: "Sair / trocar usuário" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/painel");
+  await expect(page).toHaveURL(/\/login\?volta=%2Fpainel$/);
 });
 
 test("rota fora do painel continua na página de não encontrada, sem indexar", async ({ page }) => {

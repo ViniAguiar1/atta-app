@@ -7,7 +7,8 @@ import { BarraDoPainel as Barra } from "./BarraDoPainel";
 
 // a casca só mostra módulo pronto; aqui, todos prontos (e o sino), para testar a barra inteira
 const PRONTOS = [...ABAS.map((a) => a.href), "/painel/notificacoes"];
-const BarraDoPainel = (p: Omit<React.ComponentProps<typeof Barra>, "prontos">) => <Barra prontos={PRONTOS} {...p} />;
+const acaoSair = vi.fn(async () => {});
+const BarraDoPainel = (p: Omit<React.ComponentProps<typeof Barra>, "prontos" | "acaoSair">) => <Barra prontos={PRONTOS} acaoSair={acaoSair} {...p} />;
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/painel/configuracoes/agendamentos" }));
 
@@ -21,7 +22,7 @@ describe("barra do painel (MIG-40)", () => {
     expect(modulos().getByRole("link", { name: "Configurações" })).toHaveAttribute("aria-current", "page");
     expect(modulos().getByRole("link", { name: "Agendamentos" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("link", { name: "Notificações, 3 novas" })).toHaveAttribute("href", "/painel/notificacoes");
-    expect(screen.getByText("Ana Exemplo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Menu de Ana Exemplo" })).toBeInTheDocument();
     expect(screen.getByText("AE")).toHaveAttribute("aria-hidden", "true");
   });
 
@@ -44,10 +45,22 @@ describe("barra do painel (MIG-40)", () => {
   });
 
   it("sem módulo pronto não há aba nem sino, e sem nome de clínica não sobra texto vazio", () => {
-    render(<Barra sessao={{ ...sessao, clinica: null }} prontos={[]} />);
+    render(<Barra sessao={{ ...sessao, clinica: null }} prontos={[]} acaoSair={acaoSair} />);
     expect(screen.getByRole("navigation", { name: "Módulos do painel" }).querySelectorAll("a")).toHaveLength(0);
     expect(screen.queryByRole("link", { name: /Notificações/ })).toBeNull();
     expect(screen.queryByTitle("Clínica Fictícia")).toBeNull();
+  });
+
+  it("o menu da pessoa abre com Sair / trocar usuário e fecha no Esc, com o foco de volta", async () => {
+    render(<BarraDoPainel sessao={sessao} />);
+    const menu = screen.getByRole("button", { name: "Menu de Ana Exemplo" });
+    expect(screen.queryByRole("button", { name: "Sair / trocar usuário" })).toBeNull();
+    await userEvent.click(menu);
+    expect(menu).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Sair / trocar usuário" })).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    expect(menu).toHaveAttribute("aria-expanded", "false");
+    expect(menu).toHaveFocus();
   });
 
   it("contador da aba aparece só quando há número, com texto para leitor de tela", () => {

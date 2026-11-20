@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Monograma } from "@/components/ui/Monograma";
 import { iniciais } from "@/lib/texto/iniciais";
 import { textos as t } from "../textos";
@@ -17,9 +17,15 @@ import { abaAtiva, abasDoPapel, MODULOS_PRONTOS } from "../abas";
 // encolher, e quem cede espaço é o nome da clínica (reticências). A pessoa aparece pelas iniciais; o nome vai ao leitor.
 // Cores do Guia v21 §4.1: barra em brand (#2c3128); aba ativa em brand-active (#6c7563), texto branco 600; inativas em
 // branco a 78 %. Clara: fundo off-white, escrita em brand, borda de 1 px a 32 %, aba ativa a 5 % com sublinhado de 1 px a 45 %.
-type Props = { sessao: SessaoDoPainel; contadores?: Record<string, number>; prontos?: readonly string[] };
+type Props = {
+  sessao: SessaoDoPainel;
+  /** Server action que encerra a sessão (login/actions.ts); vem do layout, para a feature não importar rota. */
+  acaoSair: () => Promise<void>;
+  contadores?: Record<string, number>;
+  prontos?: readonly string[];
+};
 
-export function BarraDoPainel({ sessao, contadores = {}, prontos = MODULOS_PRONTOS }: Props) {
+export function BarraDoPainel({ sessao, acaoSair, contadores = {}, prontos = MODULOS_PRONTOS }: Props) {
   const [clara, setClara] = useState(false);
   const caminho = usePathname();
   const ativa = abaAtiva(caminho);
@@ -91,14 +97,62 @@ export function BarraDoPainel({ sessao, contadores = {}, prontos = MODULOS_PRONT
             )}
           </Link>
         )}
-        <div title={sessao.pessoa.nome} className="flex items-center">
-          <span aria-hidden="true" className={`flex size-9 items-center justify-center rounded-full text-xs ${clara ? "bg-brand text-on-brand" : "bg-on-brand text-brand"}`}>
-            {iniciais(sessao.pessoa.nome)}
-          </span>
-          <span className="sr-only">{sessao.pessoa.nome}</span>
-        </div>
+        <MenuDaPessoa nome={sessao.pessoa.nome} clara={clara} acaoSair={acaoSair} />
       </div>
     </header>
+  );
+}
+
+// Menu da pessoa logada (PDD §10: "o menu da pessoa logada (perfil e sair)"; simulador: "Sair / trocar usuário").
+// O perfil entra quando a tela existir. Botão com aria-expanded; Esc e clique fora fecham, e o foco volta ao botão.
+function MenuDaPessoa({ nome, clara, acaoSair }: { nome: string; clara: boolean; acaoSair: () => Promise<void> }) {
+  const [aberto, setAberto] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+  const botao = useRef<HTMLButtonElement>(null);
+  const idDoMenu = useId();
+
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: PointerEvent) => {
+      if (!raiz.current?.contains(e.target as Node)) setAberto(false);
+    };
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setAberto(false);
+      botao.current?.focus();
+    };
+    document.addEventListener("pointerdown", fora);
+    document.addEventListener("keydown", tecla);
+    return () => {
+      document.removeEventListener("pointerdown", fora);
+      document.removeEventListener("keydown", tecla);
+    };
+  }, [aberto]);
+
+  return (
+    <div ref={raiz} className="relative">
+      <button
+        ref={botao}
+        type="button"
+        title={nome || undefined}
+        aria-label={t.menuDaPessoa(nome)}
+        aria-expanded={aberto}
+        aria-controls={idDoMenu}
+        onClick={() => setAberto((v) => !v)}
+        className="flex size-11 items-center justify-center rounded-full"
+      >
+        <span aria-hidden="true" className={`flex size-9 items-center justify-center rounded-full text-xs ${clara ? "bg-brand text-on-brand" : "bg-on-brand text-brand"}`}>
+          {iniciais(nome)}
+        </span>
+      </button>
+      <div id={idDoMenu} hidden={!aberto} className="absolute right-0 z-10 mt-2 min-w-56 rounded-md border border-border bg-surface-raised p-1 text-text-primary">
+        <form action={acaoSair}>
+          <button type="submit" className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm hover:bg-surface-card">
+            {t.sair}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 
