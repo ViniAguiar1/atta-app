@@ -16,7 +16,8 @@ import { abaAtiva, abasDoPapel, MODULOS_PRONTOS } from "../abas";
 // Largura: abaixo de large as abas descem para uma linha própria; de large em diante ficam na linha da barra sem
 // encolher, e quem cede espaço é o nome da clínica (reticências). A pessoa aparece pelas iniciais; o nome vai ao leitor.
 // Cores do Guia v21 §4.1: barra em brand (#2c3128); aba ativa em brand-active (#6c7563), texto branco 600; inativas em
-// branco a 78 %. Clara: fundo off-white, escrita em brand, borda de 1 px a 32 %, aba ativa a 5 % com sublinhado de 1 px a 45 %.
+// branco a 78 %. Clara: fundo off-white, escrita em brand, borda de 1 px a 32 % (só embaixo: a barra vai de ponta a ponta),
+// aba ativa a 5 % com sublinhado de 1 px a 45 %.
 type Props = {
   sessao: SessaoDoPainel;
   /** Server action que encerra a sessão (login/actions.ts); vem do layout, para a feature não importar rota. */
@@ -32,12 +33,12 @@ export function BarraDoPainel({ sessao, acaoSair, contadores = {}, prontos = MOD
   const abas = abasDoPapel(sessao.papel, prontos);
   const comSino = prontos.includes("/painel/notificacoes"); // o sino entra com o MIG-45
 
-  const barra = clara ? "border border-brand/32 bg-surface-app text-brand" : "bg-brand text-on-brand [&_:focus-visible]:outline-on-brand";
+  const barra = clara ? "border-b border-brand/32 bg-surface-app text-brand" : "bg-brand text-on-brand [&_:focus-visible]:outline-on-brand";
   const abaAtivaCls = clara ? "bg-brand/5 underline decoration-brand/45 decoration-1 underline-offset-8" : "bg-brand-active font-semibold text-on-brand";
   const abaInativa = clara ? "text-brand hover:bg-brand/5" : "text-on-brand/78 hover:bg-on-brand/10 hover:text-on-brand";
 
   return (
-    <header className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-t-md px-3 py-1.5 large:flex-nowrap ${barra}`}>
+    <header className={`flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1.5 large:flex-nowrap medium:px-6 ${barra}`}>
       {/* flex-1 com base 0: o nome não empurra o sino para outra linha no celular; ele encolhe com reticências */}
       <div className="flex min-h-14 min-w-0 flex-1 items-center gap-3">
         <button
