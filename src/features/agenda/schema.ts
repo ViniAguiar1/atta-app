@@ -99,6 +99,10 @@ export const filtroDoDiaSchema = z.object({
   vinculoProfissionalId: z.uuid().optional(),
   busca: z.string().trim().max(80).optional(),
   cursor: z.string().max(200).optional(),
+  /** segmentos do card Check-in (§10.2.2): filtra a lista pelo estado */
+  status: z.array(z.enum(STATUS)).min(1).max(STATUS.length).optional(),
+  /** card Sem documento vinculado (§10.2.2): a regra de quem entra é do banco (p_no_document) */
+  semDocumento: z.boolean().optional(),
 });
 export type FiltroDoDia = z.infer<typeof filtroDoDiaSchema>;
 

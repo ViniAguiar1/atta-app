@@ -113,6 +113,11 @@ function linhasDe(dataLocal: string): LinhaDaAgenda[] {
   }));
 }
 
+/** A regra do banco para o card e o aviso "Sem documento vinculado" (§10.2.2): procedimento presencial ou online
+ *  ainda por acontecer, sem documento; Avaliação, Retorno e Consulta online não entram. */
+const entraEmSemDocumento = (l: LinhaDaAgenda) =>
+  l.tipo === "procedimento" && l.documentos.length === 0 && l.status === "agendado";
+
 const semAcento = (texto: string) => texto.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
 
 /** Busca como a do banco: nome por trecho (sem acento) ou CPF completo (no banco, pelo HMAC). */
@@ -126,7 +131,7 @@ export const portaAgendaSimulada: PortaAgenda = {
   async dia(filtro) {
     const lido = filtroDoDiaSchema.safeParse(filtro);
     if (!lido.success) return falhaDeValidacao(lido.error.issues);
-    const { dataLocal: pedido, vinculoProfissionalId, busca } = lido.data;
+    const { dataLocal: pedido, vinculoProfissionalId, busca, status, semDocumento } = lido.data;
     const hojeLocal = hojeNaClinica();
     const dataLocal = pedido ?? hojeLocal;
     const linhas =
@@ -136,6 +141,8 @@ export const portaAgendaSimulada: PortaAgenda = {
             const semente = SEMENTES[i];
             if (!semente) return false;
             if (vinculoProfissionalId && linha.profissional.vinculoId !== vinculoProfissionalId) return false;
+            if (status && !status.includes(linha.status)) return false;
+            if (semDocumento && !entraEmSemDocumento(linha)) return false;
             return !busca || casa(busca, semente);
           });
     return ok({ dataLocal, hojeLocal, fuso: FUSO, linhas, proximoCursor: null });
@@ -153,7 +160,7 @@ export const portaAgendaSimulada: PortaAgenda = {
       mesHorariosLivres: 175,
       checkin: { emPreenchimento: conta("em_preenchimento"), pronto: conta("pronto"), emAtendimento: conta("em_atendimento") },
       confirmacao: { agendados: 6, aConfirmar: 2, confirmados: 4 },
-      semDocumento: linhas.filter((l) => l.tipo === "procedimento" && l.documentos.length === 0 && l.status === "agendado").length,
+      semDocumento: linhas.filter(entraEmSemDocumento).length,
     };
     return ok(resumo);
   },
@@ -167,7 +174,7 @@ export const portaAgendaSimulada: PortaAgenda = {
       desde,
     });
     const avisos: AvisoDaAgenda[] = [
-      { tipo: "sem_documento", itens: linhas.filter((l) => l.tipo === "procedimento" && l.documentos.length === 0 && l.status === "agendado").map((l) => item(l)) },
+      { tipo: "sem_documento", itens: linhas.filter(entraEmSemDocumento).map((l) => item(l)) },
       { tipo: "atrasado", itens: linhas.filter((l) => l.atrasado).map((l) => item(l)) },
       { tipo: "pronto_sem_boarding_check", itens: linhas.filter((l) => l.status === "pronto").map((l) => item(l, l.boardingCheckEnviadoEm)) },
       { tipo: "ausentes", itens: linhas.filter((l) => l.status === "ausente").map((l) => item(l)) },

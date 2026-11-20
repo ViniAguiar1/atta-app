@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { moduloDisponivel } from "@/features/casca/abas";
-import { buscarNoDia } from "@/features/agenda/actions";
+import { buscarNoDia, resumirDia } from "@/features/agenda/actions";
 import { AgendaHoje } from "@/features/agenda/components/AgendaHoje";
 import { ALTURA_DA_LINHA_REM } from "@/features/agenda/components/TabelaDoDia";
 import { textos } from "@/features/agenda/textos";
@@ -27,8 +27,8 @@ export default function Pagina() {
 
 async function Hoje() {
   await connection(); // por requisição: o "hoje" é o da clínica na hora do pedido
-  const inicial = await portaAgenda.dia({});
-  return <AgendaHoje inicial={inicial} buscar={buscarNoDia} />;
+  const [inicial, resumoInicial] = await Promise.all([portaAgenda.dia({}), portaAgenda.resumo({})]);
+  return <AgendaHoje inicial={inicial} resumoInicial={resumoInicial} buscar={buscarNoDia} resumir={resumirDia} />;
 }
 
 function Carregando() {
