@@ -15,7 +15,14 @@ begin
   perform set_config('role', 'postgres', true);
   insert into auth.users (id, email) values (v_user, v_user::text || '@teste.invalid');
   if p_tenant is not null and p_role in ('ADMIN', 'COLABORADOR') then
-    insert into platform.membership (tenant_id, user_id, app_role) values (p_tenant, v_user, p_role);
+    -- no máximo 2 ADMIN vivos por clínica (MIG-06, PDD §10.4.3): com 2, entra como um deles
+    if p_role = 'ADMIN' and (select count(*) from platform.membership m where m.tenant_id = p_tenant
+        and m.app_role = 'ADMIN' and m.deleted_at is null and m.status <> 'rejected') >= 2 then
+      select m.user_id into v_user from platform.membership m where m.tenant_id = p_tenant and m.app_role = 'ADMIN'
+         and m.status = 'active' and m.deleted_at is null order by m.created_at limit 1;
+    else
+      insert into platform.membership (tenant_id, user_id, app_role) values (p_tenant, v_user, p_role);
+    end if;
   end if;
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims',
