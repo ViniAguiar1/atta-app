@@ -108,7 +108,7 @@ function linhasDe(dataLocal: string): LinhaDaAgenda[] {
   return SEMENTES.map(({ hora, nome, cpf, boardingCheckAs, ...resto }) => ({
     ...resto,
     inicio: em(dataLocal, hora),
-    paciente: { pessoaId: id(300 + Number(resto.id.slice(-3))), nomeExibicao: nome, cpfMascarado: cpf ? maskCpf(cpf) : null, iniciais: iniciais(nome) },
+    paciente: { tipo: "pessoa" as const, id: id(300 + Number(resto.id.slice(-3))), nomeExibicao: nome, cpfMascarado: cpf ? maskCpf(cpf) : null, iniciais: iniciais(nome) },
     boardingCheckEnviadoEm: boardingCheckAs ? em(dataLocal, boardingCheckAs) : null,
   }));
 }
