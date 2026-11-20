@@ -137,11 +137,11 @@ grant execute on function api.seg_autoteste_definer() to public;
 select is((select string_agg(x, ',') from pg_temp.seg_executavel_por_anon() x where x like '%seg_autoteste%'),
   'api.seg_autoteste_definer()', 'o portão acusa função executável por PUBLIC');
 
-create function audit.seg_autoteste_fechado() returns int language sql set search_path = '' as $$ select 1 $$;
-revoke all on function audit.seg_autoteste_fechado() from public;
-grant execute on function audit.seg_autoteste_fechado() to authenticated;
+create function network.seg_autoteste_fechado() returns int language sql set search_path = '' as $$ select 1 $$;
+revoke all on function network.seg_autoteste_fechado() from public;
+grant execute on function network.seg_autoteste_fechado() to authenticated;
 select is((select string_agg(x, ',') from pg_temp.seg_fechado_executavel_por_authenticated() x where x like '%seg_autoteste%'),
-  'audit.seg_autoteste_fechado()', 'o portão acusa função de schema fechado executável por authenticated');
+  'network.seg_autoteste_fechado()', 'o portão acusa função de schema fechado executável por authenticated');
 
 create table atta_in.seg_autoteste (id int, tenant_id uuid);
 alter table atta_in.seg_autoteste enable row level security;
