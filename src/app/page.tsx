@@ -1,9 +1,7 @@
-// Página inicial provisória: as telas reais entram por trilha (painel, paciente, verificação pública).
+import { redirect } from "next/navigation";
+
+// "/" faz o que a produção faz (PLANO, regra do stage): sem sessão, a tela de entrar. Com sessão, o proxy já levou ao
+// painel antes de chegar aqui.
 export default function Inicio() {
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-4 p-8">
-      <h1 className="font-title text-3xl text-text-primary">ATTA</h1>
-      <p className="text-text-secondary">Ambiente de validação. Só dados fictícios.</p>
-    </main>
-  );
+  redirect("/login");
 }

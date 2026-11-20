@@ -16,7 +16,14 @@ export const ABAS: Aba[] = [
   { rotulo: "Configurações", href: "/painel/configuracoes", grupo: "gestao", somenteAdmin: true },
 ];
 
-export const abasDoPapel = (papel: Papel | null) => ABAS.filter((aba) => !aba.somenteAdmin || papel === "ADMIN");
+/**
+ * Módulos com tela pronta, numa lista só (decisão do CTO, regra do stage): aba de módulo que ainda não existe não
+ * aparece. Cada item (MIG-41 a MIG-48, e o sino no MIG-45) acrescenta a sua rota aqui quando a tela entra.
+ */
+export const MODULOS_PRONTOS: readonly string[] = [];
+
+export const abasDoPapel = (papel: Papel | null, prontos: readonly string[] = MODULOS_PRONTOS) =>
+  ABAS.filter((aba) => prontos.includes(aba.href) && (!aba.somenteAdmin || papel === "ADMIN"));
 
 /** A aba ativa é a do segundo segmento da rota (/painel/configuracoes/agendamentos → Configurações). */
 export const abaAtiva = (caminho: string) => ABAS.find((aba) => caminho === aba.href || caminho.startsWith(`${aba.href}/`));
