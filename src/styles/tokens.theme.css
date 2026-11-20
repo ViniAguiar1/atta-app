@@ -1,5 +1,7 @@
-/* Cópia sem edição de hub-atta/atta-platform design/tokens/tokens.theme.css, commit ea816ed (2026-10-19). Não edite aqui: troca de
-   token é PR do Frontend no atta-app, com o contraste conferido (ADR 0001 §6), e entra também na fonte. */
+/* Base: hub-atta/atta-platform design/tokens/tokens.theme.css, commit ea816ed (2026-10-19), com as cores do Guia de Design v21
+   (MIG-40, ok do CTO em 20/11): atta-in #2c3128, aba ativa #6c7563, negativo #82264f e informativo #397578. Daqui em
+   diante a fonte é esta cópia: o atta-platform está congelado na migração. Troca de token é PR do Frontend no atta-app,
+   com o contraste conferido (ADR 0001 §6). */
 /* GERADO por scripts/tokens.py build a partir do tokens.json: não edite à mão, edite o tokens.json e rode o build.
    Fonte: atta-platform/design/tokens/ (06 §1.8, D-06); o tokens-drift do node-app.yml confere a cópia nos frontends.
    Adaptador do Tailwind 4: importe depois do tailwindcss e do tokens.css. */
@@ -8,6 +10,8 @@
   --color-*: initial;
   --color-brand: var(--ref-atta-in);
   --color-on-brand: var(--ref-branco);
+  /* Aba ativa da barra de módulos (Guia v21 §4.1), com texto on-brand em 600: 4.81:1. */
+  --color-brand-active: var(--ref-atta-in-aba-ativa);
   --color-text-primary: var(--ref-txt1);
   --color-text-secondary: var(--ref-txt2);
   /* Só texto grande (≥ 24 px, ou ≥ 18,66 px em negrito): 4.21:1 sobre o fundo (planning/05 §4.6). Em legenda pequena, use text-secondary. */
@@ -23,9 +27,9 @@
   /* Anel de foco de 2 px, sempre visível (planning/05 §4.5, DG 3.3). */
   --color-focus-ring: var(--ref-atta-in);
   --color-status-success: var(--ref-sucesso);
-  /* Substitui todo vermelho (DG 1.2). Como texto, só sobre surface-app ou surface-raised: sobre surface-card dá 4.23:1. */
+  /* Substitui todo vermelho (Guia v21 §1.2). Como texto: 8.46:1 no fundo, 7.74:1 no card e 8.98:1 no branco. */
   --color-status-negative: var(--ref-negativo);
-  /* Nunca texto branco sobre ele nem ele como texto (2.67:1 e 2.52:1); fundo tingido com text-primary (planning/05 §4.6). */
+  /* Turquesa do Guia v21 §1.2. Como texto: 4.96:1 no fundo, 5.26:1 no branco e 4.54:1 no card; branco sobre ele, 5.26:1. */
   --color-status-info: var(--ref-info);
   /* Pré-assinado, em análise (DG 1.2). */
   --color-status-pending: var(--ref-atencao);
