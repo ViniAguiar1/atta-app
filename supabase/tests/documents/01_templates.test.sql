@@ -1,7 +1,7 @@
 -- MIG-20: Meus modelos versionados (PDD v206 §10.3.1, §17.2, §17.5; RN-DOC-01, RN-DOC-02, RN-DOC-04, RN-V-01).
 -- Só dado fictício: clínicas, títulos e textos inventados.
 begin;
-select plan(52);
+select plan(53);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-0000000000d1', 'Clínica Fictícia Documentos A'),
@@ -10,11 +10,29 @@ insert into platform.tenant (id, name) values
 create function pg_temp.entrar(p_tenant uuid, p_role text, p_aal text default 'aal2') returns void
 language plpgsql as $$
 declare
-  v_user uuid := gen_random_uuid();
+  v_user uuid;
+  v_membership uuid;
 begin
   perform set_config('role', 'postgres', true);
-  insert into auth.users (id, email) values (v_user, v_user::text || '@teste.invalid');
-  insert into platform.membership (tenant_id, user_id, app_role) values (p_tenant, v_user, p_role);
+  -- no máximo 2 ADMIN vivos por clínica (PDD §10.4.3, MIG-06 #54): ADMIN reaproveita um ADMIN vivo desta clínica
+  if p_role = 'ADMIN' then
+    select m.user_id into v_user from platform.membership m
+    where m.tenant_id = p_tenant and m.app_role = 'ADMIN' and m.status = 'active' and m.deleted_at is null
+    limit 1;
+  end if;
+  if v_user is null then
+    v_user := gen_random_uuid();
+    insert into auth.users (id, email) values (v_user, v_user::text || '@teste.invalid');
+    insert into platform.membership (tenant_id, user_id, app_role) values (p_tenant, v_user, p_role)
+    returning id into v_membership;
+    -- matriz do MIG-06 (#46): Termos & Docs não vem no padrão do COLABORADOR; o ADMIN libera ver, criar e editar
+    if p_role = 'COLABORADOR' and to_regclass('platform.membership_permission') is not null then
+      execute 'insert into platform.membership_permission (tenant_id, membership_id, module, action)
+               select $1, $2, ''documents'', a from unnest(array[''view'', ''create'', ''edit'']) a
+               on conflict do nothing'
+        using p_tenant, v_membership;
+    end if;
+  end if;
   perform set_config('role', 'authenticated', true);
   -- ADMIN só com aal2 (MIG-03) e amr com a hora do login (sessão de 12 h, #35)
   perform set_config('request.jwt.claims',
@@ -112,7 +130,7 @@ select is((select kind || ' ' || frequency || ' ' || required::text || ' ' || bo
 select is((select status || ' ' || current_version from documents.template where title = 'TCLE fictício de limpeza'),
           'ativo 1', 'modelo fica Ativo na versão 1');
 select throws_ok($$ select * from api.template_publish(pg_temp.modelo('TCLE fictício de limpeza')) $$,
-                 '55000', 'ATTA-IN-0002', 'sem mudança não nasce versão nova');
+                 'P0001', 'ATTA-IN-0002', 'sem mudança não nasce versão nova');
 
 update documents.template set draft_body = e'Termo fictício de consentimento, versão 2.\nLinha dois.'
 where title = 'TCLE fictício de limpeza';
@@ -123,6 +141,9 @@ select results_eq(
 select is((select body from documents.template_version
            where template_id = pg_temp.modelo('TCLE fictício de limpeza') and version = 1),
           e'Termo fictício de consentimento.\nLinha dois.', 'a versão 1 continua igual e consultável');
+select throws_ok($$ update documents.template set kind = 'consentimento_procedimento'
+                    where title = 'TCLE fictício de limpeza' $$,
+                 'P0001', 'ATTA-IN-0002', 'depois de publicado, o tipo não muda (vira document.type no ATTA Sign)');
 
 -- Colaborador: módulo documents liberado no stub do MIG-06 ------------------------------------------------------
 select pg_temp.entrar('00000000-0000-4000-8000-0000000000d1', 'COLABORADOR');
@@ -168,11 +189,11 @@ select throws_ok($$ select count(*) from documents.template $$, '42501', null, '
 -- imutabilidade da versão, até para o dono ----------------------------------------------------------------------
 select set_config('role', 'postgres', true);   -- anon não executa as funções do teste
 select throws_ok($$ update documents.template_version set body = 'Texto adulterado.' where version = 1 $$,
-                 '55000', 'ATTA-IN-0002', 'versão publicada não muda (RN-DOC-01)');
+                 'P0001', 'ATTA-IN-0002', 'versão publicada não muda (RN-DOC-01)');
 select throws_ok($$ delete from documents.template_version where version = 1 $$,
-                 '55000', 'ATTA-IN-0002', 'versão publicada não sai');
+                 'P0001', 'ATTA-IN-0002', 'versão publicada não sai');
 select throws_ok($$ truncate documents.template_version cascade $$,
-                 '55000', 'ATTA-IN-0002', 'versão publicada não sai por TRUNCATE');
+                 'P0001', 'ATTA-IN-0002', 'versão publicada não sai por TRUNCATE');
 select throws_ok(
   $$ insert into documents.template_version (tenant_id, template_id, version, kind, title, frequency, required, body,
                                              body_sha256, published_by)
@@ -206,11 +227,11 @@ select is((select count(*)::int from documents.template_version
            where template_id = pg_temp.modelo('TCLE fictício de limpeza')), 2,
           'as versões continuam consultáveis depois de inativar');
 select throws_ok($$ update documents.template set draft_body = 'Outro texto.' where title = 'TCLE fictício de limpeza' $$,
-                 '55000', 'ATTA-IN-0002', 'Inativo não aceita edição');
+                 'P0001', 'ATTA-IN-0002', 'Inativo não aceita edição');
 select throws_ok($$ select * from api.template_publish(pg_temp.modelo('TCLE fictício de limpeza')) $$,
-                 '55000', 'ATTA-IN-0002', 'Inativo não publica');
+                 'P0001', 'ATTA-IN-0002', 'Inativo não publica');
 select throws_ok($$ select api.template_deactivate(pg_temp.modelo('TCLE fictício de limpeza')) $$,
-                 '55000', 'ATTA-IN-0002', 'Inativo não inativa de novo');
+                 'P0001', 'ATTA-IN-0002', 'Inativo não inativa de novo');
 
 select pg_temp.dono();
 select is((select count(*)::int from audit.event

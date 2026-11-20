@@ -17,7 +17,10 @@
 -- ---------------------------------------------------------------------------------------------------------------
 -- Normalização do texto ("nfc+lf+trim", ADR 0006 e RFC-0017 do atta-platform): fim de linha CRLF e CR viram LF, a
 -- forma Unicode vira NFC e saem espaço, tabulação e quebra de linha das pontas. É sobre esse texto que se calcula o
--- body_sha256. Um lugar só: a publicação normaliza com ela, e o CHECK da versão confere com ela.
+-- body_sha256. Um lugar só: a publicação normaliza com ela, e o CHECK da versão confere com ela. Contrato na ADR 0002
+-- §7 (o TS do ATTA Sign usa a mesma regra).
+-- O trim tira só [ \t\n], de propósito: NBSP e outros espaços Unicode ficam no texto (o String.trim() do JS e o \s
+-- tiram mais e dariam outro hash). O \r já virou \n antes.
 -- ---------------------------------------------------------------------------------------------------------------
 create function private.normalize_document_body(p_body text)
 returns text
@@ -78,22 +81,26 @@ create index template_tenant_status_idx on documents.template (tenant_id, status
 create trigger template_set_updated_at before update on documents.template
   for each row execute function private.set_updated_at();
 
--- Inativo não aceita edição: não se aplica mais a documento novo (§10.3.1)
-create function private.template_reject_inactive_edit()
+-- Inativo não aceita edição: não se aplica mais a documento novo (§10.3.1). Depois da 1ª publicação, o tipo não muda:
+-- ele vira document.type no payload do ATTA Sign, e um TCLE não pode virar outro tipo de documento na versão seguinte.
+create function private.template_guard_edit()
 returns trigger
 language plpgsql
 set search_path = ''
 as $$
 begin
   if old.status = 'inativo' then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0002', detail = 'template_inactive';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'template_inactive';
+  end if;
+  if old.current_version is not null and new.kind is distinct from old.kind then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'kind_locked';
   end if;
   return new;
 end;
 $$;
-revoke all on function private.template_reject_inactive_edit() from public, anon, authenticated, service_role;
-create trigger template_reject_inactive_edit before update on documents.template
-  for each row execute function private.template_reject_inactive_edit();
+revoke all on function private.template_guard_edit() from public, anon, authenticated, service_role;
+create trigger template_guard_edit before update on documents.template
+  for each row execute function private.template_guard_edit();
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Versão publicada (imutável)
@@ -134,7 +141,7 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  raise exception using errcode = '55000', message = 'ATTA-IN-0002', detail = 'template_version_immutable';
+  raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'template_version_immutable';
 end;
 $$;
 revoke all on function private.reject_template_version_change() from public, anon, authenticated, service_role;
@@ -212,7 +219,7 @@ begin
     raise exception using errcode = '42501', message = 'ATTA-AUTH-0004';
   end if;
   if t.status = 'inativo' then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0002', detail = 'template_inactive';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'template_inactive';
   end if;
 
   v_body := private.normalize_document_body(t.draft_body);
@@ -231,7 +238,7 @@ begin
              where v.template_id = t.id and v.version = t.current_version
                and v.body = v_body and v.title = btrim(t.title) and v.kind = t.kind and v.frequency = t.frequency
                and v.validity_months is not distinct from t.validity_months and v.required = t.required) then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0002', detail = 'unchanged';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'unchanged';
   end if;
 
   v_version := coalesce(t.current_version, 0) + 1;
@@ -275,7 +282,7 @@ begin
     raise exception using errcode = 'P0002', message = 'ATTA-CORE-0005', detail = 'template_id';
   end if;
   if v_status <> 'ativo' then
-    raise exception using errcode = '55000', message = 'ATTA-IN-0002', detail = 'status';
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0002', detail = 'status';
   end if;
 
   update documents.template set status = 'inativo' where id = p_template_id;
