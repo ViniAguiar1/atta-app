@@ -15,10 +15,11 @@ export default function Pagina() {
   return (
     <TelaDoSite>
       <p className="flex items-end leading-none" aria-label="ATTA-in">
-        <span aria-hidden="true" className="font-atta text-6xl medium:text-7xl">
+        {/* a marca grande do artefato: fora da escala de texto (que para em 2.5rem), de propósito */}
+        <span aria-hidden="true" className="font-atta text-[4.25rem] medium:text-[5.25rem]">
           ATTA
         </span>
-        <span aria-hidden="true" className="font-product text-4xl medium:text-5xl">
+        <span aria-hidden="true" className="font-product text-[2.75rem] medium:text-[3.25rem]">
           -in
         </span>
       </p>
