@@ -6,13 +6,15 @@ import { textos } from "../textos";
 // Sem documento vinculado. Os números vêm prontos do banco (agenda_summary), no fuso da clínica: a tela não conta nada.
 // Check-in: cada segmento filtra a lista por aquele estado e, clicado de novo, tira o filtro. Sem documento liga e
 // desliga o filtro. "Agendamentos hoje" abre a visão Concluídos quando ela existir (PR seguinte): até lá não é botão.
+// Pressionado tem desenho próprio (anel interno e peso), diferente do anel de foco. Breakpoints do tema (M3): medium e
+// large; o tema zera os do Tailwind.
 
 export type FiltroDosCards = { tipo: "status"; status: Status } | { tipo: "sem-documento" } | null;
 
 const SEGMENTOS = [
-  { status: "em_preenchimento", campo: "emPreenchimento", cor: "bg-status-info/15 text-text-primary" },
-  { status: "pronto", campo: "pronto", cor: "bg-status-ready text-text-primary" },
-  { status: "em_atendimento", campo: "emAtendimento", cor: "bg-brand text-on-brand" },
+  { status: "em_preenchimento", campo: "emPreenchimento", cor: "bg-status-info/15 text-text-primary", anel: "ring-text-primary" },
+  { status: "pronto", campo: "pronto", cor: "bg-status-ready text-text-primary", anel: "ring-text-primary" },
+  { status: "em_atendimento", campo: "emAtendimento", cor: "bg-brand text-on-brand", anel: "ring-on-brand" },
 ] as const;
 
 /** Altura dos cards (7 rem); o esqueleto do DataState usa a mesma. */
@@ -28,7 +30,7 @@ export function CardsDoResumo({ resumo, filtro, aoFiltrar }: Props) {
   const c = textos.cards;
   const semDocumentoAtivo = filtro?.tipo === "sem-documento";
   return (
-    <section aria-label={c.rotulo} className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_2fr_1fr]">
+    <section aria-label={c.rotulo} className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-[1fr_1fr_2fr_1fr]">
       <Card icone={<IconeCalendario />}>
         <Titulo numero={resumo.hojeFaltam} texto={c.hoje.titulo} />
         <p className="text-sm text-text-secondary">{c.hoje.concluidos(resumo.hojeConcluidos)}</p>
@@ -45,7 +47,7 @@ export function CardsDoResumo({ resumo, filtro, aoFiltrar }: Props) {
       <Card icone={<IconeQr />}>
         <h2 className="text-xs font-medium tracking-wide text-text-secondary uppercase">{c.checkin.titulo}</h2>
         <div className="mt-2 grid grid-cols-3 gap-2">
-          {SEGMENTOS.map(({ status, campo, cor }) => {
+          {SEGMENTOS.map(({ status, campo, cor, anel }) => {
             const n = resumo.checkin[campo];
             const ativo = filtro?.tipo === "status" && filtro.status === status;
             return (
@@ -56,7 +58,7 @@ export function CardsDoResumo({ resumo, filtro, aoFiltrar }: Props) {
                 aria-label={c.checkin.filtrar(textos.status[status], n)}
                 onClick={() => aoFiltrar(ativo ? null : { tipo: "status", status })}
                 className={`flex min-h-14 flex-col items-start justify-center rounded-md px-3 py-2 text-left ${cor} ${
-                  ativo ? "ring-2 ring-focus-ring ring-offset-2" : ""
+                  ativo ? `font-semibold ring-2 ring-inset ${anel}` : ""
                 }`}
               >
                 <span className="font-sub text-xl" aria-hidden="true">
@@ -78,7 +80,7 @@ export function CardsDoResumo({ resumo, filtro, aoFiltrar }: Props) {
           aria-label={c.semDocumento.filtrar(resumo.semDocumento)}
           onClick={() => aoFiltrar(semDocumentoAtivo ? null : { tipo: "sem-documento" })}
           className={`-m-2 flex min-h-11 flex-col items-start rounded-md p-2 text-left ${
-            semDocumentoAtivo ? "ring-2 ring-focus-ring ring-offset-2" : ""
+            semDocumentoAtivo ? "bg-status-negative/10 ring-2 ring-inset ring-status-negative" : ""
           }`}
         >
           <span aria-hidden="true" className="flex items-baseline gap-2">
