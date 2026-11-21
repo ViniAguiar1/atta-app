@@ -5,7 +5,8 @@
 --      mascarado, contato cifrado com o envelope_id, selo de verificação) e só a CONTAGEM de Formulários de Saúde, nunca
 --      o conteúdo. Leitura de dado de outra clínica: vai para a auditoria (patient.lookup, access).
 --   2. api.patient_link_by_cpf: a recepção confirma e a pessoa é vinculada com network_access = 'granted', sem redigitar
---      nada e sem receber id do navegador (o vínculo é pelo mesmo HMAC).
+--      nada e sem receber id do navegador (o vínculo é pelo mesmo HMAC). Devolve status vinculado | nao_encontrado |
+--      ja_paciente, sem raise nos dois últimos, para a tentativa contar no limite.
 -- Limite de tentativas (Segurança, S3-7): a consulta por CPF é um oráculo de existência, e o schema api é exposto ao
 -- navegador, então o limite vale DENTRO das funções, não só na server action: 30 por hora por usuário e 300 por dia por
 -- clínica, no limitador único (api.rate_limit_hit, ADR 0004 §2). A chave aqui é sha256 do id (uuid) do usuário ou da
@@ -107,17 +108,24 @@ begin
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'cpf_hmac';
   end if;
   select p.id into v_person from network.person p where p.cpf_hmac = p_cpf_hmac and p.deleted_at is null;
+  -- fora da rede e já paciente voltam como status, sem raise: o raise desfaria a contagem do limite e o vínculo viraria
+  -- um oráculo de CPF sem limite (Segurança e Backend 4, revisão do #150). Também vão para a auditoria.
   if v_person is null then
-    raise exception using errcode = 'P0002', message = 'ATTA-CORE-0005', detail = 'cpf';
+    perform audit.record_event('patient.link', 'network.person', null, jsonb_build_object('status', 'nao_encontrado'));
+    return jsonb_build_object('status', 'nao_encontrado', 'person_id', null, 'network_access', null);
   end if;
+  -- já vinculado em qualquer acesso (owner, granted ou pending depois de uma revogação): nada muda; pending não volta a
+  -- granted por aqui
   if exists (select 1 from network.person_tenant_link l where l.tenant_id = v_tenant and l.person_id = v_person) then
-    raise exception using errcode = '23505', message = 'ATTA-IN-0002', detail = 'cpf';   -- já cadastrado aqui
+    perform audit.record_event('patient.link', 'network.person', v_person, jsonb_build_object('status', 'ja_paciente'));
+    return jsonb_build_object('status', 'ja_paciente', 'person_id', v_person, 'network_access', null);
   end if;
   -- confirmar o cadastro existente é a autorização de acesso (PDD §10.1): granted, sem campos locais
   insert into network.person_tenant_link (tenant_id, person_id, origin, network_access)
   values (v_tenant, v_person, 'recepcao', 'granted');
-  perform audit.record_event('patient.link', 'network.person', v_person, jsonb_build_object('network_access', 'granted'));
-  return jsonb_build_object('person_id', v_person, 'network_access', 'granted');
+  perform audit.record_event('patient.link', 'network.person', v_person,
+    jsonb_build_object('status', 'vinculado', 'network_access', 'granted'));
+  return jsonb_build_object('status', 'vinculado', 'person_id', v_person, 'network_access', 'granted');
 end;
 $$;
 

@@ -1,10 +1,11 @@
 -- MIG-12d: CPF já na rede no Novo paciente (PDD §10.1): consulta e vínculo pelo HMAC, auditoria e limite. Dados fictícios.
 begin;
-select plan(22);
+select plan(26);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
-  ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
+  ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B'),
+  ('00000000-0000-4000-8000-00000000000c', 'Clínica Fictícia C');
 
 create function pg_temp.entrar(p_tenant uuid, p_role text) returns void language plpgsql as $$
 declare
@@ -35,6 +36,9 @@ create function pg_temp.lotar_clinica(p_tenant uuid) returns void language sql s
   values ('patient.cpf.tenant', extensions.digest('atta.ratelimit.v1|patient.cpf.tenant|' || p_tenant::text, 'sha256'),
           to_timestamp(floor(extract(epoch from clock_timestamp()) / 86400) * 86400), 300)
   on conflict (bucket, key_hash, window_start) do update set hits = 300
+$$;
+create function pg_temp.acesso(p_tenant uuid) returns text language sql security definer as $$
+  select network_access from network.person_tenant_link where tenant_id = p_tenant
 $$;
 create function pg_temp.nome_local(p_tenant uuid) returns text language sql security definer as $$
   select local_full_name from network.person_tenant_link where tenant_id = p_tenant
@@ -87,7 +91,8 @@ select throws_ok($$ select api.patient_lookup_by_cpf('\x01'::bytea) $$, 'P0001',
                  'HMAC fora do tamanho: recusado');
 
 -- confirmar e vincular
-select is(api.patient_link_by_cpf(sha256('52998224725'::bytea)) ->> 'network_access', 'granted',
+select is(api.patient_link_by_cpf(sha256('52998224725'::bytea)),
+          '{"status": "vinculado", "person_id": "00000000-0000-4000-8000-0000000000e1", "network_access": "granted"}'::jsonb,
           'confirmar vincula com network_access = granted');
 select results_eq($$ select person_id, display_name, network_access, phone_enc, is_verified from api.patient_list() $$,
                   $$ values ('00000000-0000-4000-8000-0000000000e1'::uuid, 'Mari Fictícia'::text, 'granted'::text,
@@ -95,10 +100,23 @@ select results_eq($$ select person_id, display_name, network_access, phone_enc, 
                   'na B, o paciente aparece com o dado da rede, o contato e o selo, sem redigitar');
 select is(pg_temp.nome_local('00000000-0000-4000-8000-00000000000b'), null, 'sem campos locais');
 select is(pg_temp.eventos('patient.link', '00000000-0000-4000-8000-00000000000b'), 1, 'o vínculo vai para a auditoria');
-select throws_ok($$ select api.patient_link_by_cpf(sha256('52998224725'::bytea)) $$, '23505', 'ATTA-IN-0002',
-                 'vincular de novo: já é paciente');
-select throws_ok($$ select api.patient_link_by_cpf(sha256('11144477735'::bytea)) $$, 'P0002', 'ATTA-CORE-0005',
-                 'CPF que não está na rede: nada a vincular');
+select is(api.patient_link_by_cpf(sha256('52998224725'::bytea)) ->> 'status', 'ja_paciente',
+          'vincular de novo: status ja_paciente, sem raise (a tentativa conta no limite)');
+select is(api.patient_link_by_cpf(sha256('11144477735'::bytea)),
+          '{"status": "nao_encontrado", "person_id": null, "network_access": null}'::jsonb,
+          'CPF que não está na rede: status nao_encontrado, sem raise');
+
+-- clínica com vínculo pending (o register de hoje ainda cria pending; depois, só após uma revogação): não recebe o
+-- cartão da rede nem volta a granted pelo vínculo (Segurança, revisão do #150)
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000c', 'ADMIN');
+select api.patient_register(gen_random_uuid(), 'Nome Local da C', null, date '2001-01-01',
+  sha256('52998224725'::bytea), '···.···.247-25', '\x01aa'::bytea,
+  p_phone_enc => '\x01ff', p_dek_wrapped => '\x01cc', p_kek_version => 1::smallint);
+select ok((select r ->> 'status' = 'ja_paciente' and r -> 'card' = 'null'::jsonb
+           from (select api.patient_lookup_by_cpf(sha256('52998224725'::bytea)) r) x),
+          'pending: a consulta diz ja_paciente e não traz o cartão da rede');
+select is(api.patient_link_by_cpf(sha256('52998224725'::bytea)) ->> 'status', 'ja_paciente', 'pending: o vínculo não muda nada');
+select is(pg_temp.acesso('00000000-0000-4000-8000-00000000000c'), 'pending', 'pending continua pending (não vira granted)');
 
 -- sem clínica no token: recusado
 select pg_temp.entrar(null, null);
@@ -114,6 +132,14 @@ do $$ begin
 end $$;
 select throws_ok($$ select api.patient_lookup_by_cpf(sha256('52998224725'::bytea)) $$, '54000', 'ATTA-IN-0003',
                  'passou de 30 por hora por usuário: LIMITE');
+
+-- o vínculo também conta: 30 vínculos com CPF que não existe esgotam o balde do usuário (sem raise, nada se desfaz)
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
+do $$ begin
+  for i in 1..30 loop perform api.patient_link_by_cpf(sha256(('inexistente-' || i)::bytea)); end loop;
+end $$;
+select throws_ok($$ select api.patient_link_by_cpf(sha256('inexistente-31'::bytea)) $$, '54000', 'ATTA-IN-0003',
+                 'o 31º vínculo com CPF inexistente: LIMITE (o vínculo não é oráculo sem limite)');
 
 -- limite por clínica: 300 por dia, vale para qualquer usuário da clínica
 select pg_temp.lotar_clinica('00000000-0000-4000-8000-00000000000b');

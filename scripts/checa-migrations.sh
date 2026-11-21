@@ -21,7 +21,8 @@ head="${2:-HEAD}"
 erro=0
 
 # códigos SQLSTATE que o src/lib/errors traduz (ADR 0001 §5) e os nomes de condição equivalentes
-CODIGOS_OK="P0001 P0002 42501 23505 23514 23502 23503 22023 40001"
+# espelha o src/lib/errors.ts (Tech Lead, ADR 0001 §5): 54000 e 53400 são o código de limite de tentativas (LIMITE)
+CODIGOS_OK="P0001 P0002 42501 23505 23514 23502 23503 22023 40001 54000 53400"
 NOMES_OK="raise_exception no_data_found insufficient_privilege unique_violation check_violation not_null_violation foreign_key_violation invalid_parameter_value serialization_failure"
 NIVEIS="exception notice warning info log debug using sqlstate"
 
