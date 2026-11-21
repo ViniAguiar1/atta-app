@@ -1,6 +1,6 @@
 import "server-only";
 import { falha, ok } from "@/lib/errors";
-import { cnpjValido } from "@/lib/brasil/documentos";
+import { cnpjValido, emailValido } from "@/lib/brasil/documentos";
 import type { PerfilDaClinica, PortaPerfil } from "./porta";
 
 // Perfil simulado, para a tela andar antes do backend e para a prova contra a captura 42. Só dado fictício: a clínica
@@ -41,6 +41,7 @@ export const portaPerfilSimulada: PortaPerfil = {
       return falha("CONFLITO", "Campo protegido.", undefined, "ATTA-IN-0003:protected_field");
     }
     if (campo === "cnpj" && (!valor || !cnpjValido(valor))) return falha("VALIDACAO", "CNPJ inválido.", [{ campo, code: "VALIDACAO" }]);
+    if (campo === "commercial_email" && valor && !emailValido(valor)) return falha("VALIDACAO", "E-mail inválido.", [{ campo, code: "VALIDACAO" }]);
     return ok({ salvoEm: new Date().toISOString() });
   },
 };
