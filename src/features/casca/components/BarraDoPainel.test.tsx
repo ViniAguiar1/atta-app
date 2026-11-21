@@ -75,9 +75,9 @@ describe("barra do painel (MIG-40)", () => {
     }
   });
 
-  it("Colaborador não vê Métricas nem Configurações", () => {
-    render(<BarraDoPainel sessao={{ ...sessao, papel: "COLABORADOR" }} />);
-    expect(modulos().getAllByRole("link").map((l) => l.textContent)).toEqual(["Agendamentos", "Pacientes", "Termos & Docs", "ATTA"]);
+  it("Colaborador com o padrão do PDD não vê Termos & Docs, Métricas nem Configurações (§10.4.3)", () => {
+    render(<BarraDoPainel sessao={{ ...sessao, papel: "COLABORADOR", permissoes: ["appointments.view", "patients.view", "atta.view"] }} />);
+    expect(modulos().getAllByRole("link").map((l) => l.textContent)).toEqual(["Agendamentos", "Pacientes", "ATTA"]);
   });
 
   it("o monograma alterna a barra entre escura e clara, com o rótulo da próxima ação", async () => {

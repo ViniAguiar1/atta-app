@@ -77,6 +77,17 @@ describe("sem resultado", () => {
   });
 });
 
+describe("sem acesso (S2 da QA no stage, 21/11)", () => {
+  it("SEM_PERMISSAO do banco vira o \"sem acesso\": sem alerta, sem código técnico e sem \"tentar de novo\"", () => {
+    const { container } = desenhar(erro("SEM_PERMISSAO"));
+    expect(estadoDeDados(container)).toBe("sem-acesso");
+    expect(screen.getByRole("status").textContent).toContain(textos.semAcesso.titulo);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(container.textContent).not.toContain("SEM_PERMISSAO");
+    expect(screen.queryByRole("button", { name: textos.erro.acao })).toBeNull();
+  });
+});
+
 describe("erro", () => {
   it("é um alerta com tentar de novo e o código para o suporte", () => {
     const estado = erro("3f2a9c");
