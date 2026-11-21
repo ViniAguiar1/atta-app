@@ -112,8 +112,9 @@ create function pg_temp.linha(p_id uuid) returns table (status text, reopened_at
 language sql security definer as $$
   select status, reopened_at from atta_in.appointment where id = p_id
 $$;
-create function pg_temp.ultima_transicao(p_id uuid) returns table (reason text) language sql security definer as $$
-  select reason from atta_in.appointment_transition where appointment_id = p_id order by at desc, id desc limit 1
+create function pg_temp.transicao_reabrir(p_id uuid) returns table (reason text) language sql security definer as $$
+  -- a transição da reabertura (todas têm o mesmo "at" dentro da transação do teste: não dá para ordenar por ele)
+  select reason from atta_in.appointment_transition where appointment_id = p_id and to_status = 'agendado'
 $$;
 create function pg_temp.checkin(p_id uuid) returns void language sql security definer as $$
   select atta_in.apply_transition(p_id, '00000000-0000-4000-8000-00000000000a', 'em_preenchimento');
@@ -230,7 +231,7 @@ select lives_ok($$ select atta_in.transition_appointment('00000000-0000-4000-800
                                                         'paciente_chegou_atrasado') $$,
                 'Reabrir preenchimento de um Ausente, com motivo da lista (§10.2.2)');
 select ok((select status = 'agendado' and reopened_at is not null from pg_temp.linha('00000000-0000-4000-8000-00000000a001'))
-          and (select reason = 'paciente_chegou_atrasado' from pg_temp.ultima_transicao('00000000-0000-4000-8000-00000000a001')),
+          and (select reason = 'paciente_chegou_atrasado' from pg_temp.transicao_reabrir('00000000-0000-4000-8000-00000000a001')),
           'volta para Agendado, marcado como reaberto, com o motivo na transição');
 select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a002', 'agendado',
                                                          'ausente_por_engano') $$,
