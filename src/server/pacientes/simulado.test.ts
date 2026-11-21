@@ -25,11 +25,11 @@ describe("porta de Pacientes simulada (MIG-43)", () => {
     expect(ultima.ok && ultima.data.proxima).toBe(null);
   });
 
-  it("a linha não carrega o CPF em claro nem os dados da Pasta", async () => {
+  it("a linha não carrega o CPF em claro nem a origem e o acesso, que ficam na Pasta", async () => {
     const r = await criarPortaSimulada().listar();
     const texto = JSON.stringify(r);
     expect(texto).not.toContain("52998224725");
-    expect(texto).not.toMatch(/selo|origem|acessoARede/);
+    expect(texto).not.toMatch(/origem|acessoARede|vinculadoEm/); // o selo entra na linha (simulador); origem e acesso, só na Pasta
   });
 
   it("busca por CPF inteiro (com ou sem pontuação) ou por parte do nome sem acento; termo curto é VALIDACAO", async () => {

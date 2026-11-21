@@ -12,14 +12,11 @@ const juliana: LinhaDePaciente = {
   nome: "Juliana Prates",
   usaNomeSocial: false,
   incompleto: false,
+  selo: "com_selo",
   identificacao: { tipo: "cpf", mascarado: "···.···.247-25" },
   nascimento: "1990-09-17",
-  contato: { celular: "(11) 98765-4321", email: "juliana.prates@exemplo.test" },
-  ultimoAtendimento: { em: "2026-11-20T11:00", procedimento: "Bioestimulador de colágeno", profissional: "Dra. Helena Prado" },
-  documentos: [
-    { nome: "Consentimento: bioestimulador", marca: "assinado" },
-    { nome: "Autorização de uso de imagem", marca: "recusado" },
-  ],
+  contato: { celular: "(11) ·····-4321", email: "ju···@exemplo.test" },
+  atendimento: { tipo: "ultimo", em: "2026-11-20T11:00", procedimento: "Bioestimulador de colágeno", profissional: "Dra. Helena Prado" },
 };
 const carla: LinhaDePaciente = {
   ...juliana,
@@ -28,10 +25,10 @@ const carla: LinhaDePaciente = {
   usaNomeSocial: true,
   incompleto: true,
   identificacao: { tipo: "incompleto" },
+  selo: null,
   nascimento: null,
   contato: null,
-  ultimoAtendimento: null,
-  documentos: [],
+  atendimento: null,
 };
 
 const pagina = (itens: LinhaDePaciente[], extra: Partial<PaginaDePacientes> = {}): Resultado<PaginaDePacientes> =>
@@ -44,12 +41,11 @@ const montar = (props: Partial<React.ComponentProps<typeof ListaDePacientes>> = 
   return { ...r, listar: props.listar ?? listar, buscar: props.buscar ?? buscar };
 };
 
-describe("lista de Pacientes (MIG-43; PDD §10, Pacientes, lista)", () => {
-  it("as 5 colunas do PDD, sem selo nem origem", () => {
+describe("lista de Pacientes (MIG-43; simulador, capturas 09 a 11)", () => {
+  it("as 4 colunas do simulador", () => {
     montar();
     const titulos = screen.getAllByRole("columnheader").map((c) => c.textContent);
-    expect(titulos).toEqual(["Paciente", "Identificação", "Contato", "Último atendimento", "Documentos"]);
-    expect(screen.queryByText(/selo/i)).not.toBeInTheDocument();
+    expect(titulos).toEqual(["Paciente", "Identificação", "Contato", "Atendimento"]);
   });
 
   it("cada célula no formato do simulador", () => {
@@ -58,19 +54,21 @@ describe("lista de Pacientes (MIG-43; PDD §10, Pacientes, lista)", () => {
     expect(linha.getByText("CPF terminado em 247-25")).toHaveClass("sr-only");
     expect(linha.getByText("···.···.247-25")).toHaveAttribute("aria-hidden", "true");
     expect(linha.getByText("Nasc. 17/09/1990")).toBeInTheDocument();
-    expect(linha.getByText("(11) 98765-4321")).toBeInTheDocument();
-    expect(linha.getByText("20/11/2026 às 11:00")).toBeInTheDocument();
+    expect(linha.getByText("(11) ·····-4321")).toBeInTheDocument();
+    expect(linha.getByText("Com selo")).toBeInTheDocument();
+    expect(linha.getByText("Último atendimento")).toBeInTheDocument();
+    expect(linha.getByText("20/11/2026 às 11:00")).toHaveClass("font-semibold");
     expect(linha.getByText("Bioestimulador de colágeno · Dra. Helena Prado")).toBeInTheDocument();
-    expect(linha.getByText(/Autorização de uso de imagem/)).toHaveTextContent("Autorização de uso de imagem, recusado");
   });
 
-  it("sem dado: Incompleto, nome social, Sem documento, Sem celular, Sem e-mail, Nenhum atendimento aqui e Nenhum documento", () => {
+  it("sem dado: Incompleto, nome social, Sem documento, Sem celular, Sem e-mail e Nenhum atendimento aqui", () => {
     montar();
     const linha = within(screen.getByRole("row", { name: /Carla Siqueira/ }));
     expect(linha.getByText("Incompleto")).toBeInTheDocument();
     expect(linha.getByRole("rowheader")).toHaveTextContent("Carla Siqueira*, usa nome social");
     expect(linha.getByText("Nascimento não informado")).toHaveClass("sr-only");
-    for (const t of ["Sem documento", "Sem celular", "Sem e-mail", "Nenhum atendimento aqui", "Nenhum documento"]) {
+    expect(linha.queryByText("Com selo")).toBeNull();
+    for (const t of ["Sem documento", "Sem celular", "Sem e-mail", "Nenhum atendimento aqui"]) {
       expect(linha.getByText(t)).toBeInTheDocument();
     }
   });
