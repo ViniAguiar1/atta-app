@@ -87,7 +87,7 @@ export function BarraDoPainel({ sessao, acaoSair, contadores = {} }: Props) {
                 <Link
                   href={aba.href}
                   aria-current={atual ? "page" : undefined}
-                  className={`flex min-h-11 items-center gap-2 rounded-md px-3.5 large:h-full large:rounded-b-none ${aba.marca ? "font-atta text-[0.75rem]" : "text-[0.875rem]"} ${atual ? abaAtivaCls : abaInativa}`}
+                  className={`flex min-h-11 items-center gap-2 rounded-md px-3.5 large:h-full large:rounded-b-none ${aba.marca ? "font-atta text-xs" : "text-sm"} ${atual ? abaAtivaCls : abaInativa}`}
                 >
                   {aba.rotulo}
                   {contador ? (
@@ -168,7 +168,7 @@ function MenuDaPessoa({ nome, clara, acaoSair }: { nome: string; clara: boolean;
         </span>
         {/* o nome, como no simulador, a partir de large; o rótulo do botão ("Menu de …") já o contém (WCAG 2.5.3) */}
         {nome && (
-          <span aria-hidden="true" className="hidden max-w-48 truncate text-[0.8125rem] font-semibold large:inline">
+          <span aria-hidden="true" className="hidden max-w-48 truncate text-corpo font-semibold large:inline">
             {nome}
           </span>
         )}
