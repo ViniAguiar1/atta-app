@@ -29,7 +29,7 @@ export function ModelosDeDocumento({ resultado }: { resultado: Resultado<MeusMod
         <TabelaDeModelos modelos={visiveis} />
       </DataState>
       {resultado.ok && visiveis.length > 0 && (
-        <p className="text-[0.8125rem] text-text-secondary">{textos.rodape(visiveis.length, resultado.data.modelos.length)}</p>
+        <p className="text-corpo text-text-secondary">{textos.rodape(visiveis.length, resultado.data.modelos.length)}</p>
       )}
     </div>
   );
