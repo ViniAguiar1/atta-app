@@ -11,32 +11,37 @@ import { ACOES, CONFIRMACOES, ESTADOS_DO_DOCUMENTO, STATUS, TIPOS, type LinhaDaA
 
 const dataHora = z.iso.datetime({ offset: true });
 
-export const linhaDoBanco = z
-  .object({
-    id: z.uuid(),
-    starts_at: dataHora,
-    duration_min: z.number().int().positive(),
-    appointment_type: z.enum(TIPOS),
-    modality: z.enum(["presencial", "online"]),
-    patient: z.object({
-      person_id: z.uuid().nullable(),
-      provisional_patient_id: z.uuid().nullable(),
-      display_name: z.string().min(1),
-      cpf_masked: z.string().nullable(),
-    }),
-    services: z.array(z.object({ id: z.uuid(), name: z.string().min(1) })),
-    professional: z.object({ link_id: z.uuid(), display_name: z.string().min(1) }),
-    documents: z.array(
-      z.object({ id: z.uuid(), name: z.string().min(1), optional: z.boolean(), state: z.enum(ESTADOS_DO_DOCUMENTO) }),
-    ),
-    status: z.enum(STATUS),
-    late: z.boolean(),
-    confirmation: z.enum(CONFIRMACOES),
-    boarding_check_sent_at: dataHora.nullable(),
-    allowed_actions: z.array(z.object({ action: z.enum(ACOES), disabled_reason: z.string().nullish() })),
-  })
-  // exatamente um dos dois ids do paciente (ADR 0005 §4)
-  .refine((l) => (l.patient.person_id === null) !== (l.patient.provisional_patient_id === null));
+/** A linha do banco sem o refine, para quem precisa estender com campos a mais (a Pasta, pelo
+ *  api.patient_folder_appointments): no Zod 4, um schema com .refine não aceita .extend(). Reaplique o refine. */
+export const linhaDoBancoBase = z.object({
+  id: z.uuid(),
+  starts_at: dataHora,
+  duration_min: z.number().int().positive(),
+  appointment_type: z.enum(TIPOS),
+  modality: z.enum(["presencial", "online"]),
+  patient: z.object({
+    person_id: z.uuid().nullable(),
+    provisional_patient_id: z.uuid().nullable(),
+    display_name: z.string().min(1),
+    cpf_masked: z.string().nullable(),
+  }),
+  services: z.array(z.object({ id: z.uuid(), name: z.string().min(1) })),
+  professional: z.object({ link_id: z.uuid(), display_name: z.string().min(1) }),
+  documents: z.array(
+    z.object({ id: z.uuid(), name: z.string().min(1), optional: z.boolean(), state: z.enum(ESTADOS_DO_DOCUMENTO) }),
+  ),
+  status: z.enum(STATUS),
+  late: z.boolean(),
+  confirmation: z.enum(CONFIRMACOES),
+  boarding_check_sent_at: dataHora.nullable(),
+  allowed_actions: z.array(z.object({ action: z.enum(ACOES), disabled_reason: z.string().nullish() })),
+});
+
+/** Exatamente um dos dois ids do paciente (ADR 0005 §4). */
+export const umIdDoPaciente = (l: { patient: { person_id: string | null; provisional_patient_id: string | null } }) =>
+  (l.patient.person_id === null) !== (l.patient.provisional_patient_id === null);
+
+export const linhaDoBanco = linhaDoBancoBase.refine(umIdDoPaciente);
 
 export function linhaDaTela(l: z.infer<typeof linhaDoBanco>): LinhaDaAgenda {
   const provisorio = l.patient.provisional_patient_id;

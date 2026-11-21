@@ -99,7 +99,7 @@ function Linha({
   return (
     <tr data-linha={linha.id} className="h-16 border-b border-border last:border-b-0">
       {data !== null && <td className="px-4 py-3 whitespace-nowrap text-text-secondary">{data}</td>}
-      <td className="px-4 py-3 font-sub text-[1.0625rem] font-semibold whitespace-nowrap">{horario(linha.inicio, fuso)}</td>
+      <td className="px-4 py-3 font-sub text-horario font-semibold whitespace-nowrap">{horario(linha.inicio, fuso)}</td>
       <th scope="row" className="px-4 py-3 font-normal">
         <span className="flex items-center gap-3">
           <span

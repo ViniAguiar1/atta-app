@@ -88,9 +88,9 @@ export const filtroDosConcluidosSchema = z.object({
 });
 export type FiltroDosConcluidos = z.infer<typeof filtroDosConcluidosSchema>;
 
-/** Cards do topo (§10.2.2). Sempre contam o dia de hoje, menos a Confirmação (agendamentos futuros). */
 /** Total do card: número do banco, ou null quando ainda não existe (porta vazia): a tela mostra "—". */
 const total = z.number().int().nonnegative().nullable();
+/** Cards do topo (§10.2.2). Sempre contam o dia de hoje, menos a Confirmação (agendamentos futuros). */
 export const resumoSchema = z.object({
   hojeFaltam: total,
   hojeConcluidos: total,
