@@ -12,9 +12,10 @@
 -- Nomes de clínica e de pessoa sem termo de ambiente: aparecem na tela, como na produção.
 -- Os ids começam em eeee para não cruzar com os dos testes pgTAP.
 -- ---------------------------------------------------------------------------------------------------------------
-insert into platform.tenant (id, name) values
-  ('eeee0000-0000-4000-8000-000000000001', 'Clínica Alfa Estética'),
-  ('eeee0000-0000-4000-8000-000000000002', 'Clínica Beta Dermatologia');
+-- Razão social e CNPJ fictícios (CNPJ gerado, dígitos verificadores válidos), para o Termo de Autorização (MIG-02).
+insert into platform.tenant (id, name, legal_name, cnpj) values
+  ('eeee0000-0000-4000-8000-000000000001', 'Clínica Alfa Estética', 'Alfa Serviços de Estética Ltda.', '63049587000143'),
+  ('eeee0000-0000-4000-8000-000000000002', 'Clínica Beta Dermatologia', 'Beta Clínica Dermatológica Ltda.', '74150698000168');
 
 with pessoa (id, email, nome) as (
   values
