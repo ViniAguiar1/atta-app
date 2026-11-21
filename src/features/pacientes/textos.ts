@@ -43,6 +43,31 @@ export const textos = {
       atendimentosHoje: "Atendimentos hoje", termosAssinados: "Termos assinados", pendencias: "Pendências", // simulador, captura 12
       completo: "Completo", // simulador, captura 12
     },
+    vinculos: {
+      titulo: "Vínculos e consentimentos", subtitulo: "Origem do cadastro, portabilidade e responsável", // simulador, captura 13
+      origem: "Origem do cadastro", termoAtta: "Consentimento do Termo ATTA", responsavel: "Responsável / representante", // simulador, captura 13
+      saude: "Respostas de saúde", // simulador, captura 13
+      soContagem: "só a contagem", // simulador, captura 13 (o conteúdo nunca aparece)
+      recepcao: (em: string) => `Cadastrado nesta clínica em ${dataDoInstante(em)}`, // simulador, captura 13
+      vinculado: (em: string) => `Vinculado a esta clínica em ${dataDoInstante(em)}`, // simulador, captura 13 (veio da rede)
+      importacao: (em: string) => `Importado da base da clínica em ${dataDoInstante(em)}`, // provisório (origem "importação", PDD §10.1)
+      pendente: "A clínica vê só o que digitou até o paciente autorizar o compartilhamento dos dados da rede.", // provisório (portabilidade)
+      conflito: "Qual dado vale quando há conflito", // simulador, captura 13
+      // provisório: RN-PAC-03 dita em linguagem da tela, sem o código da regra (PDD §10 proíbe referência a regra)
+      conflitoTexto: "Vale o dado mais recente. Na mesma data e hora, vale o do ATTA me, que o próprio paciente mantém. Toda alteração fica registrada com autor, origem e justificativa.",
+    },
+    arquivo: {
+      arquivar: "Arquivar paciente", // simulador, captura 12 (rótulo do botão)
+      desarquivar: "Desarquivar", // provisório
+      confirmarTitulo: "Arquivar paciente?", // provisório
+      // provisório (PLANO, decisão do dono de 20/11)
+      confirmarTexto: "O paciente sai da lista e da busca desta clínica e não pode ser agendado até ser desarquivado. A rede ATTA e os documentos não mudam.",
+      cancelar: "Cancelar", // simulador (padrão dos modais)
+      confirmar: "Arquivar", // provisório
+      arquivado: (em: string) => `Paciente arquivado em ${dataDoInstante(em)}. Não aparece na lista nem pode ser agendado até ser desarquivado.`, // provisório
+      emAberto: "Cancele ou conclua os agendamentos antes de arquivar.", // provisório da PO (PLANO e patient_set_archived)
+      erro: "Não foi possível concluir agora. Tente de novo.", // provisório
+    },
     registro: {
       titulo: "Registro e métricas", // simulador, captura 12
       texto: "Abrir a pasta é leitura de dado pessoal e fica na Auditoria.", // simulador, captura 12

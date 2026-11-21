@@ -81,7 +81,7 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     expect(dialogo).toHaveTextContent("(11) ·····-5566 · ma···@exemplo.test");
     expect(dialogo).toHaveTextContent("Respostas de saúde: 2 na rede · só a contagem");
     expect(within(dialogo).getByText("Já existe na rede")).toBeInTheDocument();
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Cadastrar paciente" }));
+    await userEvent.click(await within(dialogo).findByRole("button", { name: "Cadastrar paciente" }));
     await waitFor(() => expect(acoes.vincular).toHaveBeenCalledWith({ cpf: "112.223.330-23" }));
     expect(refresh).toHaveBeenCalled();
     expect(acoes.cadastrar).not.toHaveBeenCalled();
@@ -105,13 +105,13 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     const dialogo = await abrir();
     await buscarCpf(dialogo);
     expect(await within(dialogo).findByText("Consulta interna: este CPF ainda não existe na base ATTA.")).toBeInTheDocument();
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Cadastrar paciente" }));
+    await userEvent.click(await within(dialogo).findByRole("button", { name: "Cadastrar paciente" }));
     expect(within(dialogo).getByLabelText("Nome civil")).toHaveAttribute("aria-invalid", "true");
     expect(acoes.cadastrar).not.toHaveBeenCalled();
     await userEvent.type(within(dialogo).getByLabelText("Nome civil"), "Lucas Pereira");
     await userEvent.type(within(dialogo).getByLabelText("Data de nascimento"), "12/04/1991");
     await userEvent.type(within(dialogo).getByLabelText("Celular"), "(11) 98765-5566");
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Cadastrar paciente" }));
+    await userEvent.click(await within(dialogo).findByRole("button", { name: "Cadastrar paciente" }));
     await waitFor(() =>
       expect(acoes.cadastrar).toHaveBeenCalledWith({
         documento: { tipo: "cpf", numero: "112.223.330-23" }, nomeCivil: "Lucas Pereira", nomeSocial: "",
@@ -130,7 +130,7 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     await userEvent.type(within(dialogo).getByLabelText("Nome civil"), "Lucas Pereira");
     await userEvent.type(within(dialogo).getByLabelText("Data de nascimento"), "12/04/1991");
     await userEvent.type(within(dialogo).getByLabelText("Celular"), "11987655566");
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Cadastrar paciente" }));
+    await userEvent.click(await within(dialogo).findByRole("button", { name: "Cadastrar paciente" }));
     await waitFor(() => expect(acoes.cadastrar).toHaveBeenCalledWith(expect.objectContaining({ documento: { tipo: "estrangeiro", especie: "rne", numero: "V123456A" } })));
     expect(acoes.consultar).not.toHaveBeenCalled();
   });
@@ -153,7 +153,7 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     await userEvent.type(within(dialogo).getByLabelText("Nome civil"), "Lucas Pereira");
     await userEvent.type(within(dialogo).getByLabelText("Data de nascimento"), "12/04/1991");
     await userEvent.type(within(dialogo).getByLabelText("Celular"), "11987655566");
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Cadastrar paciente" }));
+    await userEvent.click(await within(dialogo).findByRole("button", { name: "Cadastrar paciente" }));
     expect(await within(dialogo).findByText(/Este CPF entrou na rede enquanto o cadastro era feito/)).toBeInTheDocument();
     expect(await within(dialogo).findByText("Não é possível criar outro cadastro.")).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -164,7 +164,7 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     const dialogo = await abrir();
     await buscarCpf(dialogo);
     await within(dialogo).findByText("Consulta interna: este CPF ainda não existe na base ATTA.");
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Cadastrar paciente" }));
+    await userEvent.click(await within(dialogo).findByRole("button", { name: "Cadastrar paciente" }));
     await waitFor(() => expect(within(dialogo).getByLabelText("Nome civil")).toHaveFocus());
   });
 

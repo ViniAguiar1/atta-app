@@ -77,6 +77,8 @@ export type FichaDoPaciente = {
   selo: { validoAte: string } | null;
   /** Selo que venceu (vale 1 ano; RN-PAC-06): a data em que expirou, para a Pasta dizer "Selo expirado em …"; null sem. */
   seloExpirouEm: string | null;
+  /** Arquivado nesta clínica (só o vínculo; a rede e os documentos não mudam): a data, ou null. */
+  arquivadoEm: string | null;
   origem: OrigemDoCadastro;
   vinculadoEm: string;
   /** pendente: a clínica vê só o que ela digitou, até o titular autorizar a portabilidade. */
@@ -154,6 +156,12 @@ export type PortaPacientes = {
   cadastrar(dados: DadosDoCadastro): Promise<Resultado<{ id: string; reaproveitado: boolean }>>;
   /** VALIDACAO: sem justificativa (RN-PAC-03). */
   atualizar(id: string, mudanca: MudancaDoCadastro, justificativa: string): Promise<Resultado<{ salvoEm: string }>>;
+  /**
+   * Arquiva ou desarquiva o paciente nesta clínica (PLANO, decisão do dono de 20/11: só o gestor, na Pasta). SEM_PERMISSAO:
+   * não é ADMIN. CONFLITO com reason "ATTA-IN-0003:appointments": há agendamento em aberto; "ATTA-IN-0003:archived": já
+   * estava assim.
+   */
+  arquivar(id: string, arquivado: boolean): Promise<Resultado<{ arquivado: boolean }>>;
   /** A clínica só reporta; quem investiga é a ATTA, e nada bloqueia o atendimento (RN-PAC-08). */
   reportarDivergencia(id: string, motivo: MotivoDeDivergencia): Promise<Resultado<{ protocolo: string }>>;
   /**

@@ -67,6 +67,7 @@ const fichaSchema = z.object({
   is_verified: z.boolean(),
   verified_until: z.string().nullable(),
   origin: z.enum(["recepcao", "atta_me", "importacao"]),
+  archived_at: z.string().nullable().optional(),
 });
 
 type ArgsDoCadastro = Database["api"]["Functions"]["patient_register"]["Args"];
@@ -235,6 +236,7 @@ export const portaPacientesReal: PortaPacientes = {
         contato: contato.celular || contato.email ? { celular: celularParaTela(contato.celular), email: contato.email } : null,
         selo: f.is_verified && f.verified_until ? { validoAte: f.verified_until } : null,
         seloExpirouEm: !f.is_verified && f.verified_until ? f.verified_until : null,
+        arquivadoEm: f.archived_at ?? null,
         origem: f.origin,
         vinculadoEm: f.linked_at,
         acessoARede: f.network_access === "pending" ? "pendente" : f.network_access === "granted" ? "autorizado" : "proprio",
@@ -375,6 +377,14 @@ export const portaPacientesReal: PortaPacientes = {
     if (error) return falhaDoBanco(error);
     const lido = z.object({ status: z.literal("recebido") }).safeParse(data);
     return lido.success ? ok({ recebido: true as const }) : malFormado("pacientes.reporte_fora_do_formato");
+  },
+
+  async arquivar(id, arquivado) {
+    const { api } = await contexto();
+    const { data, error } = await api.rpc("patient_set_archived", { p_person_id: id, p_archived: arquivado });
+    if (error) return falhaDoBanco(error);
+    const lido = z.object({ person_id: z.uuid(), archived: z.boolean() }).safeParse(data);
+    return lido.success ? ok({ arquivado: lido.data.archived }) : malFormado("pacientes.arquivo_fora_do_formato");
   },
 
   async reportarDivergencia(id, motivo) {
