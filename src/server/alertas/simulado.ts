@@ -26,6 +26,7 @@ const mascararEmail = (email: string) => {
 };
 const recusa = () => falha("VALIDACAO", "Destino inválido.", [{ campo: "address", code: "VALIDACAO" }], "ATTA-IN-0001:address");
 const semDestino = () => falha("CONFLITO", "Canal sem destino.", undefined, "ATTA-IN-0003:address");
+const canalDesligado = () => falha("CONFLITO", "Canal desligado.", undefined, "ATTA-IN-0003:estado");
 
 
 export const portaAlertasSimulada: PortaAlertas = {
@@ -38,6 +39,8 @@ export const portaAlertasSimulada: PortaAlertas = {
   },
   async alterarCanal(canal, destino, ativar) {
     const estado = inicial();
+    // como o banco (TL, 21/11): endereço novo com o canal desligado só vale ligando junto
+    if (!estado[canal].ativo && !ativar) return canalDesligado();
     if (canal === "email") {
       if (!EMAIL.test(destino.trim())) return recusa();
       estado.email.destinoMascarado = mascararEmail(destino.trim());

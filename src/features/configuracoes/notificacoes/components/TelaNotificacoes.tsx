@@ -15,9 +15,11 @@ import { textos as t } from "../textos";
 // mascarados (dado pessoal): o campo começa vazio e serve para trocar o destino, que vai numa ação própria.
 type Props = { resultado: Resultado<AlertasDaEquipe | null> | null };
 
-// a regra vem no reason (ADR 0001 §5): ATTA-IN-0001:address (formato) e ATTA-IN-0003:address (ligar canal sem destino)
+// a regra vem no reason (ADR 0001 §5): ATTA-IN-0001:address (formato), ATTA-IN-0003:address (ligar canal sem destino)
+// e ATTA-IN-0003:estado (endereço novo com o canal desligado)
 function mensagem(erro: Erro, campo?: "email" | "whatsapp"): string {
   if (erro.reason === "ATTA-IN-0003:address") return t.erros.semDestino;
+  if (erro.reason === "ATTA-IN-0003:estado") return t.erros.canalDesligado;
   if (erro.code === "VALIDACAO" && campo) return campo === "email" ? t.erros.email : t.erros.numero;
   return erro.code === "SEM_PERMISSAO" ? t.erros.SEM_PERMISSAO : t.erros.outro;
 }
