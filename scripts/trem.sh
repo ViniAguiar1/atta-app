@@ -11,6 +11,10 @@
 #
 # Uso:  bash scripts/trem.sh ensaio [PR...]   monta os vagões localmente e mostra o que faria (padrão)
 #       bash scripts/trem.sh testar [PR...]   também empurra trem/1..N e espera o CI (gasta cota do Actions)
+#       bash scripts/trem.sh aprovacoes PR... só confere as aprovações de cada PR no head atual (revisor da linha
+#                                           Revisor:; no sensível, também TL e Segurança; o autor não conta). Uma
+#                                           linha por PR ("#N ok" ou "#N não: motivo"); sai 1 se algum não pode.
+#                                           Serve para qualquer fila chamar antes do merge.
 #       TREM_MERGE_LIBERADO=1 bash scripts/trem.sh andar
 #                                           testa e faz o squash na ordem. O merge pelo trem depende do ok do CTO.
 # Sem lista de PRs, a fila é: `conserta-main` primeiro; depois a ordem do CTO em $TREM_FILA_ARQ (seção "## Ordem
@@ -36,7 +40,7 @@ morre() { log "PARADO: $*"; exit 1; }
 modo="${1:-ensaio}"
 [ "$#" -gt 0 ] && shift
 case "$modo" in
-  ensaio | testar) ;;
+  ensaio | testar | aprovacoes) ;;
   andar) [ "${TREM_MERGE_LIBERADO:-}" = 1 ] || morre "o modo andar faz merge: precisa de TREM_MERGE_LIBERADO=1 (decisão do CTO)" ;;
   *) morre "modo desconhecido: $modo (ensaio, testar ou andar)" ;;
 esac
@@ -131,8 +135,7 @@ aprovado_por() {
 
 # devolve "ok" ou o motivo de não poder entrar
 pronto() {
-  local json="$1" n quem r faltam="" aut
-  n="$(jq -r .number <<<"$json")"
+  local json="$1"
   [ "$(jq -r .state <<<"$json")" = OPEN ] || { echo "não está aberto"; return; }
   [ "$(jq -r .isDraft <<<"$json")" = false ] || { echo "é rascunho"; return; }
   [ "$(jq -r .baseRefName <<<"$json")" = main ] || { echo "a base não é a main"; return; }
@@ -140,6 +143,13 @@ pronto() {
   if ! gh_ api "repos/$REPO/commits/$(jq -r .headRefOid <<<"$json")/statuses" --jq '.[] | select(.context == "Vercel") | .state' | grep -q '^success$'; then
     echo "prévia da Vercel não está verde no head"; return
   fi
+  aprovacoes "$json"
+}
+
+# só as aprovações no head atual: devolve "ok" ou o motivo
+aprovacoes() {
+  local json="$1" n quem r faltam="" aut
+  n="$(jq -r .number <<<"$json")"
   quem="$(revisores "$json")"
   [ -n "$quem" ] || { echo "sem a linha 'Revisor:' no corpo do PR"; return; }
   if sensivel "$json"; then quem="$(printf '%s\nTech Lead\nSecurity Engineer\n' "$quem" | awk '!v[$0]++')"; fi
@@ -222,6 +232,17 @@ espera_ci() {
 # --- principal ------------------------------------------------------------------------------------------------------
 
 prepara_dir
+
+if [ "$modo" = aprovacoes ]; then
+  [ "$#" -gt 0 ] || morre "aprovacoes precisa de ao menos um número de PR"
+  falhou=0
+  for n in "$@"; do
+    motivo="$(aprovacoes "$(pr_json "$n")")"
+    if [ "$motivo" = ok ]; then echo "#$n ok"; else echo "#$n não: $motivo"; falhou=1; fi
+  done
+  exit "$falhou"
+fi
+
 main_estado="$(estado_main)"
 log "modo $modo · main $(git -C "$DIR" rev-parse --short origin/main) ($main_estado) · profundidade $PROFUNDIDADE"
 

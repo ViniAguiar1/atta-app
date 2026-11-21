@@ -84,6 +84,7 @@ A regra continua a do PLANO: rebase na `main` atual, CI verde nesse estado e um 
 bash scripts/trem.sh ensaio          # padrão: só mostra o que faria (nada de push, comentário ou merge)
 bash scripts/trem.sh ensaio 36 38    # ensaio com uma lista de PRs
 bash scripts/trem.sh testar          # empurra trem/1..3 e espera o CI (gasta cota do Actions)
+bash scripts/trem.sh aprovacoes 183 190   # só as aprovações no head atual (sensível: TL e Segurança); sai 1 se faltar
 TREM_MERGE_LIBERADO=1 bash scripts/trem.sh andar   # faz os merges; só com a decisão do CTO
 ```
 
