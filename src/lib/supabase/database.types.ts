@@ -154,6 +154,9 @@ export type Database = {
               "body": string,"body_normalization": string,"body_sha256": string,"cnpj": string,"legal_name": string,"template_id": string,"trade_name": string,"version": number
             }[]
                            },
+"propass_identity_check":
+{ Args: { "p_council": string,"p_council_number": string,"p_council_uf": string,"p_cpf_hmac": string,"p_secret_hash": string }; Returns: Json
+                           },
 "propass_resolve":
 { Args: { "p_secret_hash": string }; Returns: {
               "expires_at": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"invited_at": string,"link_id": string,"step": string,"tenant_id": string,"tenant_name": string
