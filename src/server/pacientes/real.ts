@@ -47,6 +47,9 @@ const linhaSchema = z.object({
   last_appointment: z.unknown().nullable(), // nulo até o MIG-11
   documents: z.array(z.unknown()), // [] até o schema documents
   total_active: z.number().int().nonnegative(),
+  count_other_clinic: z.number().int().nonnegative(),
+  count_today: z.number().int().nonnegative(),
+  count_archived: z.number().int().nonnegative(),
 });
 
 const fichaSchema = z.object({
@@ -227,22 +230,28 @@ async function paraLinhas(dados: unknown, tenantId: string, evento: string) {
 }
 
 export const portaPacientesReal: PortaPacientes = {
-  async listar(apos) {
+  async listar(apos, filtro) {
     const { api, tenantId } = await contexto();
     if (!tenantId) return falha("NAO_AUTENTICADO", "Sem clínica na sessão.");
     const { data, error } = await api.rpc("patient_list", {
       p_limit: POR_PAGINA,
       ...(apos ? { p_after_name: apos.nome, p_after_id: apos.id } : {}),
+      ...(filtro ? { p_filter: filtro } : {}),
     });
     if (error) return falhaDoBanco(error);
     const r = await paraLinhas(data, tenantId, "pacientes.lista");
     if ("erro" in r) return r.erro!;
     const ultimo = r.linhas.at(-1);
     const proxima = r.linhas.length === POR_PAGINA && ultimo ? { nome: ultimo.display_name, id: ultimo.person_id } : null;
-    return ok({ itens: r.itens, proxima, total: r.linhas[0]?.total_active ?? 0 });
+    const primeira = r.linhas[0];
+    // os contadores vêm em toda linha, contados antes do filtro; sem linha, a tela guarda os que já tinha
+    const contadores = primeira
+      ? { outra_clinica: primeira.count_other_clinic, atendimento_hoje: primeira.count_today, arquivados: primeira.count_archived }
+      : null;
+    return ok({ itens: r.itens, proxima, total: primeira?.total_active ?? 0, contadores });
   },
 
-  async buscar(termo) {
+  async buscar(termo, filtroDaLista) {
     const { api, tenantId } = await contexto();
     if (!tenantId) return falha("NAO_AUTENTICADO", "Sem clínica na sessão.");
     const cpf = normalizeCpf(termo);
@@ -256,7 +265,7 @@ export const portaPacientesReal: PortaPacientes = {
     } catch {
       return malFormado("pacientes.hmac_indisponivel"); // pepper ausente ou recusado: INTERNO, sem o termo no log
     }
-    const { data, error } = await api.rpc("patient_search", filtro);
+    const { data, error } = await api.rpc("patient_search", { ...filtro, ...(filtroDaLista ? { p_filter: filtroDaLista } : {}) });
     if (error) return falhaDoBanco(error);
     const r = await paraLinhas(data, tenantId, "pacientes.busca");
     return "erro" in r ? r.erro! : ok(r.itens);

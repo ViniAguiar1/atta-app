@@ -32,7 +32,7 @@ const carla: LinhaDePaciente = {
 };
 
 const pagina = (itens: LinhaDePaciente[], extra: Partial<PaginaDePacientes> = {}): Resultado<PaginaDePacientes> =>
-  ok({ itens, proxima: null, total: itens.length, ...extra });
+  ok({ itens, proxima: null, total: itens.length, contadores: { outra_clinica: 1, atendimento_hoje: 6, arquivados: 0 }, ...extra });
 
 const montar = (props: Partial<React.ComponentProps<typeof ListaDePacientes>> = {}) => {
   const listar = vi.fn(async () => pagina([juliana, carla]));
@@ -117,5 +117,51 @@ describe("lista de Pacientes (MIG-43; simulador, capturas 09 a 11)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
     await waitFor(() => expect(estadoDeDados(container)).toBe("pronto"));
     expect(listar).toHaveBeenCalledWith();
+  });
+
+  describe("filtros (captura 11)", () => {
+    it("o botão Filtros abre o menu com os três filtros e os contadores do banco; o Esc fecha e devolve o foco", async () => {
+      montar();
+      const botao = screen.getByRole("button", { name: "Filtros" });
+      await userEvent.click(botao);
+      expect(botao).toHaveAttribute("aria-expanded", "true");
+      const menu = screen.getByRole("list", { name: "Filtrar pacientes" });
+      expect(within(menu).getAllByRole("button").map((b) => b.textContent)).toEqual([
+        "Cadastrados em outra clínica11 paciente",
+        "Com atendimento hoje66 pacientes",
+        "Arquivados00 pacientes",
+      ]);
+      await userEvent.keyboard("{Escape}");
+      expect(screen.queryByRole("list", { name: "Filtrar pacientes" })).toBeNull();
+      expect(botao).toHaveFocus();
+    });
+
+    it("escolher um filtro relê a lista com ele; o Limpar filtros volta à lista dos ativos", async () => {
+      const { listar } = montar();
+      await userEvent.click(screen.getByRole("button", { name: "Filtros" }));
+      await userEvent.click(screen.getByRole("button", { name: /Com atendimento hoje/ }));
+      await waitFor(() => expect(listar).toHaveBeenLastCalledWith(undefined, "atendimento_hoje"));
+      await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+      await waitFor(() => expect(listar).toHaveBeenLastCalledWith());
+      expect(screen.queryByRole("button", { name: "Limpar filtros" })).toBeNull();
+    });
+
+    it("filtro sem resultado: o sem-resultado limpa o filtro; a busca leva o filtro junto", async () => {
+      const listar = vi.fn(async (_apos?: unknown, filtro?: string) => (filtro ? pagina([], { contadores: null }) : pagina([juliana, carla])));
+      const buscar = vi.fn(async () => ok<LinhaDePaciente[]>([]));
+      montar({ listar, buscar });
+      await userEvent.click(screen.getByRole("button", { name: "Filtros" }));
+      await userEvent.click(screen.getByRole("button", { name: /Arquivados/ }));
+      expect(await screen.findByText("Nenhum resultado para os filtros aplicados")).toBeInTheDocument();
+      await userEvent.type(screen.getByRole("searchbox"), "juli");
+      await waitFor(() => expect(buscar).toHaveBeenLastCalledWith({ termo: "juli", filtro: "arquivados" }));
+      await userEvent.clear(screen.getByRole("searchbox"));
+      // o contador continua o último conhecido quando a página filtrada volta vazia
+      await userEvent.click(screen.getByRole("button", { name: "Filtros" }));
+      expect(screen.getByRole("button", { name: /Arquivados/ })).toHaveTextContent("0");
+      await userEvent.keyboard("{Escape}");
+      await userEvent.click(screen.getAllByRole("button", { name: "Limpar filtros" }).at(-1)!);
+      await waitFor(() => expect(screen.getAllByRole("rowheader")).toHaveLength(2));
+    });
   });
 });

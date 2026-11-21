@@ -3,8 +3,8 @@
 import { type ReactNode, useEffect, useId, useRef, useState, useTransition } from "react";
 import { DataState, type EstadoDeDados } from "@/components/ui/DataState";
 import type { Resultado } from "@/lib/errors";
-import type { Cursor, LinhaDePaciente, PaginaDePacientes } from "@/server/pacientes/porta";
-import { termoPronto } from "../schema";
+import type { Cursor, FiltroDaLista, LinhaDePaciente, PaginaDePacientes } from "@/server/pacientes/porta";
+import { FILTROS, termoPronto } from "../schema";
 import { textos } from "../textos";
 import { TabelaDePacientes } from "./TabelaDePacientes";
 
@@ -15,13 +15,19 @@ type Props = {
   /** à direita da busca, como no simulador (o "+ Novo paciente") */
   acoes?: ReactNode;
   inicial: Resultado<PaginaDePacientes>;
-  listar: (apos?: Cursor) => Promise<Resultado<PaginaDePacientes>>;
-  buscar: (entrada: { termo: string }) => Promise<Resultado<LinhaDePaciente[]>>;
+  listar: (apos?: Cursor, filtro?: FiltroDaLista) => Promise<Resultado<PaginaDePacientes>>;
+  buscar: (entrada: { termo: string; filtro?: FiltroDaLista }) => Promise<Resultado<LinhaDePaciente[]>>;
 };
 
-type Erro = { codigo: string; repetir: () => void };
+/** `repetir` ausente: o erro da primeira página, que vem do servidor; o "tentar de novo" relê a lista. */
+type Erro = { codigo: string; repetir?: () => void };
 
 const ESPERA_DA_BUSCA_MS = 300;
+const ROTULO_DO_FILTRO: Record<FiltroDaLista, string> = {
+  outra_clinica: textos.filtros.outraClinica,
+  atendimento_hoje: textos.filtros.atendimentoHoje,
+  arquivados: textos.filtros.arquivados,
+};
 
 export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
   const idDaDica = useId();
@@ -29,8 +35,31 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
   const [carregando, iniciar] = useTransition();
   const [pagina, setPagina] = useState<PaginaDePacientes | null>(inicial.ok ? inicial.data : null);
   const [achados, setAchados] = useState<LinhaDePaciente[] | null>(null);
-  const [erro, setErro] = useState<Erro | null>(inicial.ok ? null : { codigo: inicial.error.code, repetir: recarregar });
+  const [erro, setErro] = useState<Erro | null>(inicial.ok ? null : { codigo: inicial.error.code });
   const pedido = useRef(0); // só a resposta do último pedido vale (a busca dispara enquanto a pessoa digita)
+  // filtro da captura 11: vale para a lista, a busca e o "Carregar mais"; os contadores do menu vêm do banco, contados
+  // antes do filtro, e ficam os últimos conhecidos quando a página volta vazia
+  const [filtro, setFiltro] = useState<FiltroDaLista | null>(null);
+  const [contadores, setContadores] = useState(inicial.ok ? inicial.data.contadores : null);
+  const [menuAberto, setMenuAberto] = useState(false);
+  const idDoMenu = useId();
+  const caixaDoFiltro = useRef<HTMLDivElement>(null);
+  const botaoDoFiltro = useRef<HTMLButtonElement>(null);
+
+  // o menu fecha no Esc (o foco volta ao botão) e no clique fora
+  useEffect(() => {
+    if (!menuAberto) return;
+    const fora = (e: MouseEvent) => {
+      if (!caixaDoFiltro.current?.contains(e.target as Node)) setMenuAberto(false);
+    };
+    document.addEventListener("mousedown", fora);
+    return () => document.removeEventListener("mousedown", fora);
+  }, [menuAberto]);
+
+  function receberPagina(nova: PaginaDePacientes) {
+    setPagina(nova);
+    if (nova.contadores) setContadores(nova.contadores);
+  }
 
   function executar<T>(acao: () => Promise<Resultado<T>>, aplicar: (dados: T) => void, repetir: () => void) {
     const n = ++pedido.current;
@@ -43,16 +72,33 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
     });
   }
 
-  function recarregar() {
-    executar(() => listar(), setPagina, recarregar);
+  function recarregar(f: FiltroDaLista | null = filtro) {
+    executar(() => (f ? listar(undefined, f) : listar()), receberPagina, () => recarregar(f));
   }
 
   function carregarMais(apos: Cursor) {
+    const f = filtro;
     executar(
-      () => listar(apos),
-      (mais) => setPagina((atual) => ({ ...mais, itens: [...(atual?.itens ?? []), ...mais.itens] })),
+      () => (f ? listar(apos, f) : listar(apos)),
+      (mais) => {
+        if (mais.contadores) setContadores(mais.contadores);
+        setPagina((atual) => ({ ...mais, itens: [...(atual?.itens ?? []), ...mais.itens] }));
+      },
       () => carregarMais(apos),
     );
+  }
+
+  function aplicarFiltro(f: FiltroDaLista | null) {
+    setFiltro(f);
+    setMenuAberto(false);
+    botaoDoFiltro.current?.focus();
+    if (termoPronto(termo)) procurarCom(termo.trim(), f);
+    else recarregar(f);
+  }
+
+  function procurarCom(t: string, f: FiltroDaLista | null) {
+    const procurar = () => executar(() => buscar(f ? { termo: t, filtro: f } : { termo: t }), setAchados, procurar);
+    procurar();
   }
 
   // busca enquanto digita, com uma espera curta; termo curto ou vazio volta para a lista já carregada
@@ -69,21 +115,26 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
       return;
     }
     const t = novo.trim();
-    const procurar = () => executar(() => buscar({ termo: t }), setAchados, procurar);
-    espera.current = setTimeout(procurar, ESPERA_DA_BUSCA_MS);
+    espera.current = setTimeout(() => procurarCom(t, filtro), ESPERA_DA_BUSCA_MS);
   }
 
   const buscando = termoPronto(termo);
   const itens = (buscando ? achados : pagina?.itens) ?? [];
   const termoCurto = termo.trim().length > 0 && !buscando;
   const estado: EstadoDeDados = erro
-    ? { tipo: "erro", codigo: erro.codigo, tentarDeNovo: erro.repetir }
+    ? { tipo: "erro", codigo: erro.codigo, tentarDeNovo: erro.repetir ?? (() => recarregar()) }
     : itens.length > 0
       ? { tipo: "pronto" }
       : carregando || (buscando && achados === null)
         ? { tipo: "carregando" }
-        : buscando
-          ? { tipo: "sem-resultado", limparFiltros: () => mudarTermo("") }
+        : buscando || filtro
+          ? {
+              tipo: "sem-resultado",
+              limparFiltros: () => {
+                mudarTermo("");
+                if (filtro) aplicarFiltro(null);
+              },
+            }
           : { tipo: "vazio" };
 
   return (
@@ -102,7 +153,7 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
               placeholder={textos.busca.placeholder}
               autoComplete="off"
               aria-describedby={termoCurto ? idDaDica : undefined}
-              className="h-[2.1875rem] w-full rounded-full border border-border-functional bg-surface-raised pr-3 pl-9 text-[0.8125rem] text-text-primary placeholder:text-text-secondary"
+              className="h-[2.1875rem] w-full rounded-full border border-border-functional bg-surface-raised pr-3 pl-9 text-corpo text-text-primary placeholder:text-text-secondary"
             />
           </label>
           {termoCurto && (
@@ -111,7 +162,62 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
             </p>
           )}
         </div>
-        {acoes}
+        <div ref={caixaDoFiltro} className="relative flex items-center gap-2" onKeyDown={(e) => {
+          if (e.key === "Escape" && menuAberto) {
+            setMenuAberto(false);
+            botaoDoFiltro.current?.focus();
+          }
+        }}>
+          {/* captura 11: o botão do funil ao lado da busca, com o menu dos três filtros e os contadores */}
+          <button
+            ref={botaoDoFiltro}
+            type="button"
+            aria-label={textos.filtros.rotulo}
+            aria-expanded={menuAberto}
+            aria-controls={idDoMenu}
+            onClick={() => setMenuAberto((a) => !a)}
+            className={`flex size-11 items-center justify-center rounded-full border border-border-functional medium:size-[2.1875rem] ${
+              filtro ? "bg-surface-card text-text-primary" : "bg-surface-raised text-text-secondary"
+            }`}
+          >
+            <IconeFiltro />
+          </button>
+          {menuAberto && (
+            <ul id={idDoMenu} aria-label={textos.filtros.menu} className="absolute top-full left-0 z-10 mt-2 flex w-64 flex-col rounded-md border border-border bg-surface-raised p-1.5 shadow-md">
+              {FILTROS.map((f) => (
+                <li key={f}>
+                  <button
+                    type="button"
+                    aria-pressed={filtro === f}
+                    onClick={() => aplicarFiltro(filtro === f ? null : f)}
+                    className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-sm px-3 text-left text-corpo hover:bg-surface-card medium:min-h-9 ${
+                      filtro === f ? "font-semibold" : ""
+                    }`}
+                  >
+                    {ROTULO_DO_FILTRO[f]}
+                    {contadores && (
+                      <span className="text-xs text-text-secondary">
+                        <span aria-hidden="true">{contadores[f]}</span>
+                        <span className="sr-only">{textos.filtros.contagem(contadores[f])}</span>
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {filtro && (
+            <button
+              type="button"
+              onClick={() => aplicarFiltro(null)}
+              className="flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-text-primary hover:bg-surface-card medium:min-h-[2.1875rem]"
+            >
+              <span aria-hidden="true">✕</span>
+              {textos.filtros.limpar}
+            </button>
+          )}
+        </div>
+        <div className="ml-auto">{acoes}</div>
       </div>
 
       {/* a contagem da busca é anunciada ao leitor de tela; a lista em si não vira região viva */}
@@ -125,7 +231,7 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
         </DataState>
       </div>
 
-      {!buscando && !erro && pagina && pagina.itens.length > 0 && pagina.total !== null && (
+      {!buscando && !filtro && !erro && pagina && pagina.itens.length > 0 && pagina.total !== null && (
         <p className="text-xs text-text-secondary">{textos.rodape(pagina.itens.length, pagina.total)}</p>
       )}
 
@@ -134,12 +240,21 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
           type="button"
           disabled={carregando}
           onClick={() => pagina.proxima && carregarMais(pagina.proxima)}
-          className="h-9 self-center rounded-md border border-border-functional bg-surface-raised px-4 text-[0.8125rem] font-medium text-text-primary hover:bg-surface-card disabled:opacity-60"
+          className="h-9 self-center rounded-md border border-border-functional bg-surface-raised px-4 text-corpo font-medium text-text-primary hover:bg-surface-card disabled:opacity-60"
         >
           {textos.carregarMais}
         </button>
       )}
     </div>
+  );
+}
+
+// funil de traço fino (Guia de Design §7), decorativo; o rótulo é do botão
+function IconeFiltro() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d="M4 6h16M7 12h10M10 18h4" />
+    </svg>
   );
 }
 

@@ -116,6 +116,9 @@ export const textos = {
     outraClinica: "Cadastrados em outra clínica", // simulador, captura 11
     atendimentoHoje: "Com atendimento hoje", // simulador, captura 11
     arquivados: "Arquivados", // simulador, captura 11
+    limpar: "Limpar filtros", // simulador, captura 11 (o "✕" fica como ícone)
+    menu: "Filtrar pacientes", // provisório (nome do menu para o leitor de tela)
+    contagem: (n: number) => (n === 1 ? "1 paciente" : `${n} pacientes`), // provisório (o número dito ao leitor de tela)
   },
   novoPaciente: "+ Novo paciente", // simulador, captura 09
   // Modal Novo paciente: simulador, capturas 15 a 18 e print 31. Ficam fora as linhas de demonstração ("Exemplos: …"),
