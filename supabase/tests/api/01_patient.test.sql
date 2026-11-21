@@ -73,7 +73,7 @@ end $$;
 -- estrutura: todas SECURITY DEFINER com search_path vazio, e anon fora
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'api' and p.proname like 'patient%' and p.prosecdef
-             and p.proconfig @> array['search_path=""']), 5, 'as 5 funções patient_* são SECURITY DEFINER com search_path vazio');
+             and p.proconfig @> array['search_path=""']), 7, 'as 7 funções patient_* são SECURITY DEFINER com search_path vazio');
 select ok(not has_function_privilege('anon', 'api.patient_get(uuid)', 'EXECUTE'), 'anon não lê paciente');
 select ok(not has_function_privilege('anon', 'api.patient_search(text, bytea)', 'EXECUTE'), 'anon não busca paciente');
 
