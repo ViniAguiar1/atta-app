@@ -6,9 +6,23 @@ import type { TipoDeModelo } from "@/server/documentos/porta";
 export const textos = {
   titulo: "Termos & Docs", // simulador (aba)
   subaba: "Modelos de documento", // simulador; PDD §10.3.2.1
+  subabas: {
+    rotulo: "Seções de Termos & Docs", // provisório (leitor de tela)
+    modelos: "Modelos de documento", // simulador; PDD §10.3.2.1
+    formularios: "Formulários de Saúde", // simulador; PDD §10.3.2.1
+    perguntas: "Banco de Perguntas", // simulador; PDD §10.3.2.1
+  },
+  formulariosVazio: {
+    titulo: "Nenhum formulário de saúde ainda", // provisório (estado vazio até a tela do MIG-22)
+    texto: "Os formulários que a clínica montar com o Banco de Perguntas aparecem aqui.", // provisório
+  },
+  perguntasVazio: {
+    titulo: "Nenhuma pergunta no banco ainda", // provisório (estado vazio até a tela do MIG-22)
+    texto: "As perguntas cadastradas ficam aqui para montar os formulários de saúde.", // provisório
+  },
   cards: {
     rotulo: "Resumo dos modelos", // provisório (só para leitor de tela)
-    ativos: "Termos ativos", // simulador
+    ativos: "Termos ativos", // simulador (o CardDeResumo põe em versalete)
     obrigatoriosOpcionais: (obrig: string, opc: string) => `${obrig} obrigatório(s) · ${opc} opcional(is)`, // simulador
     vencendo: "Docs vencendo", // simulador
     vencidos: (n: string) => `${n} vencido(s) para reassinar`, // simulador
