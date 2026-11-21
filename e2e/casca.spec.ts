@@ -111,3 +111,18 @@ test("a colaboradora com o padrão do convite não vê Termos & Docs, e a rota m
   expect((await axe(page)).violations).toEqual([]);
 });
 
+// O mesmo S2 com a colaboradora sem Agendamentos (a COLAB2 da QA; no seed, semagenda.ficticia): o login cai na primeira
+// aba liberada (Pacientes), e a Agenda pela URL mostra o "sem acesso", sem "Não foi possível carregar".
+test("a colaboradora sem Agendamentos entra em Pacientes, e a Agenda mostra o \"sem acesso\"", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("E-mail").fill("semagenda.ficticia@exemplo.test");
+  await page.getByLabel("Senha", { exact: true }).fill(SENHA);
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page).toHaveURL(/\/painel\/pacientes$/);
+  await expect(page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link")).toHaveText(["Pacientes", "ATTA"]);
+  await page.goto("/painel/agenda");
+  await expect(page.getByRole("main").getByText("Você não tem acesso a este módulo")).toBeVisible();
+  await expect(page.getByRole("main")).not.toContainText("Não foi possível carregar");
+  expect((await axe(page)).violations).toEqual([]);
+});
+
