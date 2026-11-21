@@ -55,8 +55,10 @@ describe("DialogoDeMotivo", () => {
     );
     const campo = screen.getByRole("textbox", { name: "Justificativa" });
     const contagem = document.getElementById(campo.getAttribute("aria-describedby") ?? "");
-    expect(contagem?.getAttribute("aria-live")).toBe("polite");
+    const anuncio = document.querySelector('[aria-live="polite"]');
+    expect(contagem?.getAttribute("aria-live")).toBeNull(); // a contagem não é anunciada a cada tecla
     expect(contagem?.textContent).toBe("Faltam 50 caracteres");
+    expect(anuncio?.textContent).toBe("");
     fireEvent.click(screen.getByRole("radio", { name: "Profissional inacessível" }));
     fireEvent.change(campo, { target: { value: "curta" } });
     expect(contagem?.textContent).toBe("Faltam 45 caracteres");
@@ -64,6 +66,7 @@ describe("DialogoDeMotivo", () => {
     const longa = "O profissional não consegue abrir o Boarding Check pelo celular.";
     fireEvent.change(campo, { target: { value: `  ${longa}  ` } });
     expect(contagem?.textContent).toBe("Mínimo de 50 caracteres atingido");
+    expect(anuncio?.textContent).toBe("Mínimo de 50 caracteres atingido"); // só aqui sai o anúncio
     fireEvent.click(screen.getByRole("button", { name: "Concluir atendimento" }));
     expect(aoConfirmar).toHaveBeenCalledWith({ motivo: "profissional_inacessivel", justificativa: longa });
   });
@@ -85,5 +88,26 @@ describe("DialogoDeMotivo", () => {
     fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
     fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
     expect(aoFechar).toHaveBeenCalledTimes(2);
+  });
+
+  it("motivo sem rótulo mostra um texto genérico, nunca o código cru", () => {
+    render(<DialogoDeMotivo titulo="T" texto="t" motivos={["codigo_novo"]} rotuloConfirmar="Ok" aoConfirmar={vi.fn()} aoFechar={vi.fn()} />);
+    expect(screen.getByRole("radio", { name: "Motivo sem descrição" })).toBeDefined();
+    expect(document.body.textContent).not.toContain("codigo_novo");
+  });
+
+  it("ao fechar, o foco volta a quem abriu o diálogo (o ⋮), não ao body", () => {
+    const { rerender } = render(<button type="button">Ações de Mariana</button>);
+    const quemAbriu = screen.getByRole("button", { name: "Ações de Mariana" });
+    quemAbriu.focus();
+    rerender(
+      <>
+        <button type="button">Ações de Mariana</button>
+        <DialogoDeMotivo titulo="T" texto="t" motivos={MOTIVOS} rotuloConfirmar="Ok" aoConfirmar={vi.fn()} aoFechar={vi.fn()} />
+      </>,
+    );
+    screen.getByRole("radio", { name: "Agendado por engano" }).focus();
+    rerender(<button type="button">Ações de Mariana</button>);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Ações de Mariana" }));
   });
 });
