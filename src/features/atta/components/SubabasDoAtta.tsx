@@ -6,7 +6,7 @@ import { textos as t } from "../textos";
 // desfaz o padding do <main> da casca só nesta faixa.
 export function SubabasDoAtta({ ativa }: { ativa: string }) {
   return (
-    <div className="-mx-4 -mt-6 mb-4 px-2 text-sm medium:-mx-6 medium:px-4">
+    <div className="-mx-4 -mt-6 mb-4 px-2 text-[0.8125rem] medium:-mx-6 medium:px-4">
       <h1 className="sr-only">{t.titulo}</h1>
       <Subabas rotulo={t.subabas.rotulo} itens={SUBABAS_ATTA} ativa={ativa} />
     </div>

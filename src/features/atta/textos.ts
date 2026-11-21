@@ -15,6 +15,13 @@ export const textos = {
     solucoes: "Soluções ATTA", // PDD §10.6.5
   },
 
+  // estado vazio das subabas que ainda não têm tela (régua do Tech Lead Frontend, 20/11; sem "em construção") — provisório
+  vazios: {
+    ajuda: { titulo: "Nenhum guia publicado", texto: "Os guias por módulo e as respostas para o que foge do roteiro aparecem aqui." },
+    suporte: { titulo: "Nenhum chamado aberto", texto: "Os chamados da clínica, cada um com o seu protocolo, aparecem aqui." },
+    cocriacao: { titulo: "Nenhuma sugestão ainda", texto: "As sugestões da equipe da clínica aparecem aqui, com as curtidas de cada uma." },
+  },
+
   privacidade: {
     faixa: {
       destaque: "Controlador × operador:", // simulador, captura 21
