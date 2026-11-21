@@ -1,7 +1,7 @@
 -- Termo de Autorização do profissional como modelo de sistema (decisão do CTO, PLANO P2c; ADR 0001 §1). A ATTA publica
 -- por seed (dono); a clínica não cria, não edita, não inativa nem publica esse kind. Só dado fictício.
 begin;
-select plan(11);
+select plan(12);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000010a', 'Clínica Fictícia Termo Sistema');
 
@@ -34,6 +34,11 @@ exception when others then
   get stacked diagnostics d = pg_exception_detail, m = message_text;
   return m || ':' || d;
 end $$;
+-- uma função SECURITY DEFINER qualquer (dona postgres), como uma RPC nova que alguém crie: dentro dela o current_user
+-- é o dono, mas o usuário do token continua lá, e a trava pega
+create function pg_temp.renomear_termo_definer(p_titulo text) returns void language sql security definer as $$
+  update documents.template set title = p_titulo where kind = 'termo_de_autorizacao'
+$$;
 do $$ begin
   execute format('grant execute on all functions in schema %I to authenticated', pg_my_temp_schema()::regnamespace);
 end $$;
@@ -63,6 +68,8 @@ select is(pg_temp.detalhe(format('select * from api.atta_in_template_publish(%L)
           'ATTA-IN-0003:kind', 'ADMIN não publica o Termo de Autorização');
 select is(pg_temp.detalhe(format('select api.template_deactivate(%L)', pg_temp.termo())),
           'ATTA-IN-0003:kind', 'ADMIN não inativa o Termo de Autorização');
+select is(pg_temp.detalhe($$ select pg_temp.renomear_termo_definer('Título por função') $$),
+          'ATTA-IN-0003:kind', 'nem por função SECURITY DEFINER chamada pelo ADMIN (o usuário do token conta)');
 insert into documents.template (kind, title, draft_body) values ('personalizado', 'Personalizado fictício', 'Texto.');
 select is(pg_temp.detalhe($$ update documents.template set kind = 'termo_de_autorizacao' where title = 'Personalizado fictício' $$),
           'ATTA-IN-0003:kind', 'nem transformando outro modelo em Termo de Autorização');
