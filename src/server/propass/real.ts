@@ -64,8 +64,14 @@ async function resolverLinha(hashDoLink: Buffer) {
   const api = criarClienteAdmin(await headers()).schema("api");
   const { data, error } = await api.rpc("propass_resolve", { p_secret_hash: paraBytea(hashDoLink) });
   if (error) return error.code === "42501" ? SEM_LINK : falhaDoBanco(error);
+  if (!Array.isArray(data) || data.length === 0) return SEM_LINK; // nenhuma linha = link sem validade
+  // Linha que veio mas fugiu do contrato (campo faltando, tipo errado, mais de uma): defeito do servidor, não link vencido.
+  // INTERNO e log só do código, para o defeito aparecer em vez de se esconder atrás do "convite não vale" (nota do FE2).
   const linha = z.array(resolveSchema).length(1).safeParse(data);
-  if (!linha.success) return SEM_LINK; // nenhuma linha = link sem validade
+  if (!linha.success) {
+    logger.error("propass.resolve_fora_do_contrato", { code: "INTERNO" });
+    return falha("INTERNO", "Algo deu errado. Tente de novo.");
+  }
   return ok(linha.data[0]!);
 }
 
