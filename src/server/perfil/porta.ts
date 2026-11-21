@@ -10,23 +10,9 @@ import { portaPerfilVazia } from "./vazia";
 // validação no banco, devolvendo saved_at e gravando tenant.profile_update só com o nome do campo. O gestor e o Responsável
 // Técnico (dado pessoal, cifrado no servidor do Next) entram por api.clinic_responsible_set, no PR seguinte.
 // Os nomes dos campos são os do contrato, para a porta real só repassar.
-export const CAMPOS_DA_EMPRESA = [
-  "trade_name",
-  "legal_name",
-  "cnpj",
-  "tax_registration",
-  "main_specialty",
-  "address_cep",
-  "address_street",
-  "address_number",
-  "address_complement",
-  "address_city",
-  "address_uf",
-  "phone",
-  "clinic_whatsapp",
-  "commercial_email",
-] as const;
-export type CampoDaEmpresa = (typeof CAMPOS_DA_EMPRESA)[number];
+import { CAMPOS_DA_EMPRESA, type CampoDaEmpresa } from "./campos";
+
+export { CAMPOS_DA_EMPRESA, type CampoDaEmpresa };
 
 /** Gestor ou Responsável Técnico como a tela recebe: CPF, e-mail e WhatsApp só mascarados (ADR 0001). */
 export type Responsavel = {
