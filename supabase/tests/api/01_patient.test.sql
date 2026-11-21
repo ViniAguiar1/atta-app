@@ -71,11 +71,13 @@ do $$ begin
 end $$;
 
 -- estrutura: todas SECURITY DEFINER com search_path vazio, e anon fora
+-- conta as que fogem da regra (e não o total), para não quebrar a cada função patient_* nova
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'api' and p.proname like 'patient%' and p.prosecdef
-             and p.proconfig @> array['search_path=""']), 7, 'as 7 funções patient_* são SECURITY DEFINER com search_path vazio');
+           where n.nspname = 'api' and p.proname like 'patient%'
+             and not (p.prosecdef and coalesce(p.proconfig @> array['search_path=""'], false))), 0,
+          'todas as funções patient_* são SECURITY DEFINER com search_path vazio');
 select ok(not has_function_privilege('anon', 'api.patient_get(uuid)', 'EXECUTE'), 'anon não lê paciente');
-select ok(not has_function_privilege('anon', 'api.patient_search(text, bytea)', 'EXECUTE'), 'anon não busca paciente');
+select ok(not has_function_privilege('anon', 'api.patient_search(text, bytea, text)', 'EXECUTE'), 'anon não busca paciente');
 
 -- cadastro na clínica A
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
