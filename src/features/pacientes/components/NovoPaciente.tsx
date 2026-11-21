@@ -53,7 +53,7 @@ export function NovoPaciente({ clinica, acoes }: { clinica: string | null; acoes
         ref={gatilho}
         type="button"
         onClick={() => setAberto(true)}
-        className="h-[2.1875rem] rounded-full bg-brand px-4 text-[0.8125rem] font-semibold text-on-brand hover:bg-(--button-primary-hover-bg)"
+        className="min-h-11 rounded-full bg-brand px-4 text-corpo font-semibold text-on-brand hover:bg-(--button-primary-hover-bg) medium:min-h-[2.1875rem]"
       >
         {textos.novoPaciente}
       </button>
