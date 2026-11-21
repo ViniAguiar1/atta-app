@@ -84,10 +84,16 @@ select pg_temp.novo('tcle', 'TCLE duplo', 'por_procedimento',
 select pg_temp.novo('personalizado', 'Rascunho fictício', 'unica', array['00000000-0000-4000-8000-00000000d004']::uuid[], false);
 select pg_temp.novo('personalizado', 'Inativo fictício', 'unica', array['00000000-0000-4000-8000-00000000d004']::uuid[], true);
 select api.template_deactivate(pg_temp.modelo('Inativo fictício'));
-insert into documents.template (kind, title, frequency, required, draft_body)
-values ('termo_de_autorizacao', 'Termo de Autorização fictício', 'unica', true, 'Texto fictício da autorização.');
-select api.atta_in_template_publish(pg_temp.modelo('Termo de Autorização fictício'));
-select set_config('role', 'postgres', true);   -- vínculo plantado: a função de vínculo não aceita o Termo de Autorização
+select set_config('role', 'postgres', true);   -- Termo de Autorização: modelo de sistema, só pelo seed do dono (P2c)
+insert into documents.template (tenant_id, kind, title, frequency, required, draft_body)
+values ('00000000-0000-4000-8000-0000000000a6', 'termo_de_autorizacao', 'Termo de Autorização fictício', 'unica', true, 'Texto fictício da autorização.');
+insert into documents.template_version (tenant_id, template_id, version, kind, title, frequency, required, body,
+                                        body_sha256, published_by)
+select t.tenant_id, t.id, 1, t.kind, t.title, t.frequency, t.required, t.draft_body,
+       encode(sha256(convert_to(t.draft_body, 'UTF8')), 'hex'), gen_random_uuid()
+from documents.template t where t.title = 'Termo de Autorização fictício';
+update documents.template set status = 'ativo', current_version = 1 where title = 'Termo de Autorização fictício';
+-- vínculo plantado: a função de vínculo não aceita o Termo de Autorização
 insert into atta_in.service_document_template (tenant_id, clinic_service_id, template_id)
 values ('00000000-0000-4000-8000-0000000000a6', '00000000-0000-4000-8000-00000000d005',
         pg_temp.modelo('Termo de Autorização fictício'));

@@ -29,7 +29,7 @@ export type Database = {
                            },
 "atta_in_template_list":
 { Args: Record<PropertyKey, never>; Returns: {
-              "allowed_actions": Json,"clinic_service_ids": (string)[],"clinic_services": Json,"current_version": number,"current_version_published_at": string,"frequency": string,"id": string,"kind": string,"required": boolean,"signed_count": number,"status": string,"title": string,"updated_at": string,"validity_months": number
+              "allowed_actions": Json,"clinic_service_ids": (string)[],"clinic_services": Json,"current_frequency": string,"current_required": boolean,"current_validity_months": number,"current_version": number,"current_version_published_at": string,"frequency": string,"id": string,"kind": string,"required": boolean,"signed_count": number,"status": string,"title": string,"updated_at": string,"validity_months": number
             }[]
                            },
 "atta_in_template_publish":
