@@ -68,6 +68,23 @@ describe("linhas", () => {
     expect(r.ok && r.errors).toEqual([]);
   });
 
+  it("ano solto (4 dígitos) não vira data: entra em branco, com aviso", () => {
+    const r = analisar([["Rita Fictícia", "529.982.247-25", "1990", "", ""]]);
+    expect(r.ok && r.validos[0]?.nascimento).toBeUndefined();
+    expect(r.ok && r.blanked).toEqual([{ line: 2, field: "nascimento" }]);
+  });
+
+  it("nome com 1 ou com mais de 200 caracteres não entra", () => {
+    const r = analisar([
+      ["A", "529.982.247-25", "", "", ""],
+      ["B".repeat(201), "111.444.777-35", "", "", ""],
+    ]);
+    expect(r.ok && r.errors).toEqual([
+      { line: 2, code: "nome_invalido" },
+      { line: 3, code: "nome_invalido" },
+    ]);
+  });
+
   it("nascimento no futuro entra em branco", () => {
     const r = analisar([["Bebê Fictício", "529.982.247-25", "01/01/2030", "", ""]]);
     expect(r.ok && r.blanked).toEqual([{ line: 2, field: "nascimento" }]);
