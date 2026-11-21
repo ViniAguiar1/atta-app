@@ -14,9 +14,5 @@ export const textos = {
       titulo: "Termos & Docs", // simulador (aba)
       vazio: { titulo: "Nenhum modelo de documento ainda", texto: "Os termos e documentos da clínica aparecem aqui." }, // provisório
     },
-    notificacoes: {
-      titulo: "Notificações", // PDD §10 (sino de Atividades)
-      vazio: { titulo: "Nenhuma notificação", texto: "Os avisos da clínica aparecem aqui." }, // provisório
-    },
   },
 } as const;
