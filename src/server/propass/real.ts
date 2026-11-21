@@ -16,7 +16,15 @@ import type { ConvitePropass, PortaPropass, SituacaoDoConselho, TermoDeAutorizac
 // api só para service_role, sempre pelo hash do segredo do link (nunca por id vindo da tela). O e-mail do convite abre
 // no servidor (abrirConvite) e vai travado para a tela. Nada de CPF, e-mail, telefone ou PIN em log.
 
-const FUSO_PADRAO = "America/Sao_Paulo"; // o resolve ainda não traz o fuso da clínica (pedido ao Backend 4)
+/** Fuso IANA que o Intl aceita; o banco garante (#265), e aqui só não deixa um valor torto derrubar a tela. */
+function fusoValido(fuso: string): boolean {
+  try {
+    new Intl.DateTimeFormat("pt-BR", { timeZone: fuso });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const contextoSchema = z.object({
   legal_name: z.string().min(1),
@@ -38,6 +46,8 @@ export function emParagrafos(texto: string): TermoDeAutorizacao {
 const resolveSchema = z.object({
   tenant_id: z.uuid(),
   tenant_name: z.string().min(1),
+  /** Fuso da clínica (IANA, nunca nulo; #265, Backend 4): datas e horas da tela saem nele, nunca no do navegador. */
+  tenant_timezone: z.string().min(1),
   invited_at: z.string(),
   invite_email_enc: z.string(),
   invite_envelope_id: z.uuid(),
@@ -61,9 +71,13 @@ export const portaPropassReal: PortaPropass = {
   async resolver(hashDoLink): Promise<Resultado<ConvitePropass>> {
     const r = await resolverLinha(hashDoLink);
     if (!r.ok) return r;
+    if (!fusoValido(r.data.tenant_timezone)) {
+      logger.error("propass.fuso_invalido", { code: "INTERNO" });
+      return falha("INTERNO", "Algo deu errado. Tente de novo.");
+    }
     try {
       const emailDoConvite = await abrirConvite(r.data);
-      return ok({ clinica: r.data.tenant_name, emailDoConvite, conviteEm: r.data.invited_at, fuso: FUSO_PADRAO });
+      return ok({ clinica: r.data.tenant_name, emailDoConvite, conviteEm: r.data.invited_at, fuso: r.data.tenant_timezone });
     } catch {
       logger.error("propass.convite_nao_abriu", { code: "INTERNO" }); // sem o e-mail nem o envelope
       return falha("INTERNO", "Algo deu errado. Tente de novo.");

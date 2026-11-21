@@ -23,7 +23,7 @@ const cofre = new MasterKeyCofre(parseKeyring(CI_TEST_KEYRING));
 async function linha() {
   const s = await selarConvite({ tenantId: TENANT, email: "bruna.reis@exemplo.test" }, { cofre, hmacDoEmail: () => Buffer.alloc(32, 1) });
   return {
-    link_id: "eeee0000-0000-4000-8000-000000000311", tenant_id: TENANT, tenant_name: "Clínica Alfa", step: "dados",
+    link_id: "eeee0000-0000-4000-8000-000000000311", tenant_id: TENANT, tenant_name: "Clínica Alfa", tenant_timezone: "America/Manaus", step: "dados",
     invited_at: "2026-11-20T19:20:00+00:00", expires_at: "2026-11-27T19:20:00+00:00",
     invite_email_enc: s.invite_email_enc, invite_envelope_id: s.envelope_id, invite_dek_wrapped: s.dek_wrapped, invite_kek_version: s.kek_version,
   };
@@ -36,7 +36,15 @@ describe("portaPropassReal", () => {
     rpc.mockResolvedValue({ data: [await linha()], error: null });
     const r = await porta.resolver(HASH);
     expect(rpc).toHaveBeenCalledWith("propass_resolve", { p_secret_hash: `\\x${HASH.toString("hex")}` });
-    expect(r).toEqual({ ok: true, data: { clinica: "Clínica Alfa", emailDoConvite: "bruna.reis@exemplo.test", conviteEm: "2026-11-20T19:20:00+00:00", fuso: "America/Sao_Paulo" } });
+    expect(r).toEqual({ ok: true, data: { clinica: "Clínica Alfa", emailDoConvite: "bruna.reis@exemplo.test", conviteEm: "2026-11-20T19:20:00+00:00", fuso: "America/Manaus" } }); // o fuso da clínica (#265), não um padrão
+  });
+
+  it("fuso da clínica ausente ou que o Intl não aceita não derruba a tela", async () => {
+    const { tenant_timezone: _, ...semFuso } = await linha();
+    rpc.mockResolvedValue({ data: [semFuso], error: null });
+    expect(await porta.resolver(HASH)).toMatchObject({ ok: false, error: { code: "NAO_ENCONTRADO" } }); // linha fora do contrato
+    rpc.mockResolvedValue({ data: [{ ...(await linha()), tenant_timezone: "Lua/Base_Alfa" }], error: null });
+    expect(await porta.resolver(HASH)).toMatchObject({ ok: false, error: { code: "INTERNO" } });
   });
 
   it("link sem validade (sem linha ou ATTA-AUTH-0004) dá a mesma resposta", async () => {
