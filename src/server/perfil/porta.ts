@@ -1,5 +1,6 @@
 import "server-only";
 import type { Resultado } from "@/lib/errors";
+import { portaPerfilReal } from "./real";
 import { portaPerfilSimulada } from "./simulado";
 import { portaPerfilVazia } from "./vazia";
 
@@ -57,11 +58,13 @@ export type PortaPerfil = {
 };
 
 /**
- * Escolha da porta, só aqui (regra de stage do Tech Lead Frontend, o modelo do src/server/agenda): sem o backend, a
- * produção usa a vazia (estado vazio do design) e a prévia, o local e o CI usam a simulada, só com dado fictício.
+ * Escolha da porta, só aqui (o modelo do src/server/agenda): o que já tem backend (a leitura e a gravação dos campos da
+ * empresa, #296) vai à porta real em todos os ambientes, com a sessão do usuário e as regras no banco. A vazia e a
+ * simulada ficam como base para o que ainda não tiver backend.
  */
 export function escolherPortaPerfil(ambiente = process.env.VERCEL_ENV): PortaPerfil {
-  return ambiente === "production" ? portaPerfilVazia : portaPerfilSimulada;
+  const semLeituraReal = ambiente === "production" ? portaPerfilVazia : portaPerfilSimulada;
+  return { ...semLeituraReal, perfil: portaPerfilReal.perfil, salvarCampo: portaPerfilReal.salvarCampo };
 }
 
 export const portaPerfil: PortaPerfil = escolherPortaPerfil();
