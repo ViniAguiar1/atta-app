@@ -9,8 +9,8 @@ export function TabelaDeModelos({ modelos }: { modelos: ModeloDeDocumento[] }) {
   const c = textos.colunas;
   return (
     <div role="region" aria-label={textos.rotuloDaLista} tabIndex={0} className="relative overflow-x-auto rounded-xl border border-border bg-surface-raised">
-      <table className="w-full min-w-[60rem] border-collapse text-left text-base">
-        <thead className="text-sm">
+      <table className="w-full min-w-[60rem] border-collapse text-left text-[0.8125rem]">
+        <thead>
           <tr className="border-b border-border">
             {[c.modelo, c.procedimentos, c.frequencia, c.recusa, c.versao, c.assinados].map((coluna) => (
               <th key={coluna} scope="col" className="px-4 py-3 font-medium text-text-primary">
@@ -24,7 +24,7 @@ export function TabelaDeModelos({ modelos }: { modelos: ModeloDeDocumento[] }) {
             <tr key={m.id} className="border-b border-border align-top last:border-b-0">
               <td className="px-4 py-3">
                 <p className="text-text-primary">{m.titulo}</p>
-                <p className="text-sm text-text-secondary">{NOMES_DOS_TIPOS[m.tipo]}</p>
+                <p className="text-xs text-text-secondary">{NOMES_DOS_TIPOS[m.tipo]}</p>
               </td>
               <td className="px-4 py-3">
                 <Procedimentos procedimentos={m.procedimentos} />
@@ -45,7 +45,7 @@ export function TabelaDeModelos({ modelos }: { modelos: ModeloDeDocumento[] }) {
   );
 }
 
-const chip = "inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface-card px-3 py-0.5 text-sm text-text-primary";
+const chip = "inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface-card px-3 py-0.5 text-xs text-text-primary";
 
 function Procedimentos({ procedimentos }: { procedimentos: ModeloDeDocumento["procedimentos"] }) {
   if (procedimentos.length === 0) return <span className="text-text-secondary">{textos.semValor}</span>;
@@ -80,7 +80,7 @@ function Versao({ modelo }: { modelo: ModeloDeDocumento }) {
   return (
     <>
       <p className="text-text-primary">{textos.versao(modelo.versaoAtual)}</p>
-      {modelo.publicadoEm && <p className="text-sm text-text-secondary">{textos.desde(data(modelo.publicadoEm))}</p>}
+      {modelo.publicadoEm && <p className="text-xs text-text-secondary">{textos.desde(data(modelo.publicadoEm))}</p>}
     </>
   );
 }
