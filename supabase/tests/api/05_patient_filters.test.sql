@@ -38,6 +38,8 @@ create function pg_temp.profissional() returns void language sql security define
                                      cpf_enc, email_enc, dek_wrapped, kek_version)
   values ('00000000-0000-4000-8000-0000000000d1', 'Dra. Fictícia', 'crm', 'SP', '999', sha256('prof'::bytea),
           '···.···.000-00', '\x01', '\x01', '\x01', 1);
+  -- conselho conferido: só regularizado recebe agendamento (ADR 0006 §3)
+  update platform.professional set council_status = 'regularizado', council_verified_at = now() where council_status is null;
   insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
                                                  envelope_id, dek_wrapped, kek_version, propass_completed_at,
                                                  privacy_notice_version, privacy_notice_ack_at)

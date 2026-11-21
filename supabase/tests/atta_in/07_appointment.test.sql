@@ -1,6 +1,6 @@
 -- MIG-11b: agendamento, estados e regras (PDD v206 §10.2.1 e §10.2.2; ADR 0005 §4). Dados fictícios.
 begin;
-select plan(46);
+select plan(50);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'), ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
 -- paciente da rede com vínculo na A e um provisório da importação da A
@@ -15,6 +15,8 @@ insert into platform.professional (id, display_name, council, council_uf, counci
                                    email_enc, dek_wrapped, kek_version)
 values ('00000000-0000-4000-8000-0000000000f1', 'Dra. Fictícia', 'cro', 'SP', '12345', sha256('cpf-prof'::bytea),
         '···.···.000-01', '\x01', '\x01', '\x01', 1);
+-- conselho conferido: só regularizado recebe agendamento (ADR 0006 §3)
+update platform.professional set council_status = 'regularizado', council_verified_at = now() where council_status is null;
 insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
                                                envelope_id, dek_wrapped, kek_version, propass_completed_at,
                                                privacy_notice_version, privacy_notice_ack_at)
@@ -97,6 +99,8 @@ create function pg_temp.propass_link3() returns void language sql security defin
                                      email_enc, dek_wrapped, kek_version)
   values ('00000000-0000-4000-8000-0000000000f3', 'Dr. Fictício Dois', 'crm', 'SP', '777', sha256('cpf-prof-3'::bytea),
           '···.···.000-03', '\x01', '\x01', '\x01', 1);
+  -- conselho conferido: só regularizado recebe agendamento (ADR 0006 §3)
+  update platform.professional set council_status = 'regularizado', council_verified_at = now() where council_status is null;
   insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
                                                  envelope_id, dek_wrapped, kek_version, propass_completed_at,
                                                  privacy_notice_version, privacy_notice_ack_at)
@@ -107,6 +111,21 @@ $$;
 create function pg_temp.status(p_id uuid) returns text language sql security definer as $$
   select status from atta_in.appointment where id = p_id
 $$;
+
+create function pg_temp.conselho(p_prof uuid, p_status text) returns void language sql security definer as $$
+  update platform.professional set council_status = p_status,
+    council_verified_at = case when p_status = 'regularizado' then now() end where id = p_prof
+$$;
+-- sqlstate:mensagem:detail do erro (o throws_ok não confere o detail)
+create function pg_temp.erro(p_sql text) returns text language plpgsql as $$
+declare v text;
+begin
+  execute p_sql;
+  return null;
+exception when others then
+  get stacked diagnostics v = pg_exception_detail;
+  return sqlstate || ':' || sqlerrm || ':' || coalesce(v, '');
+end $$;
 
 do $$ begin
   execute format('grant execute on all functions in schema %I to authenticated', pg_my_temp_schema()::regnamespace);
@@ -223,6 +242,21 @@ select lives_ok($$ select pg_temp.propass_link3() $$, 'um 2º profissional com P
 select throws_ok($$ update atta_in.appointment set professional_link_id = '00000000-0000-4000-8000-0000000000d3'
                     where id = '00000000-0000-4000-8000-00000000a002' $$,
                  'P0001', 'ATTA-IN-0003', 'trocar para profissional sem o Serviço autorizado: recusado');
+
+-- conferência do conselho (decisão do dono; ADR 0006 §3): só regularizado recebe agendamento novo ou troca para ele
+select lives_ok($$ select pg_temp.agendar('00000000-0000-4000-8000-00000000a0c1', 3) $$, 'regularizado: agenda');
+select pg_temp.conselho('00000000-0000-4000-8000-0000000000f1', 'nao_consultado');
+select is(pg_temp.erro($$ select pg_temp.agendar(gen_random_uuid(), 4) $$), 'P0001:ATTA-IN-0003:council_status',
+          'aguardando conferência do conselho: agendamento novo recusado');
+select lives_ok($$ update atta_in.appointment set starts_at = starts_at + interval '1 hour', ends_at = ends_at + interval '1 hour'
+                   where id = '00000000-0000-4000-8000-00000000a0c1' $$,
+                'o que já estava marcado continua remarcando (a trava é no novo e na troca)');
+select pg_temp.conselho('00000000-0000-4000-8000-0000000000f3', 'nao_consultado');
+select is(pg_temp.erro($$ update atta_in.appointment set professional_link_id = '00000000-0000-4000-8000-0000000000d3'
+                          where id = '00000000-0000-4000-8000-00000000a0c1' $$), 'P0001:ATTA-IN-0003:council_status',
+          'trocar para profissional aguardando conferência: recusado');
+select pg_temp.conselho('00000000-0000-4000-8000-0000000000f1', 'regularizado');
+select pg_temp.conselho('00000000-0000-4000-8000-0000000000f3', 'regularizado');
 
 -- RN-CFG-01: horário do profissional dentro do funcionamento
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
