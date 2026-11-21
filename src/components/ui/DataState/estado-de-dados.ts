@@ -1,6 +1,6 @@
 // Para o teste de cada tela que lê dados (planning/08 §9.4): o DataState já tem os quatro estados testados, então a
 // tela só confere qual estado ele está mostrando, sem repetir o texto de cada um (4 + N testes, não 4 × N).
-export type NomeDoEstado = "carregando" | "vazio" | "sem-resultado" | "erro" | "pronto";
+export type NomeDoEstado = "carregando" | "vazio" | "sem-resultado" | "erro" | "sem-acesso" | "pronto";
 
 /** O estado que o DataState está mostrando dentro do container; "pronto" quando nenhum quadro de estado aparece. */
 export function estadoDeDados(container: HTMLElement): NomeDoEstado {
