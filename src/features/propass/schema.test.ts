@@ -22,12 +22,12 @@ describe("pinObvio e envioSchema", async () => {
   });
   it("o envio exige a leitura até o fim, um PNG e um PIN que não seja óbvio", () => {
     const leitura = { abertoEm: "2026-11-21T10:00:00.000Z", rolagemCompletaEm: "2026-11-21T10:01:00-03:00" };
-    const base = { dados: BASE, assinatura: "data:image/png;base64,iVBORw0KGgo=", leuAteOFim: true, pin: "2468", leitura };
+    const base = { dados: BASE, assinatura: "data:image/png;base64,iVBORw0KGgo=", leuAteOFim: true, pin: "2468", leitura, avisoDePrivacidade: null };
     expect(envioSchema.safeParse(base).success).toBe(true);
     expect(envioSchema.safeParse({ ...base, pin: null }).success).toBe(true); // quem já tem a senha do Boarding Check
     const futuro = new Date(Date.now() + 10 * 60_000).toISOString();
     for (const ruim of [
-      { leuAteOFim: false }, { pin: "1234" }, { assinatura: "data:image/jpeg;base64,AAAA" }, { leitura: undefined },
+      { leuAteOFim: false }, { pin: "1234" }, { avisoDePrivacidade: undefined }, { avisoDePrivacidade: "" }, { assinatura: "data:image/jpeg;base64,AAAA" }, { leitura: undefined },
       { leitura: { abertoEm: leitura.rolagemCompletaEm, rolagemCompletaEm: "2026-11-21T10:00:00.000Z" } },
       { leitura: { abertoEm: leitura.abertoEm, rolagemCompletaEm: futuro } }, { leitura: { abertoEm: "ontem", rolagemCompletaEm: leitura.abertoEm } },
     ]) {

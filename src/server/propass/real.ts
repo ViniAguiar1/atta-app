@@ -133,7 +133,10 @@ export const portaPropassReal: PortaPropass = {
       pin: envio.pin,
       leitura: envio.leitura,
       origem: envio.origem,
+      avisoDePrivacidade: envio.avisoDePrivacidade,
     });
-    return r.ok ? ok({ status: r.data.status }) : r;
+    if (!r.ok) return r;
+    // o Código ATTA do Termo volta só a quem acabou de assinar, e nunca vai para log (#303)
+    return ok(r.data.status === "ok" ? { status: "ok", codigoAtta: r.data.codigoAtta } : { status: "recusado" });
   },
 };
