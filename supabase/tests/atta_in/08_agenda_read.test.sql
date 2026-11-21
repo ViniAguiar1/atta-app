@@ -58,6 +58,15 @@ create function pg_temp.hora(p_dias int, p_hora int) returns timestamptz languag
   select (date_trunc('day', now() at time zone 'America/Sao_Paulo') + make_interval(days => p_dias, hours => p_hora))
          at time zone 'America/Sao_Paulo'
 $$;
+-- O teste passa a qualquer hora, inclusive 23h59 e 00h30 de Brasília (CTO, 21/11): nada de now() ± intervalo que cruze
+-- a meia-noite. O atrasado é uma hora antes de agora, mas nunca antes da meia-noite de hoje; o de amanhã fica amanhã e
+-- dentro das próximas 24 h (no meio entre a meia-noite de amanhã e agora + 24 h), para a janela de 24 h valer sempre.
+create function pg_temp.atrasado_hoje() returns timestamptz language sql as $$
+  select greatest(now() - interval '1 hour', pg_temp.hora(0, 0))
+$$;
+create function pg_temp.amanha_em_24h() returns timestamptz language sql as $$
+  select pg_temp.hora(1, 0) + ((now() + interval '24 hours') - pg_temp.hora(1, 0)) / 2
+$$;
 -- agenda direto como postgres (o caminho do painel tem teste no 07_appointment)
 -- as linhas de hoje como a agenda as monta, com o Concluído (ele fica fora do agenda_day, mas as ações dele valem para a
 -- visão Concluídos)
@@ -98,16 +107,17 @@ do $$ begin
   execute format('grant execute on all functions in schema %I to authenticated', pg_my_temp_schema()::regnamespace);
 end $$;
 
--- hoje: um atrasado (8 h, já passou), um Em preenchimento (10 h, provisório) e um concluído (11 h); amanhã: um futuro
-select pg_temp.agendar('00000000-0000-4000-8000-00000000a001', now() - interval '1 hour');
-select pg_temp.agendar('00000000-0000-4000-8000-00000000a002', now() + interval '1 minute', p_person => null,
+-- hoje: um atrasado (já passou, dentro de hoje), um Em preenchimento (10 h, provisório) e um concluído (11 h); amanhã:
+-- um futuro dentro de 24 h; depois de amanhã: um fora da janela de 24 h (sempre a mais de 34 h)
+select pg_temp.agendar('00000000-0000-4000-8000-00000000a001', pg_temp.atrasado_hoje());
+select pg_temp.agendar('00000000-0000-4000-8000-00000000a002', pg_temp.hora(0, 10), p_person => null,
                        p_prov => '00000000-0000-4000-8000-0000000000e9');
 select pg_temp.transitar('00000000-0000-4000-8000-00000000a002', 'em_preenchimento');
-select pg_temp.agendar('00000000-0000-4000-8000-00000000a003', now() + interval '2 minutes', p_type => 'avaliacao');
+select pg_temp.agendar('00000000-0000-4000-8000-00000000a003', pg_temp.hora(0, 11), p_type => 'avaliacao');
 select pg_temp.transitar('00000000-0000-4000-8000-00000000a003', 'em_preenchimento');
 select pg_temp.transitar('00000000-0000-4000-8000-00000000a003', 'pronto');
 select pg_temp.transitar('00000000-0000-4000-8000-00000000a003', 'concluido');
-select pg_temp.agendar('00000000-0000-4000-8000-00000000a004', pg_temp.hora(1, 10));
+select pg_temp.agendar('00000000-0000-4000-8000-00000000a004', pg_temp.amanha_em_24h());
 insert into atta_in.appointment_clinic_service (tenant_id, appointment_id, clinic_service_id)
 values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000a004', '00000000-0000-4000-8000-0000000000c1');
 select pg_temp.agendar('00000000-0000-4000-8000-00000000a005', pg_temp.hora(2, 10));
