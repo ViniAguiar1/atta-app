@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { hashDoSegredo } from "@/server/grant/politica";
 import { conferirIdentidade, enviarPropass, type DependenciasDoEnvio, type EntradaDoEnvio } from "./envio";
 
 // Banco simulado: cada rpc responde pelo nome; os testes conferem a ordem e o que foi mandado. Dados fictícios.
@@ -32,6 +33,8 @@ const entrada = (pin = "4071"): EntradaDoEnvio => ({
   origem: { ip: "203.0.113.7", userAgent: "teste" },
 });
 
+const SEGREDO_DL = "dlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"; // 43 caracteres base64url, fictício
+
 function deps(rpc: DependenciasDoEnvio["rpc"], extra: Partial<DependenciasDoEnvio> = {}) {
   const selar = vi.fn(async (e: { professionalId?: string }) => ({
     professional_id: e.professionalId!, cpf_hmac: "\\xaa", cpf_masked: "···.···.247-25", cpf_enc: "\\x01", phone_enc: "\\x02",
@@ -52,6 +55,7 @@ function deps(rpc: DependenciasDoEnvio["rpc"], extra: Partial<DependenciasDoEnvi
     macDoPin,
     assinar,
     novoId: () => NOVO,
+    segredoDoDownload: () => SEGREDO_DL,
     ...extra,
   };
   return { d, selar, macDoPin, assinar };
@@ -61,7 +65,7 @@ describe("enviarPropass (envio final do PROpass)", () => {
   it("na ordem: convite, contexto, identidade e submit; dados cifrados, pin_mac e pacote do termo num envio só", async () => {
     const { rpc, chamadas } = banco();
     const { d, selar, macDoPin, assinar } = deps(rpc);
-    expect(await enviarPropass(HASH, entrada(), d)).toEqual({ ok: true, data: { status: "ok", codigoAtta: "ATTA-0000-0000-0000" } });
+    expect(await enviarPropass(HASH, entrada(), d)).toEqual({ ok: true, data: { status: "ok", codigoAtta: "ATTA-0000-0000-0000", segredoDoDownload: SEGREDO_DL } });
     expect(chamadas.map((c) => c.fn)).toEqual(["propass_resolve", "propass_authorization_context", "propass_identity_check", "propass_submit"]);
     expect(selar.mock.calls[0]![0]).toMatchObject({ email: "dra@exemplo.test", professionalId: NOVO });
     expect(macDoPin).toHaveBeenCalledWith(NOVO, "4071");
@@ -88,7 +92,7 @@ describe("enviarPropass (envio final do PROpass)", () => {
   it("quem já tem PIN (usar_pin_existente) envia sem PIN: o submit vai com o mac e a versão nulos", async () => {
     const { rpc, chamadas } = banco({ propass_identity_check: { data: { status: "usar_pin_existente" }, error: null } });
     const { d, macDoPin } = deps(rpc);
-    expect(await enviarPropass(HASH, { ...entrada(), pin: null }, d)).toEqual({ ok: true, data: { status: "ok", codigoAtta: "ATTA-0000-0000-0000" } });
+    expect(await enviarPropass(HASH, { ...entrada(), pin: null }, d)).toEqual({ ok: true, data: { status: "ok", codigoAtta: "ATTA-0000-0000-0000", segredoDoDownload: SEGREDO_DL } });
     expect(macDoPin).not.toHaveBeenCalled();
     expect(chamadas.at(-1)!.args).toMatchObject({ p_pin_mac: null, p_pin_mac_version: null });
   });
@@ -168,6 +172,17 @@ describe("enviarPropass (envio final do PROpass)", () => {
     const dois = banco();
     await enviarPropass(HASH, { ...entrada(), avisoDePrivacidade: "2026-11" }, deps(dois.rpc).d);
     expect(dois.chamadas.at(-1)!.args).toMatchObject({ p_privacy_notice_version: "2026-11" });
+  });
+
+  it("o banco recebe só o sha256 do segredo do download; o segredo volta só no 'ok'", async () => {
+    const { rpc, chamadas } = banco();
+    const r = await enviarPropass(HASH, entrada(), deps(rpc).d);
+    const sub = chamadas.at(-1)!.args;
+    expect(sub.p_download_secret_hash).toBe(`\\x${hashDoSegredo(SEGREDO_DL)!.toString("hex")}`);
+    expect(JSON.stringify(sub)).not.toContain(SEGREDO_DL);
+    expect(r).toMatchObject({ ok: true, data: { segredoDoDownload: SEGREDO_DL } });
+    const recusa = banco({ propass_submit: { data: "recusado", error: null } });
+    expect(await enviarPropass(HASH, entrada(), deps(recusa.rpc).d)).toEqual({ ok: true, data: { status: "recusado" } });
   });
 
   it("recusa de identidade no submit volta como 'recusado'", async () => {

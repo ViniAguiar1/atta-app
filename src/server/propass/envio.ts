@@ -11,6 +11,7 @@ import {
 } from "@/server/atta-sign/termo-autorizacao";
 import { estadoDoConselhoParaOBanco, portaConselho, type PortaConselho } from "@/server/conselho/porta";
 import { cpfHmac } from "@/server/crypto/cpf";
+import { gerarSegredo, hashDoSegredo } from "@/server/grant/politica";
 import { consumirLimite, LIMITES } from "@/server/limite";
 import { pinMac, PIN_MAC_VERSION, validarPin } from "@/server/pin/pin";
 import { abrirConvite, selarProfissional } from "./convite";
@@ -62,6 +63,8 @@ export type DependenciasDoEnvio = {
   macDoPin?: (professionalId: string, pin: string) => Buffer;
   assinar?: (dados: Parameters<typeof assinarTermoDeAutorizacao>[0]) => Promise<PacoteDoTermo>;
   novoId?: () => string;
+  /** O segredo do download dos PDFs (testes); o padrão é o gerarSegredo. */
+  segredoDoDownload?: () => string;
 };
 
 const limitePadrao = (ip: string | null) => consumirLimite(LIMITES.propassEnvioPorIp, ip);
@@ -122,7 +125,7 @@ export type EntradaDoEnvio = {
 };
 
 /** 'ok' traz o Código ATTA do Termo de Autorização gravado; 'recusado' é a recusa genérica de identidade. */
-export type ResultadoDoEnvio = { status: "ok"; codigoAtta: string } | { status: "recusado" };
+export type ResultadoDoEnvio = { status: "ok"; codigoAtta: string; segredoDoDownload: string } | { status: "recusado" };
 
 /**
  * Envio final (api.propass_submit, #208): tudo ou nada no banco. A conferência do conselho é refeita aqui, na mesma
@@ -190,7 +193,14 @@ export async function enviarPropass(
     assinatura: { png: e.assinaturaPng, abertoEm: e.leitura.abertoEm, rolagemCompletaEm: e.leitura.rolagemCompletaEm, ip: e.origem.ip, userAgent: e.origem.userAgent },
   });
 
-  // 5. o envio final, tudo ou nada
+  // 5. o segredo do download dos dois PDFs (ADR 0001, "Download dos PDFs"): o banco recebe só o sha256 e emite o grant
+  //    (30 min, até 20 downloads) na mesma transação, só se o envio gravar. O segredo volta só para a server action, que
+  //    o põe no cookie HttpOnly; nunca na resposta à tela, na URL ou no log.
+  const segredoDoDownload = (d.segredoDoDownload ?? gerarSegredo)();
+  const hashDoDownload = hashDoSegredo(segredoDoDownload);
+  if (!hashDoDownload) return falha("INTERNO", MENSAGENS.INTERNO);
+
+  // 6. o envio final, tudo ou nada
   const { data, error } = await rpc("propass_submit", {
     p_secret_hash: bytea(hashDoLink),
     p_professional_id: professionalId,
@@ -210,10 +220,12 @@ export async function enviarPropass(
     p_pin_mac: mac ? bytea(mac) : null,
     p_pin_mac_version: mac ? PIN_MAC_VERSION : null,
     p_privacy_notice_version: e.avisoDePrivacidade ?? null,
+    p_download_secret_hash: bytea(hashDoDownload),
     ...pacote,
   });
   if (error) return erroDoBanco(error);
-  // o Código ATTA do Termo só volta a quem acabou de assinar, e só quando o banco gravou (Frontend 6, passo 4 do
-  // PROpass). Não é dado pessoal (a verificação pública do §18 mostra só o tipo, o estado e a clínica), mas fica fora de log
-  return ok(data === "ok" ? { status: "ok", codigoAtta: pacote.p_atta_code } : { status: "recusado" });
+  // o Código ATTA do Termo e o segredo do download só voltam a quem acabou de assinar, e só quando o banco gravou
+  // (Frontend 6, passo 4 do PROpass). O código não é dado pessoal (a verificação pública do §18 mostra só o tipo, o estado
+  // e a clínica); os dois ficam fora de log
+  return ok(data === "ok" ? { status: "ok", codigoAtta: pacote.p_atta_code, segredoDoDownload } : { status: "recusado" });
 }
