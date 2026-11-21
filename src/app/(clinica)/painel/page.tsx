@@ -18,7 +18,7 @@ export default function Page() {
 async function Destino() {
   await connection();
   const sessao = await sessaoDoPainel();
-  const [primeira] = abasDoPapel(sessao?.papel ?? null);
+  const [primeira] = abasDoPapel(sessao?.papel ?? null, sessao?.permissoes ?? []);
   if (primeira) redirect(primeira.href);
   return null;
 }
