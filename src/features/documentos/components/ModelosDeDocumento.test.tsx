@@ -29,7 +29,7 @@ describe("Termos & Docs › Modelos de documento", () => {
     render(<ModelosDeDocumento resultado={pronto()} />);
     const tabela = screen.getByRole("table");
     expect(within(tabela).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
-      "Modelo", "Procedimentos", "Frequência", "Recusa impede?", "Versão", "Assinados",
+      "Modelo", "Procedimentos", "Frequência", "Recusa impede?", "Versão", "Assinados", "Ações",
     ]);
     expect(within(tabela).getByText("TCLE — Toxina botulínica")).toBeInTheDocument();
     expect(within(tabela).getByText("Toxina botulínica")).toBeInTheDocument();

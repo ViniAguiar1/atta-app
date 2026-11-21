@@ -11,7 +11,7 @@ import { TabelaDeModelos } from "./TabelaDeModelos";
 
 // Termos & Docs › Modelos de documento (MIG-44; PDD v206 §10.3.1; simulador, captura 39). Os inativos ficam fora da
 // lista padrão (PDD §10.3.1, filtro "Inativo"); o rodapé conta os mostrados de todos. Ficam fora até terem destino:
-// "+ Novo modelo", o filtro e o menu ⋮ (este com as ações do #69, num PR seguinte).
+// "+ Novo modelo" e o filtro. O ⋮ de cada linha traz as ações do servidor (MenuDoModelo).
 export function ModelosDeDocumento({ resultado }: { resultado: Resultado<MeusModelos> }) {
   const router = useRouter();
   const visiveis = resultado.ok ? resultado.data.modelos.filter((m) => m.estado !== "inativo") : [];

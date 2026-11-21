@@ -51,6 +51,41 @@ export const textos = {
   mais: (n: number) => `+${n}`, // simulador ("Toxina botulínica +3")
   semValor: "—", // regra do Tech Lead Frontend: número que não existe aparece como "—"
   rodape: (mostrados: number, total: number) => `${mostrados} de ${total} modelo(s)`, // simulador
+  // menu ⋮ (o simulador mostra o botão, não o menu aberto): provisórios
+  colunaAcoes: "Ações", // provisório (cabeçalho só para leitor de tela)
+  menu: (titulo: string) => `Ações de ${titulo}`, // provisório
+  acoes: {
+    publicar: "Publicar", // provisório
+    vincular_procedimentos: "Vincular procedimentos", // provisório (PDD §10.3.1: vínculo a procedimentos)
+    inativar: "Inativar", // provisório (PDD §10.3.1: estado Inativo)
+  },
+  motivos: {
+    service_ids: "Vincule ao menos um procedimento para publicar.", // provisório (disabled_reason do #69)
+  } as Record<string, string>,
+  publicado: (v: number) => `Versão ${v} publicada.`, // provisório
+  errosDePublicar: {
+    draft_body: "O texto do modelo está vazio.", // provisório
+    frequency: "Escolha a frequência antes de publicar.", // provisório
+    required: "Defina se a recusa impede o atendimento antes de publicar.", // provisório (RN-DOC-04)
+    service_ids: "Vincule ao menos um procedimento para publicar.", // provisório
+  } as Record<string, string>,
+  semMudanca: "Não há mudança para publicar desde a última versão.", // provisório (ATTA-IN-0002:draft_body)
+  falhou: "Não conseguimos concluir agora. Tente de novo em instantes.", // provisório
+  inativar: {
+    titulo: (t: string) => `Inativar "${t}"?`, // provisório
+    texto:
+      "O modelo deixa de valer para novos documentos. Os documentos já emitidos continuam válidos e consultáveis. Depois de inativado, ele não volta a ficar ativo.", // provisório (PDD §10.3.1; Inativo não volta, lacuna com a PO)
+    confirmar: "Inativar modelo", // provisório
+  },
+  vincular: {
+    titulo: (t: string) => `Procedimentos de "${t}"`, // provisório
+    texto: "O modelo vale para os procedimentos marcados (PDD recomenda um termo por procedimento).", // provisório (PDD §10.3.1)
+    inativo: "inativo", // provisório
+    semServicos: "A clínica ainda não tem Serviços cadastrados. Cadastre em Configurações › Serviços.", // provisório
+    salvar: "Salvar procedimentos", // provisório
+  },
+  cancelar: "Cancelar", // provisório
+  salvando: "Salvando…", // provisório
   carregando: "modelos de documento", // provisório (leitor de tela)
   vazio: {
     titulo: "Nenhum modelo de documento ainda", // provisório (o PDD e o simulador não têm o estado vazio)

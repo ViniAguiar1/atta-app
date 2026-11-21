@@ -23,6 +23,12 @@ export const MODELOS_SIMULADOS: ModeloDeDocumento[] = [
   },
 ];
 
+export const SERVICOS_SIMULADOS = [
+  { id: "cccc0000-0000-4000-8000-000000000001", nome: "Toxina botulínica", ativo: true },
+  { id: "cccc0000-0000-4000-8000-000000000002", nome: "Preenchimento labial", ativo: true },
+  { id: "cccc0000-0000-4000-8000-000000000003", nome: "Peeling químico", ativo: false },
+];
+
 /** Resumo coerente com os modelos simulados, para os testes (na real, os totais vêm do banco). */
 export const RESUMO_SIMULADO: ResumoDosModelos = {
   ativos: 1, obrigatorios: 1, opcionais: 0, vencendo: null, vencidos: null, assinados: 52, percentualAttaSign: 100,
@@ -31,5 +37,17 @@ export const RESUMO_SIMULADO: ResumoDosModelos = {
 export const portaDocumentosSimulada: PortaDocumentos = {
   async listar() {
     return ok({ modelos: MODELOS_SIMULADOS, resumo: RESUMO_SIMULADO });
+  },
+  async publicar() {
+    return ok({ versao: 3 });
+  },
+  async inativar() {
+    return ok(undefined);
+  },
+  async vincular() {
+    return ok(undefined);
+  },
+  async servicos() {
+    return ok(SERVICOS_SIMULADOS);
   },
 };

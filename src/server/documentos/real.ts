@@ -64,7 +64,8 @@ export function paraResumo(r: z.infer<typeof resumoSchema>): ResumoDosModelos {
     vencendo: r.expiring_count,
     vencidos: r.expired_count,
     assinados: r.signed_count,
-    percentualAttaSign: r.signed_count > 0 ? Math.round((r.signed_atta_sign_count / r.signed_count) * 100) : null,
+    // floor: 99,5% não pode aparecer como 100% (nota do Backend 6 no #184)
+    percentualAttaSign: r.signed_count > 0 ? Math.floor((r.signed_atta_sign_count / r.signed_count) * 100) : null,
   };
 }
 
@@ -81,5 +82,29 @@ export const portaDocumentosReal: PortaDocumentos = {
       return falha("INTERNO", "Resposta fora do formato.");
     }
     return ok({ modelos: linhas.data.map(paraModelo), resumo: paraResumo(totais.data[0]!) });
+  },
+  async publicar(modeloId) {
+    const api = (await criarClienteServidor()).schema("api");
+    const { data, error } = await api.rpc("atta_in_template_publish", { p_template_id: modeloId });
+    if (error) return falhaDoBanco(error);
+    const versao = z.array(z.object({ version: z.number().int().positive() })).length(1).safeParse(data);
+    return versao.success ? ok({ versao: versao.data[0]!.version }) : falha("INTERNO", "Resposta fora do formato.");
+  },
+  async inativar(modeloId) {
+    const api = (await criarClienteServidor()).schema("api");
+    const { error } = await api.rpc("template_deactivate", { p_template_id: modeloId });
+    return error ? falhaDoBanco(error) : ok(undefined);
+  },
+  async vincular(modeloId, servicoIds) {
+    const api = (await criarClienteServidor()).schema("api");
+    const { error } = await api.rpc("template_set_services", { p_template_id: modeloId, p_service_ids: servicoIds });
+    return error ? falhaDoBanco(error) : ok(undefined);
+  },
+  async servicos() {
+    const supabase = await criarClienteServidor();
+    const { data, error } = await supabase.schema("atta_in").from("clinic_service").select("id, name, active").is("deleted_at", null).order("name");
+    if (error) return falhaDoBanco(error);
+    const lido = z.array(z.object({ id: z.uuid(), name: z.string().min(1), active: z.boolean() })).safeParse(data);
+    return lido.success ? ok(lido.data.map((s) => ({ id: s.id, nome: s.name, ativo: s.active }))) : falha("INTERNO", "Resposta fora do formato.");
   },
 };
