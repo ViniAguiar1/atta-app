@@ -4,6 +4,7 @@ import nextTs from "eslint-config-next/typescript";
 import { seletoresDeBreakpoint } from "./eslint-rules/breakpoints.mjs";
 import { seletoresDeCor } from "./eslint-rules/cores.mjs";
 import { fronteiras } from "./eslint-rules/fronteiras.mjs";
+import betterTailwindcss from "eslint-plugin-better-tailwindcss";
 import { pluginDoTema } from "./eslint-rules/tamanho-de-texto.mjs";
 
 // A secret key passa por cima da RLS: só entra onde o código roda no servidor e confere o papel (ADR 0001 §4).
@@ -16,6 +17,10 @@ const SO_SERVIDOR = {
     },
   ],
 };
+
+// Classes do src/styles/globals.css que não são do Tailwind (moldura do site na tela de entrar, #136): a regra de classe
+// desconhecida não as cobra. Classe nova de CSS próprio entra aqui, com o arquivo que a define.
+const CLASSES_PROPRIAS = ["^sobre-marca$", "^cartao-do-site$"];
 
 // HTML cru (ADR 0004 §3b): reaproveitado nos dois blocos de no-restricted-syntax abaixo.
 const HTML_CRU = [
@@ -62,6 +67,16 @@ export default defineConfig([
     ignores: ["src/**/*.test.{ts,tsx}"],
     plugins: { tema: pluginDoTema },
     rules: { "tema/tamanho-de-texto": "warn" },
+  },
+  // Classe que o tema não gera (Tech Lead Frontend, 21/11): o tokens.theme.css zera escalas do Tailwind (raio, texto,
+  // breakpoint, cor), e uma classe como rounded-xl some sem aviso do build. Esta regra lê o tema de verdade
+  // (src/styles/globals.css) e avisa (warn). As classes próprias do globals.css ficam em CLASSES_PROPRIAS, num só lugar.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}"],
+    plugins: { "better-tailwindcss": betterTailwindcss },
+    settings: { "better-tailwindcss": { entryPoint: "src/styles/globals.css" } },
+    rules: { "better-tailwindcss/no-unknown-classes": ["warn", { ignore: CLASSES_PROPRIAS }] },
   },
   // o único lugar com console.*: o logger, que escreve JSON sem dado pessoal (ADR 0001 §5)
   { files: ["src/lib/logger.ts"], rules: { "no-console": "off" } },
