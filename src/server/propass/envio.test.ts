@@ -61,7 +61,7 @@ describe("enviarPropass (envio final do PROpass)", () => {
   it("na ordem: convite, contexto, identidade e submit; dados cifrados, pin_mac e pacote do termo num envio só", async () => {
     const { rpc, chamadas } = banco();
     const { d, selar, macDoPin, assinar } = deps(rpc);
-    expect(await enviarPropass(HASH, entrada(), d)).toEqual({ ok: true, data: { status: "ok" } });
+    expect(await enviarPropass(HASH, entrada(), d)).toEqual({ ok: true, data: { status: "ok", codigoAtta: "ATTA-0000-0000-0000" } });
     expect(chamadas.map((c) => c.fn)).toEqual(["propass_resolve", "propass_authorization_context", "propass_identity_check", "propass_submit"]);
     expect(selar.mock.calls[0]![0]).toMatchObject({ email: "dra@exemplo.test", professionalId: NOVO });
     expect(macDoPin).toHaveBeenCalledWith(NOVO, "4071");
@@ -88,7 +88,7 @@ describe("enviarPropass (envio final do PROpass)", () => {
   it("quem já tem PIN (usar_pin_existente) envia sem PIN: o submit vai com o mac e a versão nulos", async () => {
     const { rpc, chamadas } = banco({ propass_identity_check: { data: { status: "usar_pin_existente" }, error: null } });
     const { d, macDoPin } = deps(rpc);
-    expect(await enviarPropass(HASH, { ...entrada(), pin: null }, d)).toEqual({ ok: true, data: { status: "ok" } });
+    expect(await enviarPropass(HASH, { ...entrada(), pin: null }, d)).toEqual({ ok: true, data: { status: "ok", codigoAtta: "ATTA-0000-0000-0000" } });
     expect(macDoPin).not.toHaveBeenCalled();
     expect(chamadas.at(-1)!.args).toMatchObject({ p_pin_mac: null, p_pin_mac_version: null });
   });
