@@ -118,6 +118,9 @@ export type EntradaDoEnvio = {
   origem: Origem;
 };
 
+/** 'ok' traz o Código ATTA do Termo de Autorização gravado; 'recusado' é a recusa genérica de identidade. */
+export type ResultadoDoEnvio = { status: "ok"; codigoAtta: string } | { status: "recusado" };
+
 /**
  * Envio final (api.propass_submit, #208): tudo ou nada no banco. A conferência do conselho é refeita aqui, na mesma
  * requisição (Segurança, #129); "não confere" sai sem chamar o banco. A recusa de identidade volta como 'recusado'.
@@ -126,7 +129,7 @@ export async function enviarPropass(
   hashDoLink: Buffer,
   e: EntradaDoEnvio,
   d: DependenciasDoEnvio = {},
-): Promise<Resultado<{ status: "ok" | "recusado" }>> {
+): Promise<Resultado<ResultadoDoEnvio>> {
   const rpc = d.rpc ?? rpcAdmin;
   const limite = await (d.limite ?? limitePadrao)(e.origem.ip);
   if (!limite.ok) return limite;
@@ -206,5 +209,7 @@ export async function enviarPropass(
     ...pacote,
   });
   if (error) return erroDoBanco(error);
-  return ok({ status: data === "ok" ? "ok" : "recusado" });
+  // o Código ATTA do Termo só volta a quem acabou de assinar, e só quando o banco gravou (Frontend 6, passo 4 do
+  // PROpass). Não é dado pessoal (a verificação pública do §18 mostra só o tipo, o estado e a clínica), mas fica fora de log
+  return ok(data === "ok" ? { status: "ok", codigoAtta: pacote.p_atta_code } : { status: "recusado" });
 }
