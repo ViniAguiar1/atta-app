@@ -27,6 +27,7 @@ describe("verificação pública", () => {
     expect(within(r).getByText("Clínica Aurora Estética")).toBeInTheDocument();
     expect(within(r).getByText(`SHA-256 da evidência: ${"9f".repeat(32)}`)).toBeInTheDocument();
     expect(within(r).queryByText(/Confere|recalculado/)).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Documento encontrado: Termo de Autorização de Uso de Imagem de Assinatura Digital. Estado: Assinado.");
   });
 
   it("estado sem tela própria mostra só o nome do estado do PDD, no mesmo chip", () => {
