@@ -75,10 +75,14 @@ describe("assinarTermoDeAutorizacao", () => {
     expect(subidos[0]!.caminho).toBe(`${TENANT}/${DOC}/assinatura.png`);
     expect(pacote.p_stroke.storage_path).toBe(subidos[0]!.caminho);
     expect(Buffer.from(subidos[0]!.conteudo).includes(Buffer.from(PNG))).toBe(false);
-    const ctx = { tenant_id: TENANT, table: "documents.stored_object", column: "signature_stroke", id: DOC };
+    // chave natural do objeto (ADR 0002; Tech Lead no #220): a parte entra no contexto
+    const ctx = { tenant_id: TENANT, table: "documents.stored_object", column: "signature_stroke:p1", id: DOC };
     const dek = await cofre.unwrapDataKey({ kekVersion: pacote.p_stroke.kek_version, blob: Buffer.from(pacote.p_stroke.dek_wrapped, "hex") }, ctx);
     expect(Buffer.compare(open(subidos[0]!.conteudo, dek, columnAad(TENANT, ctx.table, ctx.column, DOC)), Buffer.from(PNG))).toBe(0);
     expect(() => open(subidos[0]!.conteudo, dek, columnAad(TENANT, ctx.table, ctx.column, "00000000-0000-4000-8000-000000000000"))).toThrow();
+    expect(() => open(subidos[0]!.conteudo, dek, columnAad(TENANT, ctx.table, "signature_stroke:p2", DOC))).toThrow();
+    await expect(cofre.unwrapDataKey({ kekVersion: pacote.p_stroke.kek_version, blob: Buffer.from(pacote.p_stroke.dek_wrapped, "hex") },
+      { ...ctx, column: "signature_stroke" })).rejects.toThrow();
     expect(pacote.p_stroke).toMatchObject({ size_bytes: PNG.length, sha256_plain: createHash("sha256").update(PNG).digest("hex") });
   });
 
@@ -105,6 +109,13 @@ describe("assinarTermoDeAutorizacao", () => {
     const rsa = generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ type: "pkcs8", format: "pem" }).toString();
     await expect(assinarTermoDeAutorizacao(dados(), { cofre, chave: { kid: CHAVE.kid, privadaPem: rsa }, subir: async () => {} }))
       .rejects.toThrow();
+  });
+
+  it("o contexto do objeto aceita só o papel com a parte (ADR 0002), sem abrir outros formatos", () => {
+    expect(() => columnAad(TENANT, "documents.stored_object", "signature_stroke:p1", DOC)).not.toThrow();
+    for (const coluna of ["signature_stroke:", "signature_stroke:x1", "a:b", "signature_stroke:p123", "x|y"]) {
+      expect(() => columnAad(TENANT, "documents.stored_object", coluna, DOC)).toThrow(RangeError);
+    }
   });
 
   it("registroDoConselho segue a forma do payload (o banco recalcula igual)", () => {
