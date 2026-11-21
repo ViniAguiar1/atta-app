@@ -26,10 +26,12 @@ function fusoValido(fuso: string): boolean {
   }
 }
 
-const contextoSchema = z.object({
+/** A linha do api.propass_authorization_context. CNPJ guardado sem pontuação, alfanumérico (IN RFB 2.229/2024; ADR 0001,
+ * "CNPJ alfanumérico"): 12 caracteres [0-9A-Z] e 2 dígitos verificadores. O só de dígitos continua valendo. */
+export const contextoSchema = z.object({
   legal_name: z.string().min(1),
   trade_name: z.string().min(1),
-  cnpj: z.string().regex(/^\d{14}$/),
+  cnpj: z.string().regex(/^[0-9A-Z]{12}[0-9]{2}$/),
   template_id: z.uuid(),
   version: z.number().int().positive(),
   body_sha256: z.string().regex(/^[0-9a-f]{64}$/),
