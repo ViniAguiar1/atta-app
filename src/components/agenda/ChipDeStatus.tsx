@@ -1,5 +1,8 @@
-import type { Status } from "../schema";
-import { textos } from "../textos";
+import type { Status } from "@/lib/agenda/linha";
+import { textosDaAgenda as textos } from "./textos";
+
+// Componente de domínio comum à Agenda e à Pasta do Paciente (decisão do Tech Lead Frontend, ORDEM.md "Decisões de
+// componentes"). Dono: Frontend 4.
 
 // Cores dos status (PDD §10.2.2): Agendado cinza neutro; Em preenchimento turquesa (informação); Pronto verde claro do
 // ATTA-in; Em atendimento verde escuro com texto claro; Concluído verde de sucesso; Ausente e Cancelado só contorno.
