@@ -1,6 +1,6 @@
 -- MIG-14b (1): PROpass pelo link do convite (PDD v206 §10.4.3; ADR 0004 §3). Dados fictícios: bytes e nomes inventados.
 begin;
-select plan(54);
+select plan(64);
 
 insert into platform.tenant (id, name, legal_name, cnpj) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A', 'Clínica Fictícia A Ltda', '00000000410179'),
@@ -52,7 +52,8 @@ values ('staging-seal-teste-propass', '\x302a300506032b6570032100'::bytea || sha
 create function pg_temp.enviar(p_segredo text, p_email text, p_cpf text, p_numero text,
                                p_conselho text default 'regularizado', p_nome text default null,
                                p_aviso text default 'v1', p_codigo text default null,
-                               p_com_pin boolean default true) returns text
+                               p_com_pin boolean default true, p_download text default null,
+                               p_download_hash bytea default null) returns text
 language plpgsql security definer as $$
 declare
   v_link uuid; v_tenant uuid; v_doc uuid := gen_random_uuid(); v_payload bytea; tv record;
@@ -86,7 +87,7 @@ begin
     sha512('selo-ficticio'::bytea),
     jsonb_build_object('storage_path', coalesce(v_tenant::text, gen_random_uuid()::text) || '/' || v_doc || '/assinatura.png',
                        'sha256_plain', repeat('a', 64), 'size_bytes', 2048, 'dek_wrapped', 'abcd', 'kek_version', 1),
-    p_aviso);
+    p_aviso, coalesce(p_download_hash, case when p_download is not null then sha256(p_download::bytea) end));
 end $$;
 create function pg_temp.termo(p_link uuid) returns text language sql security definer as $$
   select string_agg(d.status, ',') from documents.document d where d.professional_link_id = p_link
@@ -127,6 +128,31 @@ $$;
 create function pg_temp.revogado_por_tentativas() returns int language sql security definer as $$
   select count(*)::int from audit.event where action = 'grant.revoke' and details ->> 'reason' = 'propass_attempts'
 $$;
+create function pg_temp.download(p_segredo text) returns uuid language sql security definer as $$
+  select id from platform.access_grant where secret_hash = sha256(p_segredo::bytea) and purpose = 'propass_download'
+$$;
+create function pg_temp.forma_download(p_segredo text, p_link uuid) returns boolean language sql security definer as $$
+  select purpose = 'propass_download' and professional_link_id = p_link and use_count = 0
+         and expires_at = created_at + interval '30 minutes'
+  from platform.access_grant where secret_hash = sha256(p_segredo::bytea)
+$$;
+create function pg_temp.downloads() returns int language sql security definer as $$
+  select count(*)::int from platform.access_grant where purpose = 'propass_download'
+$$;
+-- usa o grant n vezes pelo private.grant_use (como o download do Backend 3) e conta quantas passaram
+create function pg_temp.usar(p_segredo text, p_vezes int, p_purpose text default 'propass_download') returns int
+language plpgsql security definer as $$
+declare v_ok int := 0;
+begin
+  for i in 1 .. p_vezes loop
+    if private.grant_use(pg_temp.download(p_segredo), p_purpose) then v_ok := v_ok + 1; end if;
+  end loop;
+  return v_ok;
+end $$;
+create function pg_temp.envelhecer_download(p_segredo text, p_idade interval) returns void language sql security definer as $$
+  update platform.access_grant set created_at = created_at - p_idade, expires_at = expires_at - p_idade
+  where secret_hash = sha256(p_segredo::bytea)
+$$;
 create function pg_temp.eventos(p_action text) returns int language sql security definer as $$
   select count(*)::int from audit.event where action = p_action
 $$;
@@ -143,7 +169,7 @@ select is((select idle from private.grant_policy('professional_propass')), null:
 select ok(not has_function_privilege('authenticated', 'api.propass_resolve(bytea)', 'EXECUTE'),
           'o navegador não abre o PROpass direto');
 select ok(not has_function_privilege('authenticated',
-          'api.propass_submit(bytea, uuid, text, text, text, text, bytea, text, bytea, bytea, bytea, bytea, bytea, smallint, text, bytea, smallint, uuid, bytea, text, text, bytea, jsonb, text)',
+          'api.propass_submit(bytea, uuid, text, text, text, text, bytea, text, bytea, bytea, bytea, bytea, bytea, smallint, text, bytea, smallint, uuid, bytea, text, text, bytea, jsonb, text, bytea)',
           'EXECUTE'), 'o navegador não grava o PROpass direto');
 select ok(not has_function_privilege('authenticated', 'private.propass_issue(uuid, uuid, bytea)', 'EXECUTE')
           and not has_function_privilege('service_role', 'private.propass_issue(uuid, uuid, bytea)', 'EXECUTE'),
@@ -220,7 +246,7 @@ select is(pg_temp.pins(), 1, 'o reaproveitado mantém o PIN que já tem');
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000c', 'ADMIN');
 select pg_temp.convidar('00000000-0000-4000-8000-0000000000c3', 'golpe@clinica-ficticia.test', 'link-c1');
 select pg_temp.servidor();
-select is(pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-1', '1001'), 'recusado',
+select is(pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-1', '1001', p_download => 'dl-c1'), 'recusado',
           'mesmo conselho e mesmo CPF, mas outro e-mail: recusado (Segurança, S2)');
 select is(pg_temp.enviar('link-c1', 'golpe@clinica-ficticia.test', 'cpf-2', '1001'), 'recusado',
           'conselho de outro com CPF diferente: a mesma resposta (Tech Lead)');
@@ -272,12 +298,38 @@ select pg_temp.servidor();
 select throws_ok($$ select * from api.propass_resolve(sha256('link-d2'::bytea)) $$, '42501', 'ATTA-AUTH-0004',
                  'a clínica excluiu o profissional: o link do PROpass não abre');
 
+-- download dos PDFs do fim do PROpass (ADR 0001): grant de 30 min, no máximo 20 downloads, só com o envio gravado
+select is(pg_temp.downloads(), 0, 'a recusa de identidade não emite o grant do download');
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000d', 'ADMIN');
+select pg_temp.convidar('00000000-0000-4000-8000-0000000000c6', 'dr6@clinica-ficticia.test', 'link-d3');
+select pg_temp.convidar('00000000-0000-4000-8000-0000000000c7', 'dr7@clinica-ficticia.test', 'link-d4');
+select pg_temp.servidor();
+select throws_ok($$ select pg_temp.enviar('link-d3', 'dr6@clinica-ficticia.test', 'cpf-6', '6006',
+                                          p_download_hash => '\x0102'::bytea) $$,
+                 'P0001', 'ATTA-IN-0001', 'hash do segredo do download fora do tamanho: o envio é recusado');
+select is(pg_temp.enviar('link-d3', 'dr6@clinica-ficticia.test', 'cpf-6', '6006', p_download => 'dl-d3'), 'ok',
+          'envio gravado com o segredo do download');
+select ok(pg_temp.forma_download('dl-d3', '00000000-0000-4000-8000-0000000000c6'),
+          'o grant do download nasce preso ao vínculo, zerado e com 30 minutos');
+select is(pg_temp.usar('dl-d3', 1, 'professional_propass'), 0, 'o grant do download não serve para outra finalidade');
+select is(pg_temp.usar('dl-d3', 21), 20, 'no máximo 20 downloads; o 21º é recusado');
+select set_config('role', 'postgres', true);
+select ok(not private.grant_is_valid(pg_temp.download('dl-d3'), 'propass_download'),
+          'acima do teto, o grant não vale mais (a mesma resposta de vencido)');
+select is(pg_temp.enviar('link-d4', 'dr7@clinica-ficticia.test', 'cpf-7', '7007', p_download => 'dl-d4'), 'ok',
+          'outro envio, outro grant');
+select pg_temp.envelhecer_download('dl-d4', interval '31 minutes');
+select is(pg_temp.usar('dl-d4', 1), 0, 'depois de 30 minutos, o download não vale (sem renovar por uso)');
+select ok(not has_function_privilege('service_role', 'private.grant_use(uuid, text)', 'EXECUTE')
+          and not has_function_privilege('authenticated', 'private.grant_use(uuid, text)', 'EXECUTE'),
+          'contar uso só por dentro das funções do banco');
+
 -- auditoria
 select set_config('role', 'postgres', true);
-select is(pg_temp.eventos('propass.submit'), 3, 'cada PROpass gravado vai para audit');
+select is(pg_temp.eventos('propass.submit'), 5, 'cada PROpass gravado vai para audit');
 select ok(pg_temp.eventos('grant.revoke') >= 1 and pg_temp.eventos('propass.open') >= 1,
           'o reenvio e a abertura vão para audit');
-select is(pg_temp.eventos('professional.pin_set'), 2, 'cada PIN criado vai para audit (sem o pin_mac)');
+select is(pg_temp.eventos('professional.pin_set'), 4, 'cada PIN criado vai para audit (sem o pin_mac)');
 
 select * from finish();
 rollback;
