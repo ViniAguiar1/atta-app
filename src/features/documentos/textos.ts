@@ -86,6 +86,7 @@ export const textos = {
   },
   cancelar: "Cancelar", // provisório
   salvando: "Salvando…", // provisório
+  carregandoServicos: "Carregando…", // provisório
   carregando: "modelos de documento", // provisório (leitor de tela)
   vazio: {
     titulo: "Nenhum modelo de documento ainda", // provisório (o PDD e o simulador não têm o estado vazio)

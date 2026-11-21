@@ -16,6 +16,7 @@ const LINHA = {
   updated_at: "2026-11-20T12:00:00+00:00",
   allowed_actions: [{ action: "editar" }, { action: "publicar", disabled_reason: "service_ids" }, { action: "duplicar" }],
   clinic_services: [SERVICO], current_version_published_at: "2026-08-11T13:00:00+00:00", signed_count: 12,
+  current_required: true, current_frequency: "unica", current_validity_months: 6,
 };
 const RESUMO = {
   active_count: 7, active_required_count: 6, active_optional_count: 1, expiring_count: null, expired_count: null,
@@ -64,6 +65,19 @@ describe("portaDocumentosReal.listar", () => {
     expect(await porta.listar()).toMatchObject({ ok: false, error: { code: "INTERNO" } });
     responder({ data: [LINHA], error: null }, { data: [], error: null });
     expect(await porta.listar()).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+  });
+});
+
+describe("regra da versão publicada (#188)", () => {
+  it("Ativo e Inativo usam current_*; Rascunho usa o rascunho", async () => {
+    const ativo = { ...LINHA, required: false, frequency: "por_procedimento", validity_months: null };
+    const rascunho = { ...LINHA, id: "dddd0000-0000-4000-8000-00000000000c", status: "rascunho", current_version: null, current_version_published_at: null,
+      current_required: null, current_frequency: null, current_validity_months: null, required: false, frequency: "por_procedimento", validity_months: null };
+    responder({ data: [ativo, rascunho], error: null });
+    const r = await porta.listar();
+    const [a, b] = r.ok ? r.data.modelos : [];
+    expect(a).toMatchObject({ obrigatorio: true, frequencia: "unica", validadeMeses: 6 });
+    expect(b).toMatchObject({ obrigatorio: false, frequencia: "por_procedimento", validadeMeses: null });
   });
 });
 

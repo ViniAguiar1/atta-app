@@ -42,7 +42,7 @@ export function DialogoVincular({ modelo, aoFechar, aoSalvar }: Props) {
   return (
     <Dialogo titulo={textos.vincular.titulo(modelo.titulo)} aoFechar={aoFechar}>
       <p className="mb-3 text-text-secondary">{textos.vincular.texto}</p>
-      {servicos === null && !erro && <p aria-live="polite">{textos.salvando}</p>}
+      {servicos === null && !erro && <p aria-live="polite">{textos.carregandoServicos}</p>}
       {servicos?.length === 0 && <p>{textos.vincular.semServicos}</p>}
       {servicos && servicos.length > 0 && (
         <fieldset className="flex max-h-64 flex-col gap-1 overflow-y-auto">
