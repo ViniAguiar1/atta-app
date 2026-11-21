@@ -1,15 +1,20 @@
 import type { ModeloDeDocumento } from "@/server/documentos/porta";
-import { data, frequencia, numero } from "../formatos";
+import { data, frequencia, mesAno, numero } from "../formatos";
 import { NOMES_DOS_TIPOS, textos } from "../textos";
 
 // Tabela de Meus modelos (PDD §10.3.1; simulador, captura 39): Modelo · Procedimentos · Frequência · Recusa impede? ·
-// Versão · Assinados. O menu ⋮ (editar, vincular, publicar, inativar, vindos do servidor) entra com as telas de cada
+// Versão · Assinados, com as larguras medidas na captura 39 (tabela fixa: a coluna não muda com o conteúdo). O menu ⋮ (editar, vincular, publicar, inativar, vindos do servidor) entra com as telas de cada
 // ação: botão sem destino fica fora. A página não rola de lado; a tabela rola (Guia §3 e §6), como na Agenda.
 export function TabelaDeModelos({ modelos }: { modelos: ModeloDeDocumento[] }) {
   const c = textos.colunas;
   return (
     <div role="region" aria-label={textos.rotuloDaLista} tabIndex={0} className="relative overflow-x-auto rounded-xl border border-border bg-surface-raised">
-      <table className="w-full min-w-[60rem] border-collapse text-left text-[0.8125rem]">
+      <table className="w-full min-w-[60rem] table-fixed border-collapse text-left text-[0.8125rem]">
+        <colgroup>
+          {LARGURAS.map((largura, i) => (
+            <col key={i} style={{ width: largura }} />
+          ))}
+        </colgroup>
         <thead>
           <tr className="border-b border-border">
             {[c.modelo, c.procedimentos, c.frequencia, c.recusa, c.versao, c.assinados].map((coluna) => (
@@ -45,22 +50,20 @@ export function TabelaDeModelos({ modelos }: { modelos: ModeloDeDocumento[] }) {
   );
 }
 
+// Posições das colunas medidas na captura 39 (tabela de 1436 px): Modelo 404, Procedimentos 280, Frequência 178,
+// Recusa impede? 207, Versão 181; Assinados fica com o resto, onde o ⋮ entra com a sua coluna no PR das ações.
+const LARGURAS = ["28.1%", "19.5%", "12.4%", "14.4%", "12.6%", "13%"] as const;
+
 const chip = "inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface-card px-3 py-0.5 text-xs text-text-primary";
 
 function Procedimentos({ procedimentos }: { procedimentos: ModeloDeDocumento["procedimentos"] }) {
-  if (procedimentos.length === 0) return <span className="text-text-secondary">{textos.semValor}</span>;
-  const primeiro = procedimentos[0]?.nome;
+  const [primeiro, ...resto] = procedimentos;
+  if (!primeiro) return <span className="text-text-secondary">{textos.semValor}</span>;
   return (
     <span className={chip}>
       <span aria-hidden="true" className="size-2 rounded-full bg-status-success" />
-      {primeiro ? (
-        <>
-          {primeiro}
-          {procedimentos.length > 1 && <span className="text-text-secondary">{textos.mais(procedimentos.length - 1)}</span>}
-        </>
-      ) : (
-        textos.procedimentosSemNome(procedimentos.length)
-      )}
+      {primeiro.nome}
+      {resto.length > 0 && <span className="text-text-secondary">{textos.mais(resto.length)}</span>}
     </span>
   );
 }
@@ -79,7 +82,9 @@ function Versao({ modelo }: { modelo: ModeloDeDocumento }) {
   if (modelo.versaoAtual === null) return <span className="text-text-secondary">{textos.rascunho}</span>;
   return (
     <>
-      <p className="text-text-primary">{textos.versao(modelo.versaoAtual)}</p>
+      <p className="text-text-primary">
+        {modelo.publicadoEm ? textos.versao(modelo.versaoAtual, mesAno(modelo.publicadoEm)) : `v${modelo.versaoAtual}`}
+      </p>
       {modelo.publicadoEm && <p className="text-xs text-text-secondary">{textos.desde(data(modelo.publicadoEm))}</p>}
     </>
   );

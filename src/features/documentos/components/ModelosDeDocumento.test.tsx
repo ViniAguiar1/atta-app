@@ -1,22 +1,21 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resumoDe } from "@/server/documentos/real";
-import { MODELOS_SIMULADOS } from "@/server/documentos/simulado";
+import { MODELOS_SIMULADOS, RESUMO_SIMULADO } from "@/server/documentos/simulado";
 import { ModelosDeDocumento } from "./ModelosDeDocumento";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 afterEach(cleanup);
-const pronto = (modelos = MODELOS_SIMULADOS) => ({ ok: true as const, data: { modelos, resumo: resumoDe(modelos) } });
+const pronto = (modelos = MODELOS_SIMULADOS) => ({ ok: true as const, data: { modelos, resumo: RESUMO_SIMULADO } });
 
 describe("Termos & Docs › Modelos de documento", () => {
   it("cartões com o que tem fonte e \"—\" no resto", () => {
     render(<ModelosDeDocumento resultado={pronto()} />);
     const cards = screen.getByRole("region", { name: "Resumo dos modelos" });
     expect(within(cards).getByText("Termos ativos")).toBeInTheDocument();
-    expect(within(cards).getAllByText("—").length).toBeGreaterThanOrEqual(2); // vencendo e assinados sem fonte
+    expect(within(cards).getByText("52")).toBeInTheDocument(); // assinados, do banco
+    expect(within(cards).getByText("100% com ATTA Sign")).toBeInTheDocument();
     expect(within(cards).getByText("1 obrigatório(s) · 0 opcional(is)")).toBeInTheDocument();
     expect(within(cards).getByText("— vencido(s) para reassinar")).toBeInTheDocument();
-    expect(within(cards).getByText("— com ATTA Sign")).toBeInTheDocument();
   });
 
   it("as 3 subabas do simulador, com Modelos de documento ativa", () => {
@@ -36,6 +35,7 @@ describe("Termos & Docs › Modelos de documento", () => {
     expect(within(tabela).getByText("Toxina botulínica")).toBeInTheDocument();
     expect(within(tabela).getByText("+1")).toBeInTheDocument();
     expect(within(tabela).getByText("Sim · obrigatório")).toBeInTheDocument();
+    expect(within(tabela).getByText("v2.ago.2026")).toBeInTheDocument();
     expect(within(tabela).getByText("desde 11/08/2026")).toBeInTheDocument();
     expect(within(tabela).getByText("Única · 12 meses")).toBeInTheDocument();
     expect(within(tabela).getByText("Rascunho")).toBeInTheDocument();
@@ -52,9 +52,4 @@ describe("Termos & Docs › Modelos de documento", () => {
     expect(screen.getByRole("button", { name: /tentar de novo/i })).toBeInTheDocument();
   });
 
-  it("sem o nome do Serviço, o chip conta os procedimentos", () => {
-    const [ativo] = MODELOS_SIMULADOS;
-    render(<ModelosDeDocumento resultado={pronto([{ ...ativo!, procedimentos: [{ id: "x", nome: null }, { id: "y", nome: null }] }])} />);
-    expect(screen.getByText("2 procedimento(s)")).toBeInTheDocument();
-  });
 });
