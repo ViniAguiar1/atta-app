@@ -84,6 +84,18 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
   const [reportando, setReportando] = useState(false);
   const [motivo, setMotivo] = useState<MotivoDeDivergencia | null>(null);
   const [reportado, setReportado] = useState(false);
+  const linkDoReporte = useRef<HTMLButtonElement>(null);
+  const primeiroMotivo = useRef<HTMLInputElement>(null);
+  const mensagemDoReporte = useRef<HTMLParagraphElement>(null);
+  const reporteAntes = useRef({ reportando: false, reportado: false });
+  // o foco acompanha o painel do reporte (os botões somem): abrir → 1º motivo; cancelar → o link; enviar → a mensagem
+  useEffect(() => {
+    const antes = reporteAntes.current;
+    if (reportando && !antes.reportando) primeiroMotivo.current?.focus();
+    else if (!reportando && antes.reportando && !reportado) linkDoReporte.current?.focus();
+    if (reportado && !antes.reportado) mensagemDoReporte.current?.focus();
+    reporteAntes.current = { reportando, reportado };
+  }, [reportando, reportado]);
   const [ocupado, iniciar] = useTransition();
 
   // <dialog> nativo em modo modal (showModal): prende o foco dentro dele, deixa o resto da página inerte e trata o Esc
@@ -276,17 +288,32 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                 <div className="flex flex-col gap-2">
                   {cartao && <p className="text-text-secondary">{m.reportar.explicacao}</p>}
                   {reportado ? (
-                    <p role="status">{m.reportar.enviado}</p>
+                    <p ref={mensagemDoReporte} tabIndex={-1} role="status">
+                      {m.reportar.enviado}
+                    </p>
                   ) : !reportando ? (
-                    <button type="button" onClick={() => setReportando(true)} className="w-fit font-medium underline underline-offset-2">
+                    <button
+                      ref={linkDoReporte}
+                      type="button"
+                      onClick={() => setReportando(true)}
+                      className="w-fit font-medium underline underline-offset-2"
+                    >
                       {m.reportar.link}
                     </button>
                   ) : (
                     <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
                       <legend className="px-1 text-[0.6875rem] font-semibold">{m.reportar.pergunta}</legend>
-                      {MOTIVOS.map((valor) => (
-                        <label key={valor} className="flex min-h-8 items-center gap-2">
-                          <input type="radio" name="motivo" value={valor} checked={motivo === valor} onChange={() => setMotivo(valor)} className="size-4" />
+                      {MOTIVOS.map((valor, i) => (
+                        <label key={valor} className="flex min-h-11 items-center gap-2 medium:min-h-8">
+                          <input
+                            ref={i === 0 ? primeiroMotivo : undefined}
+                            type="radio"
+                            name="motivo"
+                            value={valor}
+                            checked={motivo === valor}
+                            onChange={() => setMotivo(valor)}
+                            className="size-4"
+                          />
                           {m.reportar.motivos[valor]}
                         </label>
                       ))}
