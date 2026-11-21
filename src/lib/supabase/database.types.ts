@@ -226,6 +226,12 @@ export type Database = {
 "report_divergence_by_cpf":
 { Args: { "p_cpf_hmac": string,"p_reason": string }; Returns: Json
                            },
+"signature_settings_get":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"signature_settings_set":
+{ Args: { "p_model": string }; Returns: string
+                           },
 "team_accept_invite":
 { Args: { "p_membership_id": string }; Returns: undefined
                            },
@@ -598,14 +604,14 @@ isOneToOne: false
           Tables: {
             "document": {
                   Row: {
-                    "appointment_id": string | null,"auto_excluded_at": string | null,"cancel_reason": string | null,"cancelled_at": string | null,"cancelled_by": string | null,"created_at": string,"created_by": string | null,"folder_section": string | null,"id": string,"person_id": string | null,"professional_link_id": string | null,"replaced_by_document_id": string | null,"status": string,"template_version_id": string | null,"tenant_id": string,"updated_at": string
+                    "appointment_id": string | null,"auto_excluded_at": string | null,"cancel_reason": string | null,"cancelled_at": string | null,"cancelled_by": string | null,"created_at": string,"created_by": string | null,"folder_section": string | null,"id": string,"person_id": string | null,"professional_link_id": string | null,"replaced_by_document_id": string | null,"signature_model": string | null,"status": string,"template_version_id": string | null,"tenant_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "appointment_id"?: string | null,"auto_excluded_at"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id": string,"updated_at"?: string
+                    "appointment_id"?: string | null,"auto_excluded_at"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"signature_model"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "appointment_id"?: string | null,"auto_excluded_at"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id"?: string,"updated_at"?: string
+                    "appointment_id"?: string | null,"auto_excluded_at"?: string | null,"cancel_reason"?: string | null,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"folder_section"?: string | null,"id"?: string,"person_id"?: string | null,"professional_link_id"?: string | null,"replaced_by_document_id"?: string | null,"signature_model"?: string | null,"status"?: string,"template_version_id"?: string | null,"tenant_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -701,6 +707,20 @@ isOneToOne: false
       referencedRelation: "seal"
       referencedColumns: ["tenant_id","id"]
     }
+                  ]
+                },"signature_settings": {
+                  Row: {
+                    "signature_model": string,"tenant_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "signature_model"?: string,"tenant_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "signature_model"?: string,"tenant_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    
                   ]
                 },"stored_object": {
                   Row: {
