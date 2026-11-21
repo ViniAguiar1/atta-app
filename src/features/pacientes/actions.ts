@@ -2,7 +2,9 @@
 
 import { falhaDeValidacao, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { portaPacientes, type ConsultaDeCpf, type LinhaDePaciente, type PaginaDePacientes } from "@/server/pacientes/porta";
+import { z } from "zod";
+import { portaPacientes, type CartaoDaRede, type ConsultaDeCpf, type LinhaDePaciente, type PaginaDePacientes } from "@/server/pacientes/porta";
+import { celularMascarado, emailMascarado } from "@/server/pacientes/real";
 import { buscaSchema, cadastroSchema, cpfDaBuscaSchema, cursorSchema } from "./schema";
 
 // Server actions da lista de Pacientes (POST; o termo da busca vai no corpo, nunca na URL). A sessão é a do painel: o
@@ -61,4 +63,33 @@ export async function cadastrarPaciente(entrada: unknown): Promise<Resultado<{ i
   });
   logger.info("pacientes.cadastro", { ok: resultado.ok, code: resultado.ok ? undefined : resultado.error.code });
   return resultado;
+}
+
+/**
+ * Cartão do paciente que já é desta clínica, para o "já paciente" do Novo paciente (captura 16): a mesma leitura da Pasta
+ * (patient_get, auditada), com o contato mascarado aqui no servidor (PDD §19.8) e sem nada de saúde.
+ */
+export async function cartaoDoPacienteDaClinica(entrada: unknown): Promise<Resultado<CartaoDaRede>> {
+  const dados = z.object({ id: z.uuid() }).strict().safeParse(entrada);
+  if (!dados.success) return falhaDeValidacao(dados.error.issues);
+  const r = await portaPacientes.obter(dados.data.id);
+  if (!r.ok) return r;
+  const f = r.data;
+  const celular = celularMascarado(f.contato?.celular ?? null);
+  const email = emailMascarado(f.contato?.email ?? null);
+  return {
+    ok: true,
+    data: {
+      id: f.id,
+      nome: f.nome,
+      nomeCivil: f.nomeCivil,
+      nomeSocial: f.nomeSocial,
+      nascimento: f.nascimento,
+      identificacao: f.identificacao,
+      incompleto: f.identificacao.tipo === "incompleto",
+      contato: celular || email ? { celular, email } : null,
+      selo: f.selo,
+      respostasDeSaude: null,
+    },
+  };
 }
