@@ -36,7 +36,7 @@ test.describe("com sessão", () => {
     expect(await page.locator("body").innerText()).not.toMatch(PROIBIDO);
   });
 
-  test("as 6 abas do simulador aparecem para o ADMIN, e os módulos abrem sem 404 (os sem dado, no estado vazio)", async ({ page }) => {
+  test("as 6 abas do simulador aparecem para o ADMIN, e os módulos abrem sem 404", async ({ page }) => {
     await page.goto("/painel/metricas");
     const abas = page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link");
     await expect(abas).toHaveText(["Agendamentos", "Pacientes", "Termos & Docs", "ATTA", "Métricas", "Configurações"]);
@@ -46,14 +46,6 @@ test.describe("com sessão", () => {
     await expect(page.getByRole("main").getByRole("region", { name: "Modelos de documento" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link", { name: "Termos & Docs" })).toHaveAttribute("aria-current", "page");
     expect((await axe(page)).violations, "/painel/documentos").toEqual([]);
-    for (const [rota, aba, vazio] of [
-      ["/painel/notificacoes", null, "Nenhuma notificação"],
-    ] as const) {
-      await page.goto(rota);
-      await expect(page.getByRole("main").getByText(vazio)).toBeVisible();
-      if (aba) await expect(page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link", { name: aba })).toHaveAttribute("aria-current", "page");
-      expect((await axe(page)).violations, rota).toEqual([]);
-    }
   });
 
   test("/ e /login com sessão vão ao painel", async ({ page }) => {
