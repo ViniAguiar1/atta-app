@@ -87,8 +87,8 @@ export type Database = {
 { Args: { "p_cpf_hmac": string }; Returns: Json
                            },
 "patient_list":
-{ Args: { "p_after_id"?: string,"p_after_name"?: string,"p_limit"?: number }; Returns: {
-              "birth_date": string,"cpf_masked": string,"dek_wrapped": string,"display_is_social": boolean,"display_name": string,"documents": Json,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"last_appointment": Json,"linked_at": string,"network_access": string,"person_id": string,"phone_enc": string,"total_active": number,"verified_until": string
+{ Args: { "p_after_id"?: string,"p_after_name"?: string,"p_filter"?: string,"p_limit"?: number }; Returns: {
+              "birth_date": string,"count_archived": number,"count_other_clinic": number,"count_today": number,"cpf_masked": string,"dek_wrapped": string,"display_is_social": boolean,"display_name": string,"documents": Json,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"last_appointment": Json,"linked_at": string,"network_access": string,"person_id": string,"phone_enc": string,"total_active": number,"verified_until": string
             }[]
                            },
 "patient_lookup_by_cpf":
@@ -100,9 +100,12 @@ export type Database = {
             }[]
                            },
 "patient_search":
-{ Args: { "p_doc_hmac"?: string,"p_name"?: string }; Returns: {
-              "birth_date": string,"cpf_masked": string,"dek_wrapped": string,"display_is_social": boolean,"display_name": string,"documents": Json,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"last_appointment": Json,"linked_at": string,"network_access": string,"person_id": string,"phone_enc": string,"total_active": number,"verified_until": string
+{ Args: { "p_doc_hmac"?: string,"p_filter"?: string,"p_name"?: string }; Returns: {
+              "birth_date": string,"count_archived": number,"count_other_clinic": number,"count_today": number,"cpf_masked": string,"dek_wrapped": string,"display_is_social": boolean,"display_name": string,"documents": Json,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"last_appointment": Json,"linked_at": string,"network_access": string,"person_id": string,"phone_enc": string,"total_active": number,"verified_until": string
             }[]
+                           },
+"patient_set_archived":
+{ Args: { "p_archived": boolean,"p_person_id": string }; Returns: Json
                            },
 "patient_update":
 { Args: { "p_birth_date"?: string,"p_email_enc"?: string,"p_full_name"?: string,"p_local_dek_wrapped"?: string,"p_local_envelope_id"?: string,"p_local_kek_version"?: number,"p_person_id": string,"p_phone_enc"?: string,"p_reason": string,"p_social_name"?: string }; Returns: undefined
