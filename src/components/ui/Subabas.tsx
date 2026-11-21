@@ -17,7 +17,9 @@ type Props = {
 
 export function Subabas({ rotulo, itens, ativa }: Props) {
   return (
-    <nav aria-label={rotulo} className="border-b border-border">
+    // data-subabas: a casca do painel (CascaDoPainel) tira o espaço de cima quando a tela abre com subabas, que encostam
+    // na barra como no simulador (capturas 09 e 39)
+    <nav aria-label={rotulo} data-subabas="" className="border-b border-border">
       <ul className="flex gap-0.5 overflow-x-auto pb-px">
         {itens.map((item) => {
           const atual = item.href === ativa;
