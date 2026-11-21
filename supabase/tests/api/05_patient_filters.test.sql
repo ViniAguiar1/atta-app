@@ -1,6 +1,6 @@
 -- MIG-12: filtros e contadores da lista de Pacientes (captura 11) e o selo vencido ("Selo expirado"). Dados fictícios.
 begin;
-select plan(21);
+select plan(24);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -127,11 +127,17 @@ select results_eq($$ select distinct total_active, count_archived from api.patie
 select results_eq($$ select display_name from api.patient_list(p_filter => 'arquivados') $$,
                   $$ values ('Bruno Fictício'::text) $$, 'filtro "Arquivados" mostra quem foi arquivado');
 select is((select count(*)::int from api.patient_search(p_name => 'Bruno')), 0, 'a busca padrão não traz o arquivado');
+select ok((select archived_at is not null from api.patient_get('00000000-0000-4000-8000-0000000000e2')),
+          'a Pasta (patient_get) diz que está arquivado, para mostrar "Desarquivar"');
 select throws_ok($$ select pg_temp.agendar(gen_random_uuid(), '00000000-0000-4000-8000-0000000000e2', pg_temp.meio_dia(1)) $$,
                  'P0001', 'ATTA-IN-0003', 'arquivado não é agendado até desarquivar');
 select throws_ok($$ select api.patient_set_archived('00000000-0000-4000-8000-0000000000e2', true) $$, 'P0001',
                  'ATTA-IN-0003', 'arquivar de novo: recusado');
 select api.patient_set_archived('00000000-0000-4000-8000-0000000000e2', false);
+select ok((select archived_at is null from api.patient_get('00000000-0000-4000-8000-0000000000e2')),
+          'desarquivado: a Pasta volta a mostrar "Arquivar"');
+select ok((select not is_verified and verified_until < now() from api.patient_get('00000000-0000-4000-8000-0000000000e2')),
+          'a Pasta também traz o selo vencido ("Selo expirado")');
 select ok((select count(*) = 3 from api.patient_list())
           and pg_temp.eventos('patient.archive') = 1 and pg_temp.eventos('patient.unarchive') = 1,
           'desarquivar devolve à lista; arquivar e desarquivar vão para a trilha');
