@@ -1,4 +1,5 @@
 import "server-only";
+import type { LinhaDaAgenda } from "@/lib/agenda/linha";
 import type { Resultado } from "@/lib/errors";
 import { portaPacientesReal } from "./real";
 
@@ -135,6 +136,26 @@ export const MOTIVOS_DE_DIVERGENCIA = [
 ] as const;
 export type MotivoDeDivergencia = (typeof MOTIVOS_DE_DIVERGENCIA)[number];
 
+/**
+ * Um agendamento na Pasta (simulador, captura 13): a linha da Agenda (o mesmo tipo, src/lib/agenda/linha.ts) mais os
+ * marcos do atendimento, a pendência (código da lista fechada, nunca texto) e as contagens de termos e docs clínicos.
+ */
+export type AgendamentoDaPasta = LinhaDaAgenda & {
+  marcos: { checkin: string | null; pronto: string | null; emAtendimento: string | null; concluido: string | null };
+  pendencia: { tipo: "termo_nao_assinado"; obrigatoria: boolean } | null;
+  termos: number;
+  docsClinicos: number;
+};
+
+/** "Agendamentos e documentos" da Pasta (api.patient_folder_appointments, #227): a página, os totais e o fuso da clínica. */
+export type AgendamentosDaPasta = {
+  itens: AgendamentoDaPasta[];
+  totais: { agendamentos: number; termosAssinados: number; docsClinicos: number; pendencias: number };
+  hoje: { quantidade: number; ultimoEm: string | null };
+  proximo: string | null;
+  fuso: string;
+};
+
 export type PortaPacientes = {
   /** Pacientes vinculados à clínica da sessão, em ordem de nome, 50 por página. */
   listar(apos?: Cursor): Promise<Resultado<PaginaDePacientes>>;
@@ -169,6 +190,11 @@ export type PortaPacientes = {
    * Não diz se achou o CPF nem devolve nada da pessoa; não vincula. LIMITE: o mesmo limite da consulta.
    */
   reportarDivergenciaPorCpf(cpf: string, motivo: MotivoDeDivergencia): Promise<Resultado<{ recebido: true }>>;
+  /**
+   * Agendamentos da pessoa nesta clínica, do mais novo ao mais antigo (PDD §10, JF-05; §10.2.2: os concluídos antigos
+   * ficam só na Pasta). SEM_PERMISSAO sem appointments.view (a seção não aparece); NAO_ENCONTRADO de outra clínica.
+   */
+  agendamentosDaPasta(id: string, cursor?: string): Promise<Resultado<AgendamentosDaPasta>>;
 };
 
 export const portaPacientes: PortaPacientes = portaPacientesReal;

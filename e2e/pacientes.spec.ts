@@ -74,6 +74,10 @@ test.describe("gestora da Clínica Alfa", () => {
     await expect(dados).toContainText("···.···.247-25");
     expect(await page.content()).not.toContain("52998224725");
     await expect(page.getByRole("complementary", { name: "Resumo do paciente" })).toContainText("Completo");
+    // Agendamentos e documentos (captura 13; api.patient_folder_appointments): os agendamentos da Juliana no seed
+    const agendamentos = page.getByRole("region", { name: "Agendamentos e documentos" });
+    await expect(agendamentos.getByRole("tab", { name: /^Agendamentos \(\d+\)$/ })).toHaveAttribute("aria-selected", "true");
+    await expect(agendamentos.getByRole("tabpanel").getByRole("listitem").first()).toBeVisible();
     expect((await axe(page)).violations).toEqual([]);
     expect(page.url()).not.toMatch(/juliana|529/i);
 

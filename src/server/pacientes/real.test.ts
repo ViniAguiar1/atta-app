@@ -187,3 +187,69 @@ describe("porta real de Pacientes (MIG-43)", () => {
     expect(emailMascarado("a@exemplo.test")).toBe("a···@exemplo.test");
   });
 });
+
+describe("porta real de Pacientes: agendamentos da Pasta (api.patient_folder_appointments)", () => {
+  const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  // linha fictícia no formato do private.agenda_rows, mais os campos da Pasta
+  const bruta = (over: Record<string, unknown> = {}) => ({
+    id: uid(1),
+    starts_at: "2026-11-19T11:30:00-03:00",
+    duration_min: 60,
+    appointment_type: "procedimento",
+    modality: "presencial",
+    patient: { person_id: ID, provisional_patient_id: null, display_name: "Juliana Prates", cpf_masked: "···.···.247-25" },
+    services: [{ id: uid(101), name: "Peeling químico médio" }],
+    professional: { link_id: uid(901), display_name: "Dr. Caio Andrade" },
+    documents: [],
+    status: "em_atendimento",
+    late: false,
+    confirmation: "confirmado",
+    boarding_check_sent_at: null,
+    allowed_actions: [{ action: "detalhes", disabled_reason: null }],
+    milestones: { checkin_at: "2026-11-19T11:20:00-03:00", ready_at: null, in_service_at: null, concluded_at: null },
+    pending: { kind: "termo_nao_assinado", required: true },
+    terms_count: 2,
+    clinical_docs_count: 0,
+    ...over,
+  });
+  const resposta = (data: unknown[], extra: Record<string, unknown> = {}) => ({
+    totals: { appointments: 2, terms_signed: 1, clinical_docs: 0, pendencies: 1 },
+    today: { count: 1, last_at: "2026-11-21T17:00:00+00:00" },
+    timezone: "America/Sao_Paulo",
+    data,
+    page: { next_cursor: null },
+    ...extra,
+  });
+
+  it("monta a linha da Agenda com marcos, pendência e contagens; totais, hoje e fuso vêm prontos", async () => {
+    rpc.mockResolvedValueOnce({ data: resposta([bruta()]), error: null });
+    const r = await porta.agendamentosDaPasta(ID);
+    expect(rpc).toHaveBeenLastCalledWith("patient_folder_appointments", { p_person_id: ID });
+    if (!r.ok) throw new Error("esperava ok");
+    expect(r.data.itens[0]).toMatchObject({
+      status: "em_atendimento",
+      servicos: [{ nome: "Peeling químico médio" }],
+      marcos: { checkin: "2026-11-19T11:20:00-03:00", pronto: null },
+      pendencia: { tipo: "termo_nao_assinado", obrigatoria: true },
+      termos: 2,
+      docsClinicos: 0,
+    });
+    expect(r.data).toMatchObject({ totais: { agendamentos: 2, termosAssinados: 1, pendencias: 1 }, hoje: { quantidade: 1 }, fuso: "America/Sao_Paulo", proximo: null });
+  });
+
+  it("o cursor vai ao banco; linha fora do formato sai sem derrubar a lista; resposta quebrada é INTERNO", async () => {
+    rpc.mockResolvedValueOnce({ data: resposta([bruta(), bruta({ id: uid(2), pending: { kind: "texto livre", required: true } })]), error: null });
+    const r = await porta.agendamentosDaPasta(ID, "2026-11-19T14:30:00.000000Z|" + uid(9));
+    expect(rpc).toHaveBeenLastCalledWith("patient_folder_appointments", { p_person_id: ID, p_cursor: "2026-11-19T14:30:00.000000Z|" + uid(9) });
+    expect(r.ok && r.data.itens.map((i) => i.id)).toEqual([uid(1)]);
+    rpc.mockResolvedValueOnce({ data: { data: [] }, error: null });
+    expect(await porta.agendamentosDaPasta(ID)).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+  });
+
+  it("sem appointments.view é SEM_PERMISSAO; outra clínica é NAO_ENCONTRADO", async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "ATTA-AUTH-0004", details: null, hint: null } });
+    expect(await porta.agendamentosDaPasta(ID)).toMatchObject({ ok: false, error: { code: "SEM_PERMISSAO" } });
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "P0002", message: "ATTA-CORE-0005", details: "person_id", hint: null } });
+    expect(await porta.agendamentosDaPasta(ID)).toMatchObject({ ok: false, error: { code: "NAO_ENCONTRADO" } });
+  });
+});
