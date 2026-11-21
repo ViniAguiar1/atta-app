@@ -161,10 +161,16 @@ begin
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'active';
   end if;
   if v_troca and (num_nulls(p_address_enc, p_address_masked, p_envelope_id, p_dek_wrapped, p_kek_version) > 0
-                  or octet_length(p_address_enc) < 29 or octet_length(p_dek_wrapped) < 29
+                  or octet_length(p_address_enc) < 29 or octet_length(p_dek_wrapped) < 29 or p_kek_version < 1
                   or not ((p_channel = 'email' and p_address_masked ~ '^[^[:space:]@•]{1,2}•••@[^[:space:]@•.]{1,2}•••(\.[^[:space:]@•.]+)+$')
                           or (p_channel = 'whatsapp' and p_address_masked ~ '^\(\d{2}\) •••••-••\d{2}$'))) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'address';
+  end if;
+  -- o campo do endereço só edita com o canal ligado (simulador: "Ligue o canal para editar"; Tech Lead): endereço novo
+  -- com o canal desligado e continuando desligado é recusado
+  if v_troca and not p_active and not exists (select 1 from atta_in.notification_channel n
+                                              where n.tenant_id = v_tenant and n.channel = p_channel and n.active) then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'estado';
   end if;
   v_tem_endereco := v_troca or exists (select 1 from atta_in.notification_channel n
                                        where n.tenant_id = v_tenant and n.channel = p_channel and n.address_enc is not null);
