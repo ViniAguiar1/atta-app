@@ -1,7 +1,7 @@
 -- MIG-42: Perfil da Clínica (PDD §10.4.1; ADR 0001 §"Perfil da Clínica"). Só dado fictício: CNPJ gerado, nomes
 -- inventados, bytes cifrados de mentira (o banco não abre cifra).
 begin;
-select plan(42);
+select plan(47);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-0000000004f1', 'Clínica Fictícia Perfil'),
@@ -26,6 +26,8 @@ begin
   return v_user;
 end $$;
 
+grant execute on function pg_temp.entrar(uuid, text, text) to authenticated;
+
 create function pg_temp.trilha(p_action text) returns text language sql security definer as $$
   select string_agg(details::text, ';' order by seq) from audit.event
    where action = p_action and tenant_id = '00000000-0000-4000-8000-0000000004f1'
@@ -38,6 +40,8 @@ select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid
   'tenant_responsible com RLS forçada');
 select ok(not has_table_privilege('authenticated', 'platform.tenant_responsible', 'SELECT')
   and not has_table_privilege('anon', 'platform.tenant_responsible', 'SELECT'), 'responsáveis sem grant (só por função)');
+select ok(not has_table_privilege('authenticated', 'platform.tenant', 'UPDATE')
+  and not has_column_privilege('authenticated', 'platform.tenant', 'name', 'UPDATE'), 'sem update direto em platform.tenant (só por função)');
 select ok(not has_function_privilege('authenticated', 'private.cnpj_is_valid(text)', 'EXECUTE') and not has_function_privilege('anon', 'api.clinic_profile()', 'EXECUTE')
   and not has_function_privilege('anon', 'api.clinic_profile_set(text, text)', 'EXECUTE'), 'anon não chama o Perfil');
 
@@ -80,6 +84,10 @@ select throws_ok($$ select api.clinic_profile_set('commercial_email', 'Contato@C
   'e-mail chega em minúsculas');
 select lives_ok($$ select api.clinic_profile_set('clinic_whatsapp', '11990010099') $$, 'WhatsApp celular gravado');
 select lives_ok($$ select api.clinic_profile_set('phone', null) $$, 'campo opcional pode ficar vazio');
+select lives_ok($$ select api.clinic_profile_set('timezone', 'America/Manaus') $$, 'fuso gravado pela função');
+select throws_ok($$ select api.clinic_profile_set('timezone', 'Lua/Base') $$, 'P0001', 'ATTA-IN-0001', 'fuso inexistente');
+select throws_ok($$ select api.clinic_profile_set('cnpj', '12ABC34501DE*35') $$, 'P0001', 'ATTA-IN-0001',
+  'só ponto, barra, hífen e espaço saem na normalização; outro caractere cai na validação');
 
 -- ---------------------------------------------------------------- CNPJ e razão social: só o 1º preenchimento
 select lives_ok($$ select api.clinic_profile_set('cnpj', '12.abc.345/01de-35') $$, '1º CNPJ (alfanumérico, com máscara) é livre');
@@ -92,6 +100,11 @@ select throws_ok($$ select api.clinic_profile_set('legal_name', 'Outra Razão Lt
 select throws_ok($$ select api.clinic_profile_set('legal_name', null) $$, 'P0001', 'ATTA-IN-0003',
   'apagar a razão social também é protegido');
 select is(api.clinic_profile() -> 'protected_fields', '["legal_name", "cnpj"]'::jsonb, 'a leitura avisa os campos travados');
+-- a clínica vizinha, ainda sem CNPJ, tenta usar o CNPJ que a primeira já tem
+select pg_temp.entrar('00000000-0000-4000-8000-0000000004f2', 'ADMIN');
+select throws_ok($$ select api.clinic_profile_set('cnpj', '12ABC34501DE35') $$, 'P0001', 'ATTA-IN-0003',
+  'CNPJ já usado por outra clínica é recusado (cnpj_in_use)');
+select pg_temp.entrar('00000000-0000-4000-8000-0000000004f1', 'ADMIN');
 
 -- ---------------------------------------------------------------- trilha: só o nome do campo
 select ok(pg_temp.trilha('tenant.profile_update') like '%"field": "cnpj"%', 'a escrita vai para a trilha com o nome do campo');

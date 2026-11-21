@@ -40,9 +40,9 @@ select is((select count(*)::int from platform.tenant), 1, 'ADMIN vê só a próp
 
 select is((select id from platform.tenant), 'aaaaaaaa-0000-4000-8000-000000000001'::uuid, 'ADMIN vê a clínica A, nunca a B');
 
-select lives_ok($$ update platform.tenant set name = 'Clínica Alfa Renomeada' where id = 'aaaaaaaa-0000-4000-8000-000000000001' $$, 'ADMIN renomeia a própria clínica');
+select throws_ok($$ update platform.tenant set name = 'Clínica Alfa Renomeada' where id = 'aaaaaaaa-0000-4000-8000-000000000001' $$, '42501', null, 'ADMIN não renomeia direto pela tabela (só pelo api.clinic_profile_set, com trilha; MIG-42)');
 
-select lives_ok($$ update platform.tenant set name = 'Invasão' where id = 'bbbbbbbb-0000-4000-8000-000000000002' $$, 'update na clínica B não dá erro, mas não acha a linha');
+select throws_ok($$ update platform.tenant set name = 'Invasão' where id = 'bbbbbbbb-0000-4000-8000-000000000002' $$, '42501', null, 'nem na clínica B: sem update direto em platform.tenant');
 
 select throws_ok($$ insert into platform.tenant (name) values ('Nova') $$, '42501', null, 'ninguém cria clínica direto pela tabela');
 
@@ -63,7 +63,7 @@ select throws_ok($$ update platform.membership set status = 'suspended' $$, '425
 reset role;
 select set_config('request.jwt.claims', '', true);
 
-select is((select name from platform.tenant where id = 'aaaaaaaa-0000-4000-8000-000000000001'), 'Clínica Alfa Renomeada', 'o update do ADMIN na clínica A valeu');
+select is((select name from platform.tenant where id = 'aaaaaaaa-0000-4000-8000-000000000001'), 'Clínica Alfa Ficticia', 'o nome da clínica A não mudou pelo UPDATE direto');
 
 select is((select name from platform.tenant where id = 'bbbbbbbb-0000-4000-8000-000000000002'), 'Clínica Beta Ficticia', 'a clínica B ficou intacta');
 
@@ -77,14 +77,14 @@ select is((select count(*)::int from platform.tenant), 1, 'COLABORADOR vê a pr�
 
 select is((select count(*)::int from platform.membership), 1, 'COLABORADOR vê só o próprio vínculo (equipe é do ADMIN)');
 
-select lives_ok($$ update platform.tenant set name = 'Tentativa' where id = 'aaaaaaaa-0000-4000-8000-000000000001' $$, 'update do COLABORADOR na clínica não dá erro');
+select throws_ok($$ update platform.tenant set name = 'Tentativa' where id = 'aaaaaaaa-0000-4000-8000-000000000001' $$, '42501', null, 'COLABORADOR não escreve na clínica');
 
 select throws_ok($$ insert into platform.membership (tenant_id, user_id, app_role) values ('aaaaaaaa-0000-4000-8000-000000000001', 'f5f5f5f5-0000-4000-8000-0000000000f5', 'ADMIN') $$, '42501', null, 'COLABORADOR não convida');
 
 reset role;
 select set_config('request.jwt.claims', '', true);
 
-select is((select name from platform.tenant where id = 'aaaaaaaa-0000-4000-8000-000000000001'), 'Clínica Alfa Renomeada', 'o COLABORADOR não renomeou a clínica');
+select is((select name from platform.tenant where id = 'aaaaaaaa-0000-4000-8000-000000000001'), 'Clínica Alfa Ficticia', 'o COLABORADOR não renomeou a clínica');
 
 set local role authenticated;
 select set_config('request.jwt.claims', pg_temp.com_login('{"sub":"c1c1c1c1-0000-4000-8000-0000000000c1","role":"authenticated","tenant_id":"aaaaaaaa-0000-4000-8000-000000000001","app_role":"ADMIN","aal":"aal2"}'), true);
