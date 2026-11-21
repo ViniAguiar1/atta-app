@@ -361,4 +361,64 @@ describe("Agenda › Hoje", () => {
     expect(within(dialogo).getByRole("alert").textContent).toBe("A justificativa precisa de pelo menos 50 caracteres.");
     expect(screen.getByRole("dialog")).toBeDefined();
   });
+  it("Reabrir preenchimento do Ausente abre o diálogo com os 3 motivos da PO e grava o motivo", async () => {
+    const dia = await diaSimulado();
+    const executar = vi.fn().mockResolvedValue(ok(null));
+    render(
+      <AgendaHoje
+        inicial={ok(dia)}
+        resumoInicial={RESUMO}
+        resumir={vi.fn().mockResolvedValue(RESUMO)}
+        buscar={vi.fn().mockResolvedValue(ok(dia))}
+        buscarPeriodo={vi.fn()}
+        buscarConcluidos={vi.fn()}
+        executar={executar}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ações de Carla Siqueira" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reabrir preenchimento" }));
+    const dialogo = screen.getByRole("dialog", { name: "Reabrir preenchimento" });
+    expect(within(dialogo).getAllByRole("radio")).toHaveLength(3);
+    for (const motivo of [
+      "Paciente chegou atrasado",
+      "Paciente avisou que chegaria mais tarde e a clínica ajustou o horário do atendimento",
+      "Marcado como ausente por engano",
+    ]) {
+      expect(within(dialogo).getByRole("radio", { name: motivo })).toBeDefined();
+    }
+    expect(within(dialogo).queryByRole("textbox")).toBeNull(); // sem justificativa nem texto livre
+    fireEvent.click(within(dialogo).getByRole("radio", { name: "Marcado como ausente por engano" }));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Reabrir preenchimento" }));
+    await act(async () => {});
+    const carla = dia.linhas.find((l) => l.paciente.nomeExibicao === "Carla Siqueira");
+    expect(executar).toHaveBeenCalledWith({ acao: "reabrir_preenchimento", id: carla?.id, motivo: "ausente_por_engano" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("Preenchimento reaberto. O atendimento voltou para Agendado.")).toBeDefined();
+  });
+
+  it("Reabrir fora do dia: o texto do reopen_day fica no diálogo", async () => {
+    const dia = await diaSimulado();
+    const executar = vi.fn().mockResolvedValue({
+      ok: false,
+      error: { code: "CONFLITO", message: "x", reason: "ATTA-IN-0003:reopen_day" },
+    });
+    render(
+      <AgendaHoje
+        inicial={ok(dia)}
+        resumoInicial={RESUMO}
+        resumir={vi.fn()}
+        buscar={vi.fn()}
+        buscarPeriodo={vi.fn()}
+        buscarConcluidos={vi.fn()}
+        executar={executar}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ações de Carla Siqueira" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reabrir preenchimento" }));
+    const dialogo = screen.getByRole("dialog", { name: "Reabrir preenchimento" });
+    fireEvent.click(within(dialogo).getByRole("radio", { name: "Paciente chegou atrasado" }));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Reabrir preenchimento" }));
+    await act(async () => {});
+    expect(within(dialogo).getByRole("alert").textContent).toBe("Só dá para reabrir o preenchimento no dia do atendimento.");
+  });
 });

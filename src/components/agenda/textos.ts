@@ -45,6 +45,10 @@ export const textosDaAgenda = {
     profissional_inacessivel: "Profissional inacessível", // PDD §10.2.3
     emergencia_clinica: "Emergência clínica", // PDD §10.2.3
     falha_tecnica_no_acesso: "Falha técnica no acesso", // PDD §10.2.3
+    paciente_chegou_atrasado: "Paciente chegou atrasado", // PDD §10.2.2 (decisão da PO, 18/11/2026)
+    paciente_avisou_clinica_ajustou_horario:
+      "Paciente avisou que chegaria mais tarde e a clínica ajustou o horário do atendimento", // PDD §10.2.2 (decisão da PO, 18/11/2026)
+    ausente_por_engano: "Marcado como ausente por engano", // PDD §10.2.2 (decisão da PO, 18/11/2026)
   } as Record<string, string>,
   dialogo: {
     motivo: "Motivo", // PDD §10.2.2 e §10.2.3 ("motivo obrigatório")
@@ -64,6 +68,12 @@ export const textosDaAgenda = {
       faltam: (n: number) => `Faltam ${n} ${n === 1 ? "caractere" : "caracteres"}`, // provisório (PDD §10.2.3: contagem regressiva)
       atingido: "Mínimo de 50 caracteres atingido", // provisório
       confirmar: "Concluir atendimento", // provisório
+    },
+    reabrir: {
+      titulo: "Reabrir preenchimento", // PDD §10.2.2
+      texto:
+        "Escolha o motivo. O atendimento volta para Agendado e o paciente retoma o check-in de onde parou. Fica registrado na auditoria, com o seu nome e o horário.", // provisório (PDD §10.2.2)
+      confirmar: "Reabrir preenchimento", // PDD §10.2.2
     },
   },
   /** motivo da ação desabilitada (disabled_reason do banco); sem texto próprio, o genérico */

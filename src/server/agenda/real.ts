@@ -233,7 +233,9 @@ export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>, hm
             ? await transicao({ p_id: e.id, p_to: "ausente" })
             : e.acao === "cancelar"
               ? await transicao({ p_id: e.id, p_to: "cancelado", p_reason: e.motivo })
-              : await transicao({ p_id: e.id, p_to: "concluido", p_reason: e.motivo, p_justification: e.justificativa });
+              : e.acao === "reabrir_preenchimento"
+                ? await transicao({ p_id: e.id, p_to: "agendado", p_reason: e.motivo })
+                : await transicao({ p_id: e.id, p_to: "concluido", p_reason: e.motivo, p_justification: e.justificativa });
       // o log fica só na server action (com a ação e o code), para não sair em dobro
       return error ? falhaDoBanco(error) : ok(null);
     },
