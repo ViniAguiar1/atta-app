@@ -25,11 +25,18 @@ describe("escolha da porta por ambiente", () => {
     }
   });
 
-  it("sem leitura real (Todos, Concluídos, avisos): vazia na produção, simulada na prévia, no local e no CI", () => {
-    expect(escolherPortaAgenda("production").periodo).toBe(portaAgendaVazia.periodo);
+  it("Todos e Concluídos também vêm do banco (#183) em todos os ambientes", () => {
+    for (const ambiente of ["production", "preview", "development", undefined]) {
+      const porta = escolherPortaAgenda(ambiente);
+      expect(porta.periodo).toBe(portaAgendaReal.periodo);
+      expect(porta.concluidos).toBe(portaAgendaReal.concluidos);
+    }
+  });
+
+  it("sem leitura real (avisos, até o agenda_alerts): vazia na produção, simulada na prévia, no local e no CI", () => {
     expect(escolherPortaAgenda("production").avisos).toBe(portaAgendaVazia.avisos);
     for (const ambiente of ["preview", "development", undefined]) {
-      expect(escolherPortaAgenda(ambiente).concluidos).toBe(portaAgendaSimulada.concluidos);
+      expect(escolherPortaAgenda(ambiente).avisos).toBe(portaAgendaSimulada.avisos);
     }
   });
 });

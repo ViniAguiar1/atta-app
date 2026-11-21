@@ -79,6 +79,26 @@ test.describe("Agenda › Hoje (porta real)", () => {
     expect(posts).toBe(0);
   });
 
+  test("Todos e Concluídos vêm do banco (agenda_range): coluna Data, sem o Concluído em Todos, rodapés", async ({ page }) => {
+    await page.goto("/painel/agenda");
+    const visoes = page.getByRole("group", { name: "Visões da agenda" });
+
+    const pedidoTodos = page.waitForRequest(postDaAgenda);
+    await visoes.getByRole("button", { name: "Todos" }).click();
+    await pedidoTodos;
+    await expect(tabela(page).getByRole("columnheader", { name: /Data/ })).toBeVisible();
+    await expect(tabela(page).getByRole("row", { name: /Alana Duarte/ })).toContainText("Hoje");
+    await expect(tabela(page).locator('[data-status="concluido"]')).toHaveCount(0);
+    await expect(page.getByText(/^\d+ agendamentos?$/)).toBeVisible();
+
+    const pedidoConcluidos = page.waitForRequest(postDaAgenda);
+    await visoes.getByRole("button", { name: "Concluídos" }).click();
+    await pedidoConcluidos;
+    await expect(tabela(page).locator('[data-status="concluido"]').first()).toBeVisible();
+    await expect(page.getByText(/registros? · atendimentos mais antigos ficam na Pasta do Paciente/)).toBeVisible();
+    await expect(page.locator('[data-estado="erro"]')).toHaveCount(0);
+  });
+
   for (const largura of [1280, 390]) {
     test(`não rola de lado em ${largura} px e passa no axe`, async ({ page }) => {
       await page.setViewportSize({ width: largura, height: 900 });
