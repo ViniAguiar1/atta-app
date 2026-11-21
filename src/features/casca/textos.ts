@@ -8,15 +8,11 @@ export const textos = {
   contador: (n: number) => `${n} pendente${n === 1 ? "" : "s"}`,
   sino: (n: number) => (n > 0 ? `Notificações, ${n} nova${n === 1 ? "" : "s"}` : "Notificações"),
   // Módulos ainda sem tela de dados: estado vazio do design. O simulador não tem estes estados: tudo provisório,
-  // listado ao CTO. Cada módulo troca pela própria tela no item dele (MIG-44, MIG-45, MIG-46; o ATTA já tem a dele, MIG-48).
+  // listado ao CTO. Cada módulo troca pela própria tela no item dele (MIG-44 e MIG-45; o ATTA e as Métricas já têm a delas, MIG-48 e MIG-46).
   vazios: {
     documentos: {
       titulo: "Termos & Docs", // simulador (aba)
       vazio: { titulo: "Nenhum modelo de documento ainda", texto: "Os termos e documentos da clínica aparecem aqui." }, // provisório
-    },
-    metricas: {
-      titulo: "Métricas", // simulador (aba)
-      vazio: { titulo: "Ainda não há dados para as métricas", texto: "Os números aparecem aqui conforme a clínica usa o ATTA-in." }, // provisório
     },
     notificacoes: {
       titulo: "Notificações", // PDD §10 (sino de Atividades)

@@ -1,28 +1,30 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { connection } from "next/server";
 import { Suspense } from "react";
-import { sessaoDoPainel } from "@/features/casca/sessao";
-import { ModuloVazio } from "@/features/casca/components/ModuloVazio";
-import { textos } from "@/features/casca/textos";
+import { DataState } from "@/components/ui/DataState";
+import { Subabas } from "@/components/ui/Subabas";
+import { ErroDoPainel } from "@/features/metricas/components/ErroDoPainel";
+import { PainelDeMetricas } from "@/features/metricas/components/PainelDeMetricas";
+import { SUBABAS_DE_METRICAS } from "@/features/metricas/subabas";
+import { textos } from "@/features/metricas/textos";
+import { portaMetricas } from "@/server/metricas/porta";
 
-// Métricas: a aba aparece sempre (decisão do dono, 20/11). Até a tela do módulo (MIG-46, Frontend), o estado vazio do design.
+// Métricas › Painel (MIG-46; PDD v206 §10.5), como o Simulador ATTA-in (captura 40). A guarda de ADMIN fica no layout.
+// Os números vêm da porta (src/server/metricas): vazia na produção até o MIG-16, simulada na prévia, no local e no CI.
 export const metadata: Metadata = { title: "Métricas · ATTA-in" };
 
-const t = textos.vazios.metricas;
-
-// Métricas é do gestor (ADMIN; PDD §10.4.3 e §10.5): a aba já fica escondida do Colaborador, e a rota o devolve ao painel.
 export default function Pagina() {
   return (
-    <Suspense fallback={null}>
-      <SoAdmin />
-    </Suspense>
+    <>
+      <Subabas rotulo={textos.subabas.rotulo} itens={SUBABAS_DE_METRICAS} ativa="/painel/metricas" />
+      <Suspense fallback={<DataState estado={{ tipo: "carregando" }} rotulo={textos.titulo} esqueleto={{ linhas: 3, alturaRem: 6 }} vazio={textos.painel.vazio}>{null}</DataState>}>
+        <Conteudo />
+      </Suspense>
+    </>
   );
 }
 
-async function SoAdmin() {
-  await connection();
-  const sessao = await sessaoDoPainel();
-  if (sessao?.papel !== "ADMIN") redirect("/painel");
-  return <ModuloVazio titulo={t.titulo} vazio={t.vazio} />;
+async function Conteudo() {
+  const r = await portaMetricas.painel();
+  if (!r.ok) return <ErroDoPainel codigo={r.error.code} />;
+  return <PainelDeMetricas dados={r.data} />;
 }
