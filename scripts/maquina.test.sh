@@ -14,6 +14,9 @@ nao_tem() { if printf '%s' "$2" | grep -q -F -- "$3"; then echo "FALHOU: $1 (nã
 agora="$(date -u -d '2026-11-21 12:00:00' +%s 2>/dev/null || date -u -j -f '%Y-%m-%d %H:%M:%S' '2026-11-21 12:00:00' +%s)"
 
 mkdir -p "$tmp/bin"
+# duas worktrees: uma do atta-app e uma de outro projeto do Mac (o lsof de mentira devolve o cwd de cada processo)
+git -C "$tmp" init -q atta && git -C "$tmp/atta" remote add origin git@github.com:ViniAguiar1/atta-app.git
+git -C "$tmp" init -q outro && git -C "$tmp/outro" remote add origin https://github.com/AguiarLabs/gestiva-app.git
 cat > "$tmp/bin/docker" <<'EOF'
 #!/bin/sh
 case "$1" in
@@ -23,19 +26,28 @@ case "$1" in
       *) echo 2026-11-21T11:50:00.0Z ;; esac ;;
 esac
 EOF
-cat > "$tmp/bin/lsof" <<'EOF'
+cat > "$tmp/bin/lsof" <<EOF
 #!/bin/sh
-case "$*" in *TCP:43421*|*TCP:3001*) printf 'COMMAND PID\ncom.docke 1\n' ;; *) printf '' ;; esac
+case "\$*" in
+  *TCP:43421*|*TCP:3001*) printf 'COMMAND PID\\ncom.docke 1\\n' ;;
+  *"-p 555 "*) echo "n$tmp/outro" ;;
+  *"-d cwd"*) echo "n$tmp/atta" ;;
+esac
 EOF
 cat > "$tmp/bin/ps" <<'EOF'
 #!/bin/sh
 case "$*" in
-  *-E*) echo "node test HOME=/Users/alguem ATTA_SIGLA=FE2 SEGREDO=nao-mostra" ;;
+  *"-E"*"-p 333"*) echo "node test HOME=/Users/alguem ATTA_SIGLA=FE2 SEGREDO=nao-mostra" ;;
+  *"-E"*) echo "node test HOME=/Users/alguem SEGREDO=nao-mostra" ;;
   *) printf '%s\n' \
        "111 02:30:00 node /Users/alguem/wt/x/node_modules/.bin/next dev --port 3020" \
        "222 10:00 node /Users/alguem/wt/y/node_modules/.bin/next dev -p 3001" \
        "333 01-00:00:00 node /Users/alguem/wt/z/node_modules/playwright/cli.js test" \
-       "444 05:00 node /Users/alguem/outra-coisa.js" ;;
+       "444 05:00 node /Users/alguem/outra-coisa.js" \
+       "555 03:00:00 node /Users/alguem/gestiva/node_modules/.bin/next dev --port 3019" \
+       "666 03:00:00 node /Users/alguem/wt/w/node_modules/.bin/next dev" \
+       "777 03:00:00 vim notas-sobre-next dev e playwright test.md" \
+       "888 02:00:00 node /Users/alguem/wt/v/node_modules/playwright/cli.js test" ;;
 esac
 EOF
 printf '#!/bin/sh\necho "supabase $*" >> "%s/acoes"\n' "$tmp" > "$tmp/bin/supabase"
@@ -56,6 +68,10 @@ tem "next dev em uso do BE1 (porta 3001)" "$saida" "BE1    next dev        0h10m
 tem "playwright travado do FE2 (sigla pelo ATTA_SIGLA)" "$saida" "FE2    playwright test 24h00min  -      parado (travado)"
 nao_tem "nenhum caminho de usuário na saída" "$saida" "/Users/"
 nao_tem "nada do ambiente além da sigla" "$saida" "SEGREDO"
+nao_tem "next dev de outro projeto do Mac (Gestiva) não aparece" "$saida" "3019"
+nao_tem "processo que não é do node não aparece" "$saida" "notas"
+tem "next dev do atta-app sem sigla aparece, mas não é desligado" "$saida" "?      next dev        3h00min   3000   parado, sem sigla: não desligo"
+tem "playwright do atta-app sem sigla não é desligado" "$saida" "?      playwright test 2h00min   -      parado (travado), sem sigla: não desligo"
 tem "total de Supabase ligados" "$saida" "Supabase locais ligados: 3 (máximo 6)"
 [ ! -f "$tmp/acoes" ] && echo "ok: listar não para nada" || { echo "FALHOU: listar parou algo"; falhas=$((falhas + 1)); }
 
@@ -67,6 +83,10 @@ nao_tem "não para o Supabase em uso (BE1)" "$acoes" "atta-app-be1"
 tem "mata o next dev parado (111)" "$acoes" "kill 111"
 tem "mata o playwright travado (333)" "$acoes" "kill 333"
 nao_tem "não mata o next dev em uso (222)" "$acoes" "kill 222"
+nao_tem "não mata o next dev de outro projeto (555)" "$acoes" "kill 555"
+nao_tem "não mata o next dev sem sigla (666)" "$acoes" "kill 666"
+nao_tem "não mata o que não é do node (777)" "$acoes" "kill 777"
+nao_tem "não mata o playwright sem sigla (888)" "$acoes" "kill 888"
 rm -f "$tmp/acoes"
 
 # limite de 6 Supabase no supabase-local.sh
