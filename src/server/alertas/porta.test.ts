@@ -24,8 +24,10 @@ describe("porta simulada", () => {
     const recusado = await porta.alterarCanal("email", "sem-arroba");
     expect(recusado.ok).toBe(false);
     if (!recusado.ok) expect(recusado.error.reason).toBe("ATTA-IN-0001:address");
-    expect((await porta.alterarCanal("whatsapp", "1234")).ok).toBe(false);
-    const r = await porta.alterarCanal("whatsapp", "(48) 99876-0001");
+    expect((await porta.alterarCanal("whatsapp", "1234", true)).ok).toBe(false);
+    const desligado = await porta.alterarCanal("whatsapp", "(48) 99876-0001");
+    expect(!desligado.ok && desligado.error.reason).toBe("ATTA-IN-0003:estado");
+    const r = await porta.alterarCanal("whatsapp", "(48) 99876-0001", true);
     expect(r.ok && r.data.whatsapp.destinoMascarado).toBe("(48) ·····-0001");
     const email = await porta.alterarCanal("email", "recepcao@clinica-exemplo.test");
     expect(email.ok && email.data.email.destinoMascarado).toBe("re·····@clinica-exemplo.test");

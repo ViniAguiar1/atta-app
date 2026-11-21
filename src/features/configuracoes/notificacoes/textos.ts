@@ -80,6 +80,7 @@ export const textos = {
     email: "Informe um e-mail válido, como nome@clinica.com.br.", // provisório
     numero: "Informe o celular com DDD, como (11) 91234-5678.", // provisório
     semDestino: "Informe o destino para ligar o canal.", // provisório (ATTA-IN-0003:address)
+    canalDesligado: "Ligue o canal para trocar o destino.", // provisório (ATTA-IN-0003:estado; simulador: "Ligue o canal para editar")
     SEM_PERMISSAO: "Só o gestor da clínica muda as Configurações.", // provisório (o mesmo de Configurações › Agendamentos)
     outro: "Não conseguimos salvar agora. Tente de novo em instantes.", // provisório (o mesmo de Configurações › Agendamentos)
   },
