@@ -26,6 +26,15 @@ describe("TelaAjuda (PDD §10.6.1, captura 19)", () => {
     expect(screen.getByRole("region", { name: "FAQ" }).textContent).not.toMatch(/a definir/i);
   });
 
+  it("a planilha modelo de pacientes só aparece com a URL da porta da importação (§10.1)", () => {
+    const { rerender } = render(<TelaAjuda />);
+    expect(screen.queryByRole("region", { name: "Planilha modelo de pacientes" })).toBeNull();
+    rerender(<TelaAjuda planilha={{ url: "/modelos/planilha-de-pacientes.xlsx" }} />);
+    const link = screen.getByRole("link", { name: "Baixar planilha modelo (.xlsx)" });
+    expect(link).toHaveAttribute("href", "/modelos/planilha-de-pacientes.xlsx");
+    expect(link).toHaveAttribute("download");
+  });
+
   it("não há violação do axe", async () => {
     const { container } = render(<TelaAjuda />);
     expect(await violacoesDoAxe(container)).toEqual([]);
