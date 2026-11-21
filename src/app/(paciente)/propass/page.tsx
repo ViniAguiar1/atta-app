@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { FluxoPropass, SemValidade } from "@/features/propass/components/FluxoPropass";
 import { TEXTOS } from "@/features/propass/textos";
-import { lerHashDoConvite } from "@/server/propass/cookies";
 import { propassNoAr } from "@/server/propass/disponivel";
-import { portaPropass } from "@/server/propass/porta";
+import { Conteudo } from "./conteudo";
 
 // PROpass do profissional (PDD v206 §10.4.3; ADR 0004 §3). Sem login: abre pelo convite guardado pelo
 // /propass/<segredo>. Nada de dado pessoal na URL. Cabeçalhos de segredo (no-referrer, no-store, noindex) pela
@@ -32,11 +30,4 @@ export default function Pagina() {
       </main>
     </div>
   );
-}
-
-async function Conteudo() {
-  const hash = await lerHashDoConvite();
-  const r = hash ? await portaPropass.resolver(hash) : null;
-  if (!r?.ok) return <SemValidade />;
-  return <FluxoPropass clinica={r.data.clinica} email={r.data.emailDoConvite} conviteEm={r.data.conviteEm} fuso={r.data.fuso} />;
 }

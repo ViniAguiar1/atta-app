@@ -110,6 +110,17 @@ describe("portaPropassReal.termo", () => {
     }
   });
 
+  it("pacote do termo fora do contrato é INTERNO; nenhuma linha continua link sem validade", async () => {
+    for (const data of [[contexto({ cnpj: 123 })], [contexto({ template_id: "x" })], [contexto(), contexto()]]) {
+      rpc.mockResolvedValue({ data, error: null });
+      expect(await porta.termo(HASH, registro)).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+    }
+    for (const data of [[], null]) {
+      rpc.mockResolvedValue({ data, error: null });
+      expect(await porta.termo(HASH, registro)).toMatchObject({ ok: false, error: { code: "NAO_ENCONTRADO" } });
+    }
+  });
+
   it("corpo que não bate com o hash assinado vira INTERNO, sem montar o termo", async () => {
     rpc.mockResolvedValue({ data: [contexto({ body_sha256: "0".repeat(64) })], error: null });
     expect(await porta.termo(HASH, registro)).toMatchObject({ ok: false, error: { code: "INTERNO" } });
