@@ -35,10 +35,27 @@ export function BarraDoPainel({ sessao, acaoSair, contadores = {} }: Props) {
   const contadorCls = clara ? "bg-brand text-on-brand" : "bg-on-brand text-brand";
   const abaInativa = clara ? "text-brand hover:bg-brand/5" : "text-on-brand/78 hover:bg-on-brand/10 hover:text-on-brand";
 
+  // No celular a linha das abas rola de lado: ao abrir, a aba atual fica à vista (centrada), sem rolar a página.
+  const linhaDasAbas = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = linhaDasAbas.current;
+    const atual = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !atual || nav.scrollWidth <= nav.clientWidth) return;
+    const n = nav.getBoundingClientRect();
+    const a = atual.getBoundingClientRect();
+    if (a.left >= n.left && a.right <= n.right) return;
+    nav.scrollLeft += a.left - n.left - (n.width - a.width) / 2;
+  }, [ativa?.href]);
+
+  // Medidas do print 28 (1440 px): símbolo de ~29 × 26 px a ~18 px da borda; nome da clínica em 16 px a ~11 px do
+  // símbolo; abas em 14 px com ~14 px de cada lado; "ATTA" na font-atta em 12 px (a largura e a altura das letras das
+  // outras abas); o nome da pessoa em 13 px, a ~26 px da borda direita.
   return (
-    <header className={`flex flex-wrap items-center gap-x-6 gap-y-1 px-3 py-1.5 medium:px-6 large:h-[3.25rem] large:flex-nowrap large:items-stretch large:py-0 ${barra}`}>
+    <header
+      className={`flex flex-wrap items-center gap-x-[1.125rem] gap-y-1 px-3 py-1.5 medium:px-6 large:h-[3.25rem] large:flex-nowrap large:items-stretch large:py-0 large:pr-[1.375rem] large:pl-2.5 ${barra}`}
+    >
       {/* flex-1 com base 0: o nome não empurra o sino para outra linha no celular; ele encolhe com reticências */}
-      <div className="flex min-h-14 min-w-0 flex-1 items-center gap-3 large:min-h-0 large:flex-none">
+      <div className="flex min-h-14 min-w-0 flex-1 items-center gap-1 large:min-h-0 large:flex-none">
         <button
           type="button"
           onClick={() => setClara((valor) => !valor)}
@@ -46,31 +63,31 @@ export function BarraDoPainel({ sessao, acaoSair, contadores = {} }: Props) {
           aria-label={clara ? t.barraEscura : t.barraClara}
           className="flex size-11 shrink-0 items-center justify-center rounded-md"
         >
-          <Monograma className="size-7" />
+          <Monograma className="h-[1.625rem] w-[1.875rem]" />
         </button>
         {sessao.clinica && (
-          <span title={sessao.clinica} className="truncate font-title text-xl">
+          <span title={sessao.clinica} className="truncate font-title text-base">
             {sessao.clinica}
           </span>
         )}
       </div>
 
       {/* abaixo de large as abas ficam numa linha própria (rolável só no celular); de large em diante, entre o nome e o sino */}
-      <nav aria-label={t.modulos} className="order-last w-full min-w-0 overflow-x-auto pb-1 large:order-none large:flex large:w-auto large:min-w-0 large:flex-1 large:items-end large:overflow-visible large:pb-0">
+      <nav ref={linhaDasAbas} aria-label={t.modulos} className="order-last w-full min-w-0 overflow-x-auto pb-1 large:order-none large:flex large:w-auto large:min-w-0 large:flex-1 large:items-end large:overflow-visible large:pb-0">
         {/* p-1: a nav rolável corta o que passa da borda; a folga deixa o anel de foco (2 px + 2 px) inteiro. Em large, as
             abas encostam embaixo da barra, como no simulador */}
-        <ul className="flex items-center gap-1 p-1 whitespace-nowrap large:items-end large:p-0 large:pt-2.5">
+        <ul className="flex items-center gap-[0.1875rem] p-1 whitespace-nowrap large:items-end large:p-0 large:pt-2.5">
           {abas.map((aba, i) => {
             const separador = aba.grupo === "gestao" && abas[i - 1]?.grupo === "operacao";
             const atual = ativa?.href === aba.href;
             const contador = contadores[aba.href];
             return (
               <li key={aba.href} className="flex items-center large:self-stretch">
-                {separador && <span aria-hidden="true" className="mx-3 h-6 w-px self-center bg-current opacity-30" />}
+                {separador && <span aria-hidden="true" className="mx-2.5 h-6 w-px self-center bg-current opacity-30" />}
                 <Link
                   href={aba.href}
                   aria-current={atual ? "page" : undefined}
-                  className={`flex min-h-11 items-center gap-2 rounded-md px-4 text-[0.9375rem] large:h-full large:rounded-b-none ${aba.marca ? "font-atta" : ""} ${atual ? abaAtivaCls : abaInativa}`}
+                  className={`flex min-h-11 items-center gap-2 rounded-md px-3.5 large:h-full large:rounded-b-none ${aba.marca ? "font-atta text-[0.75rem]" : "text-[0.875rem]"} ${atual ? abaAtivaCls : abaInativa}`}
                 >
                   {aba.rotulo}
                   {contador ? (
@@ -86,7 +103,7 @@ export function BarraDoPainel({ sessao, acaoSair, contadores = {} }: Props) {
         </ul>
       </nav>
 
-      <div className="ml-auto flex min-h-14 shrink-0 items-center gap-3 large:min-h-0">
+      <div className="ml-auto flex min-h-14 shrink-0 items-center gap-1 large:min-h-0">
         <Link href="/painel/notificacoes" aria-label={t.sino(sessao.notificacoes)} className="relative flex size-11 items-center justify-center rounded-md">
           <IconeSino />
           {sessao.notificacoes > 0 && (
@@ -144,14 +161,14 @@ function MenuDaPessoa({ nome, clara, acaoSair }: { nome: string; clara: boolean;
         aria-expanded={aberto}
         aria-controls={idDoMenu}
         onClick={() => setAberto((v) => !v)}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-2.5 rounded-full large:pr-1"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full large:pr-1"
       >
         <span aria-hidden="true" className={`flex size-8 items-center justify-center rounded-full text-xs font-semibold ${clara ? "bg-brand text-on-brand" : "bg-on-brand text-brand"}`}>
           {iniciais(nome)}
         </span>
         {/* o nome, como no simulador, a partir de large; o rótulo do botão ("Menu de …") já o contém (WCAG 2.5.3) */}
         {nome && (
-          <span aria-hidden="true" className="hidden max-w-48 truncate text-[0.9375rem] font-semibold large:inline">
+          <span aria-hidden="true" className="hidden max-w-48 truncate text-[0.8125rem] font-semibold large:inline">
             {nome}
           </span>
         )}
