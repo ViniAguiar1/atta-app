@@ -31,7 +31,7 @@ describe("PROpass, passos 1 e 2", () => {
   });
 
   it("com o conselho regularizado, vai ao passo 2 com a situação do backend", async () => {
-    acoes.conferirDados.mockResolvedValue({ ok: true, data: { situacao: "regularizado", consultadoEm: "2026-11-20T19:24:00.000Z" } });
+    acoes.conferirDados.mockResolvedValue({ ok: true, data: { situacao: "regularizado", consultadoEm: "2026-11-20T19:24:00.000Z", pedirSenha: true } });
     abrir();
     expect(screen.getByText("Convite de 20/11/2026 16:20")).toBeInTheDocument(); // fuso da clínica, não o do navegador
     await preencher();
@@ -63,7 +63,7 @@ describe("PROpass, passos 1 e 2", () => {
   });
 
   it("sem consulta real (R20), o passo 2 não afirma a regularidade", async () => {
-    acoes.conferirDados.mockResolvedValue({ ok: true, data: { situacao: "nao_consultado" } });
+    acoes.conferirDados.mockResolvedValue({ ok: true, data: { situacao: "nao_consultado", pedirSenha: true } });
     abrir();
     await preencher();
     await userEvent.click(screen.getByRole("button", { name: "Continuar" }));

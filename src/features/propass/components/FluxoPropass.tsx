@@ -9,17 +9,18 @@ import { PassoConcluido } from "./PassoConcluido";
 import { PassoConselho } from "./PassoConselho";
 import { PassoDados } from "./PassoDados";
 import { PassoSenha } from "./PassoSenha";
-import { PassoTermo } from "./PassoTermo";
+import { type Leitura, PassoTermo } from "./PassoTermo";
 
 // PROpass do profissional, pelo celular (MIG-55; PDD v206 §10.4.3; simulador, capturas 24 a 26), como página própria,
 // não modal: 1 dados → 2 conselho → 3 Termo de Autorização (ler até o fim e assinar) → senha de 4 números → envio
-// final (tudo ou nada) → 4 como você recebe documentos. O Aviso de Privacidade fica desligado até a PO mandar o texto
+// final (tudo ou nada) → 4 como você recebe documentos. Quem já tem a senha do Boarding Check (identidade do passo 2)
+// pula a senha e conclui do próprio termo. O Aviso de Privacidade fica desligado até a PO mandar o texto
 // oficial (CTO, P2b). Dados, assinatura e senha ficam só no estado da tela até o envio.
 type Passo =
   | { nome: "dados" }
   | { nome: "conselho"; consultadoEm: string | null }
   | { nome: "termo"; termo: TermoNaTela }
-  | { nome: "senha"; termo: TermoNaTela; assinatura: string }
+  | { nome: "senha"; termo: TermoNaTela; assinatura: string; leitura: Leitura }
   | { nome: "concluido" }
   | { nome: "sem_validade" };
 
@@ -31,6 +32,7 @@ export function FluxoPropass({ clinica, email, conviteEm, fuso }: Props) {
   const [passo, setPasso] = useState<Passo>({ nome: "dados" });
   const [dados, setDados] = useState<DadosDoProfissional>(VAZIO);
   const [erro, setErro] = useState<string | null>(null);
+  const [pedirSenha, setPedirSenha] = useState(true); // o passo 2 do servidor decide (identidade)
   const [ocupado, executar] = useTransition();
 
   function abrirTermo() {
@@ -43,27 +45,48 @@ export function FluxoPropass({ clinica, email, conviteEm, fuso }: Props) {
     });
   }
 
-  async function enviar(assinatura: string, pin: string): Promise<string | null> {
-    const r = await enviarPropass({ dados, assinatura, leuAteOFim: true, pin });
+  async function enviar(assinatura: string, leitura: Leitura, pin: string | null): Promise<string | null> {
+    const r = await enviarPropass({ dados, assinatura, leuAteOFim: true, pin, leitura });
     if (!r.ok) return TEXTOS.indisponivel;
-    if (r.data.status === "recusado") return TEXTOS.recusado;
-    setPasso({ nome: r.data.status === "ok" ? "concluido" : "sem_validade" });
-    return null;
+    switch (r.data.status) {
+      case "ok":
+        setPasso({ nome: "concluido" });
+        return null;
+      case "link_sem_validade":
+        setPasso({ nome: "sem_validade" });
+        return null;
+      case "recusado":
+        return TEXTOS.recusado;
+      case "limite":
+        return TEXTOS.limite;
+      case "senha_invalida":
+        return r.data.motivo === "obvio" ? TEXTOS.senhaObvia : r.data.motivo === "formato" ? TEXTOS.senhaFormato : TEXTOS.indisponivel;
+    }
   }
 
   switch (passo.nome) {
     case "sem_validade":
       return <Aviso titulo={TEXTOS.linkSemValidade} texto={TEXTOS.linkSemValidadeAjuda} />;
     case "concluido":
-      return <PassoConcluido />;
+      return <PassoConcluido senhaExistente={!pedirSenha} />;
     case "senha":
-      return <PassoSenha aoVoltar={() => setPasso({ nome: "termo", termo: passo.termo })} aoConcluir={(pin) => enviar(passo.assinatura, pin)} />;
+      return (
+        <PassoSenha
+          aoVoltar={() => setPasso({ nome: "termo", termo: passo.termo })}
+          aoConcluir={(pin) => enviar(passo.assinatura, passo.leitura, pin)}
+        />
+      );
     case "termo":
       return (
         <PassoTermo
           termo={passo.termo}
           aoVoltar={() => setPasso({ nome: "dados" })}
-          aoAssinar={(assinatura) => setPasso({ nome: "senha", termo: passo.termo, assinatura })}
+          rotuloDoBotao={pedirSenha ? TEXTOS.assinar : TEXTOS.concluir}
+          aoAssinar={async (assinatura, leitura) => {
+            if (!pedirSenha) return enviar(assinatura, leitura, null); // já tem a senha do Boarding Check
+            setPasso({ nome: "senha", termo: passo.termo, assinatura, leitura });
+            return null;
+          }}
         />
       );
     case "conselho":
@@ -89,6 +112,7 @@ export function FluxoPropass({ clinica, email, conviteEm, fuso }: Props) {
           aoConferir={(novos, r) => {
             setDados(novos);
             if (r.situacao === "link_sem_validade") return setPasso({ nome: "sem_validade" });
+            setPedirSenha(r.situacao === "nao_confere" ? true : r.pedirSenha);
             setPasso({ nome: "conselho", consultadoEm: r.situacao === "regularizado" ? r.consultadoEm : null });
           }}
         />
