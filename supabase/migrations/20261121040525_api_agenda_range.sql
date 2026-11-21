@@ -2,7 +2,8 @@
 -- api.agenda_range lê um período com as mesmas linhas do Hoje (private.agenda_rows: paciente, Serviços, documentos,
 -- estado, atrasado, confirmação e ações calculadas no banco), com busca, filtros e página por cursor (starts_at, id).
 --   - todos: o intervalo p_from..p_to (datas locais da clínica, inclusive, até 92 dias), sem o Concluído, que vai para a
---     visão Concluídos (§10.2.2);
+--     visão Concluídos (§10.2.2). Sem período, o banco usa hoje (no fuso da clínica) e os 91 dias seguintes: a visão abre
+--     sem filtro e a tela não sabe o "hoje" da clínica (Frontend 4; ADR 0001 §4). Só p_from: até p_from + 91;
 --   - concluidos: só o Concluído, em p_period = 'semana' (semana corrente, de segunda a domingo, no fuso da clínica) ou
 --     'mes' (mês corrente). Os Serviços de cada linha são os realizados. O período sai do banco, para a tela não recalcular.
 -- Mesma permissão e auditoria do agenda_day.
@@ -51,11 +52,11 @@ begin
   select t.timezone into v_tz from platform.tenant t where t.id = v_tenant;
   v_today := (now() at time zone v_tz)::date;
   if p_view = 'todos' then
-    if p_period is not null or p_from is null or p_to is null or p_to < p_from or p_to - p_from > 91 then
+    v_from := coalesce(p_from, v_today);
+    v_to := coalesce(p_to, v_from + 91);
+    if p_period is not null or v_to < v_from or v_to - v_from > 91 then
       raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'period';
     end if;
-    v_from := p_from;
-    v_to := p_to;
   else
     if num_nonnulls(p_from, p_to) > 0 or coalesce(p_period, 'semana') not in ('semana', 'mes') then
       raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'period';
