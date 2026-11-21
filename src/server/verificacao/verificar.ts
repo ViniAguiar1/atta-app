@@ -15,7 +15,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { isIP } from "node:net";
 import { z } from "zod";
-import { normalizeAttaCode } from "@/lib/atta-sign/attasign";
+import { attaCode, normalizeAttaCode } from "@/lib/atta-sign/attasign";
 import { falha, falhaDoBanco, MENSAGENS, ok, type Resultado } from "@/lib/errors";
 import { ipDoCliente } from "@/lib/http/correlacao";
 import { logger } from "@/lib/logger";
@@ -83,18 +83,36 @@ export const materialSchema = z.object({
 export type MaterialDaIntegridade = z.infer<typeof materialSchema>;
 
 /**
- * ADR 0007 §1: sem selo, null; 'confere' só quando o sha256 recalculado dos bytes guardados é igual ao hash guardado
- * e pelo menos um selo passa no verifySeal (chave do manifesto válida no signed_at); qualquer outra coisa, 'nao_confere'.
+ * ADR 0007 §1: sem selo, null; 'confere' só quando, nos bytes guardados: o sha256 recalculado é igual ao hash guardado,
+ * o código consultado é o que nasce desse hash (attaCode; o nonce de colisão fica dentro do payload, ADR 0006), o
+ * signature.signed_at do payload é o mesmo instante da coluna, e pelo menos um selo passa no verifySeal com a chave
+ * válida nesse signed_at dos bytes (regra do #61). Qualquer outra coisa, 'nao_confere'. Notas da Segurança e do
+ * Backend 3 no #225.
  */
-export function conferirIntegridade(m: MaterialDaIntegridade): Integridade {
+export function conferirIntegridade(m: MaterialDaIntegridade, codigo: string): Integridade {
   if (m.seals.length === 0) return null;
-  const recalculado = createHash("sha256").update(Buffer.from(m.payload_canonical_b64, "base64")).digest("hex");
+  const bytes = Buffer.from(m.payload_canonical_b64, "base64");
+  const recalculado = createHash("sha256").update(bytes).digest("hex");
   if (recalculado !== m.evidence_sha256) return "nao_confere";
+  if (attaCode(recalculado) !== codigo) return "nao_confere";
+  const assinadoEm = signedAtDosBytes(bytes);
+  if (assinadoEm === null || Date.parse(assinadoEm) !== Date.parse(m.signed_at)) return "nao_confere";
   const manifesto: SealManifestEntry[] = m.seal_keys.map((k) => ({ ...k, alg: "Ed25519" as const }));
   const algumValido = m.seals.some((s) =>
-    verifySeal(recalculado, { kid: s.kid, alg: "Ed25519", sig_b64: s.sig_b64 }, manifesto, m.signed_at),
+    verifySeal(recalculado, { kid: s.kid, alg: "Ed25519", sig_b64: s.sig_b64 }, manifesto, assinadoEm),
   );
   return algumValido ? "confere" : "nao_confere";
+}
+
+/** O signature.signed_at do payload canônico assinado, em ISO UTC com ms; null se faltar ou vier em outra forma. */
+function signedAtDosBytes(bytes: Buffer): string | null {
+  try {
+    const valor: unknown = (JSON.parse(bytes.toString("utf8")) as { signature?: { signed_at?: unknown } })?.signature
+      ?.signed_at;
+    return typeof valor === "string" && ISO_MS.test(valor) ? valor : null;
+  } catch {
+    return null;
+  }
 }
 
 /** O mínimo do cliente que a verificação usa (testes sem o Supabase). */
@@ -155,7 +173,7 @@ export async function verificarCodigo(
     logger.error("verificacao.material_fora_do_contrato", { campos: material.error.issues.length });
     return falha("INTERNO", MENSAGENS.INTERNO);
   }
-  const integrity = conferirIntegridade(material.data);
+  const integrity = conferirIntegridade(material.data, codigo);
   if (integrity === "nao_confere") logger.warn("verificacao.integridade_nao_confere");
   return ok({ ...lida.data, integrity });
 }
