@@ -19,3 +19,22 @@ describe("documentos", () => {
     expect(nomeValido("Bruna")).toBe(false);
   });
 });
+
+describe("CNPJ, CEP e telefone fixo (Perfil da Clínica)", async () => {
+  const { cnpjValido, mascararCnpj, mascararCep, mascararTelefone } = await import("./documentos");
+  it("CNPJ pelo dígito verificador, com ou sem pontuação", () => {
+    expect(cnpjValido("11.222.333/0001-81")).toBe(true); // CNPJ de exemplo, fictício
+    expect(cnpjValido("11222333000181")).toBe(true);
+    expect(cnpjValido("11222333000182")).toBe(false);
+    expect(cnpjValido("00000000000000")).toBe(false);
+    expect(cnpjValido("1122233300018")).toBe(false);
+  });
+
+  it("máscaras de digitação", () => {
+    expect(mascararCnpj("11222333000181")).toBe("11.222.333/0001-81");
+    expect(mascararCnpj("1122")).toBe("11.22");
+    expect(mascararCep("01310930")).toBe("01310-930");
+    expect(mascararTelefone("1133334444")).toBe("(11) 3333-4444");
+    expect(mascararTelefone("11999998888")).toBe("(11) 99999-8888");
+  });
+});

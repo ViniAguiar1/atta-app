@@ -11,7 +11,7 @@ export const GRUPOS: Grupo[] = [
   {
     titulo: "Clínica", // simulador
     secoes: [
-      { caminho: "perfil", titulo: "Perfil da Clínica", exibir: "nunca" }, // PDD §10.4.1
+      { caminho: "perfil", titulo: "Perfil da Clínica", exibir: "fora-da-producao" }, // PDD §10.4.1 (sempre quando o gestor e o RT entrarem)
       { caminho: "equipe", titulo: "Equipe & Permissões", exibir: "nunca" }, // PDD §10.4.3
       { caminho: "servicos", titulo: "Serviços", exibir: "nunca" }, // PDD §10.4.7
     ],
