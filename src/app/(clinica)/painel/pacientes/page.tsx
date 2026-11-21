@@ -2,7 +2,12 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { Subabas } from "@/components/ui/Subabas";
+import { FluxoDeImportacao } from "@/components/importacao/FluxoDeImportacao";
+import { emProducao } from "@/features/casca/abas";
 import { sessaoDoPainel } from "@/features/casca/sessao";
+import { secaoDisponivel, secaoPorCaminho } from "@/features/configuracoes/secoes";
+import { confirmarImportacao, declararImportacao, iniciarEnvioDaImportacao, previaDaImportacao, urlDoModelo } from "@/features/importacao/actions";
+import { fusoDaClinica } from "@/features/importacao/queries";
 import {
   buscarPacientes,
   cadastrarPaciente,
@@ -36,6 +41,20 @@ export default function Page() {
 async function Conteudo() {
   await connection(); // por requisição: a lista é da clínica da sessão
   const [inicial, sessao] = await Promise.all([listarPacientes(), sessaoDoPainel()]);
+  // "Importar base de pacientes" no módulo Pacientes (PDD v206 §10.1; decisão do CTO de 21/11: o mesmo fluxo de
+  // Configurações › Importação). Só o gestor importa, e só onde a seção de importação existe (fora da produção, enquanto a
+  // porta do MIG-34 for a simulada): na produção, sem botão que não leva a nada.
+  const secao = secaoPorCaminho("importacao");
+  const podeImportar = sessao?.papel === "ADMIN" && secao !== undefined && secaoDisponivel(secao, emProducao());
+  // o fuso da clínica só é lido quando o botão aparece (o prazo da importação sai nele)
+  const fuso = podeImportar ? await fusoDaClinica() : null;
+  const importar = fuso ? (
+    <FluxoDeImportacao
+      variante="secundario"
+      fuso={fuso}
+      acoes={{ urlDoModelo, declarar: declararImportacao, iniciarEnvio: iniciarEnvioDaImportacao, previa: previaDaImportacao, confirmar: confirmarImportacao }}
+    />
+  ) : null;
   // "+ Novo paciente" à direita da busca (captura 09); o modal das capturas 15 a 18
   const novo = (
     <NovoPaciente
@@ -50,7 +69,12 @@ async function Conteudo() {
       <ListaDePacientes
         // depois de um cadastro, o router.refresh() traz a lista nova: a key recomeça o estado da lista com ela
         key={inicial.ok ? `${inicial.data.total}:${inicial.data.itens.map((p) => p.id).join(",")}` : "erro"}
-        acoes={novo}
+        acoes={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {importar}
+            {novo}
+          </div>
+        }
         inicial={inicial}
         listar={listarPacientes}
         buscar={buscarPacientes}

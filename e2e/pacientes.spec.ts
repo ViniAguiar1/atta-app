@@ -98,6 +98,12 @@ test.describe("gestora da Clínica Alfa", () => {
     const filtros = page.getByRole("button", { name: "Filtros", exact: true });
     await filtros.click();
     await expect(page.getByRole("list", { name: "Filtrar pacientes" }).getByRole("button")).toHaveCount(3);
+    await page.keyboard.press("Escape");
+    // a gestora tem o "Importar base de pacientes" ao lado do "+ Novo paciente" (PDD §10.1; o mesmo fluxo de Configurações)
+    await page.getByRole("button", { name: "Importar base de pacientes" }).click();
+    await expect(page.getByRole("dialog", { name: "Importar base de pacientes" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await filtros.click();
     expect((await axe(page)).violations).toEqual([]);
     await page.getByRole("button", { name: /Com atendimento hoje/ }).click();
     await expect(page.getByRole("rowheader").filter({ hasText: "Juliana Prates" })).toBeVisible(); // agendada hoje no seed
@@ -117,9 +123,12 @@ test.describe("gestora da Clínica Alfa", () => {
       expect(await page.locator("main").innerText()).not.toMatch(PROIBIDO);
       const rolaDeLado = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(rolaDeLado).toBe(false);
-      // o "+ Novo paciente" inteiro na tela (um corte dentro de contêiner não aparece na rolagem lateral)
-      const novo = await page.getByRole("button", { name: "+ Novo paciente" }).boundingBox();
-      expect(novo && novo.x >= 0 && novo.x + novo.width <= largura).toBe(true);
+      // o "+ Novo paciente" e o "Importar base de pacientes" inteiros na tela (um corte dentro de contêiner não aparece na
+      // rolagem lateral)
+      for (const nome of ["+ Novo paciente", "Importar base de pacientes"]) {
+        const caixa = await page.getByRole("button", { name: nome }).boundingBox();
+        expect(caixa && caixa.x >= 0 && caixa.x + caixa.width <= largura).toBe(true);
+      }
     });
   }
 });
@@ -137,6 +146,9 @@ test("a colaboradora da Alfa vê a mesma lista", async ({ page }) => {
   await page.getByRole("link", { name: "Abrir a pasta de Juliana Prates" }).click();
   await expect(page.getByRole("region", { name: "Dados cadastrais" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Arquivar paciente" })).toHaveCount(0);
+  // importar a base é só do gestor (PDD §10.1)
+  await page.goto("/painel/pacientes");
+  await expect(page.getByRole("button", { name: "Importar base de pacientes" })).toHaveCount(0);
 });
 
 /** CPF fictício com dígito verificador válido, novo a cada execução (nenhum real). */
