@@ -70,7 +70,7 @@ describe("PROpass: termo, senha e envio", () => {
     expect(screen.getByText(/só agenda seus atendimentos depois dessa conferência/)).toBeInTheDocument();
   });
 
-  it("recusa de identidade fica na senha com o aviso; sem modelo do termo, avisa e não mostra o quadro", async () => {
+  it("recusa de identidade fica na senha com o aviso; falha ao carregar o termo é erro genérico, sem quadro", async () => {
     acoes.enviarPropass.mockResolvedValue({ ok: true, data: { status: "recusado" } });
     await ateOTermo();
     desenhar();
@@ -81,7 +81,7 @@ describe("PROpass: termo, senha e envio", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Não conseguimos confirmar seus dados");
     cleanup();
 
-    acoes.carregarTermo.mockResolvedValue({ ok: true, data: { situacao: "sem_termo" } });
+    acoes.carregarTermo.mockResolvedValue({ ok: false, error: { code: "INDISPONIVEL", message: "x" } });
     acoes.conferirDados.mockResolvedValue({ ok: true, data: { situacao: "nao_consultado" } });
     render(<FluxoPropass clinica="Clínica Aurora Estética" email="bruna.reis@exemplo.test" conviteEm="2026-11-20T19:20:00.000Z" fuso="America/Sao_Paulo" />);
     await userEvent.type(screen.getByLabelText("Nome completo"), "Bruna Reis");
@@ -92,7 +92,7 @@ describe("PROpass: termo, senha e envio", () => {
     await userEvent.selectOptions(screen.getByLabelText("UF"), "SP");
     await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
     await userEvent.click(await screen.findByRole("button", { name: "Continuar" }));
-    expect(await screen.findByRole("heading", { name: /ainda não publicou o Termo/ })).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não conseguimos continuar agora");
     expect(document.querySelector("canvas")).toBeNull();
   });
 });

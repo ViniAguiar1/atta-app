@@ -42,7 +42,6 @@ export const TEXTOS = {
   limpar: "Limpar assinatura", // provisório
   semAssinatura: "Desenhe sua assinatura no quadro.", // provisório
   rotuloTermo: "Texto do Termo de Autorização", // provisório (região rolável, leitor de tela)
-  semTermo: "A clínica ainda não publicou o Termo de Autorização. Avise a clínica e abra o link de novo mais tarde.", // provisório
   // passo 3b: senha de 4 números (decisão do dono, R10; não existe no simulador)
   passoSenha: "Passo 3 de 4 · Senha", // provisório
   senhaTitulo: "Crie sua senha de 4 números", // provisório
@@ -59,7 +58,7 @@ export const TEXTOS = {
   passo4: "Passo 4 de 4 · Como você recebe documentos", // simulador (aba "Como você recebe documentos")
   concluidoTitulo: "PROpass concluído", // provisório
   concluidoTexto:
-    "Você não tem login nem painel no ATTA-in. Para cada atendimento, chega pelo WhatsApp um link só daquele paciente, com o Formulário de Saúde e os termos, que você abre com a sua senha de 4 números.", // provisório (PDD §10.4.3 e §10.2.3)
+    "Você não tem login nem painel no ATTA‑in. Para cada atendimento, chega pelo WhatsApp um link só daquele paciente, com o Formulário de Saúde e os termos, que você abre com a sua senha de 4 números.", // provisório (PDD §10.4.3 e §10.2.3)
   aguardandoConferencia:
     "A conferência do seu registro no conselho é feita pela equipe ATTA. A clínica só agenda seus atendimentos depois dessa conferência.", // provisório (decisão do dono, 20/11)
 } as const;
@@ -72,6 +71,11 @@ export const ROTULOS: Record<CampoDosDados | "email", string> = {
   conselho: "Conselho", // simulador
   numero: "Número de registro", // simulador
   uf: "UF", // simulador
+};
+
+/** Campo obrigatório vazio (nota do QA 2 no #127): o CPF vazio não "não bate", ele falta. */
+export const VAZIOS: Partial<Record<CampoDosDados, string>> = {
+  cpf: "Informe o CPF.", // provisório
 };
 
 export const ERROS: Record<CampoDosDados, string> = {

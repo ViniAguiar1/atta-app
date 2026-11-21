@@ -33,7 +33,7 @@ export function PassoConselho({ dados, consultadoEm, fuso, ocupado, erro, aoVolt
         <dt className="text-text-secondary">{TEXTOS.colunaConselho}</dt>
         <dd>{conselho}</dd>
         <dt className="text-text-secondary">{TEXTOS.colunaRegistro}</dt>
-        <dd>{`${dados.numero}-${dados.uf}`}</dd>
+        <dd>{registro(dados)}</dd>
         <dt className="text-text-secondary">{TEXTOS.colunaNome}</dt>
         <dd>{dados.nome}</dd>
       </dl>
@@ -58,4 +58,11 @@ export function PassoConselho({ dados, consultadoEm, fuso, ocupado, erro, aoVolt
       </Botao>
     </section>
   );
+}
+
+/** "CRM-SP 990.001", como no simulador (captura 25); o número com o ponto de milhar. */
+function registro(d: DadosDoProfissional) {
+  const numero = Number(d.numero.replace(/\D/g, "")).toLocaleString("pt-BR");
+  const sigla = d.conselho === "esteticista_ou_equivalente" ? "Registro" : d.conselho.toUpperCase();
+  return `${sigla}-${d.uf} ${numero}`;
 }

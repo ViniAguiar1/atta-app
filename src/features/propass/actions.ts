@@ -25,7 +25,6 @@ export async function conferirDados(entrada: unknown): Promise<Resultado<Confere
 }
 
 const FORA_DA_PRODUCAO = falha("NAO_ENCONTRADO", "Não encontrado."); // porta simulada: fora da produção
-const semTermo = (reason?: string) => reason === "ATTA-IN-0003:authorization_template";
 
 /** Passo 2 → 3: o Termo de Autorização com os dados do profissional, para ler antes de assinar (PDD §10.4.3). */
 export async function carregarTermo(entrada: unknown): Promise<Resultado<TermoCarregado>> {
@@ -37,7 +36,6 @@ export async function carregarTermo(entrada: unknown): Promise<Resultado<TermoCa
   const { conselho, numero, uf, nome } = dados.data;
   const r = await portaPropass.termo(hash, { conselho, numero, uf, nome });
   if (r.ok) return ok({ situacao: "pronto", termo: r.data });
-  if (semTermo(r.error.reason)) return ok({ situacao: "sem_termo" });
   return r.error.code === "NAO_ENCONTRADO" ? ok({ situacao: "link_sem_validade" }) : r;
 }
 
@@ -56,6 +54,5 @@ export async function enviarPropass(entrada: unknown): Promise<Resultado<Desfech
   const r = await portaPropass.enviar(hash, { dados: envio.data.dados, assinaturaPng, pin: envio.data.pin });
   logger.info("propass.enviado", { ok: r.ok, status: r.ok ? r.data.status : r.error.code });
   if (r.ok) return ok(r.data);
-  if (semTermo(r.error.reason)) return ok({ status: "sem_termo" });
   return r.error.code === "NAO_ENCONTRADO" ? ok({ status: "link_sem_validade" }) : r;
 }
