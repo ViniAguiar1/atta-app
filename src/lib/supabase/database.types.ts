@@ -118,6 +118,18 @@ export type Database = {
 "grant_revoke":
 { Args: { "p_secret_hash": string }; Returns: undefined
                            },
+"notification_channel_set":
+{ Args: { "p_active": boolean,"p_address_enc"?: string,"p_address_masked"?: string,"p_channel": string,"p_dek_wrapped"?: string,"p_envelope_id"?: string,"p_kek_version"?: number }; Returns: undefined
+                           },
+"notification_event_set":
+{ Args: { "p_channel": string,"p_enabled": boolean,"p_event_key": string }; Returns: undefined
+                           },
+"notification_filters_set":
+{ Args: { "p_frequencia_resumo": string,"p_pausa_noturna": boolean }; Returns: undefined
+                           },
+"notification_settings_get":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "patient_count":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
@@ -354,6 +366,48 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"notification_channel": {
+                  Row: {
+                    "active": boolean,"address_enc": string | null,"address_masked": string | null,"channel": string,"dek_wrapped": string | null,"envelope_id": string | null,"kek_version": number | null,"tenant_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"address_enc"?: string | null,"address_masked"?: string | null,"channel": string,"dek_wrapped"?: string | null,"envelope_id"?: string | null,"kek_version"?: number | null,"tenant_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "active"?: boolean,"address_enc"?: string | null,"address_masked"?: string | null,"channel"?: string,"dek_wrapped"?: string | null,"envelope_id"?: string | null,"kek_version"?: number | null,"tenant_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"notification_filter": {
+                  Row: {
+                    "frequencia_resumo": string,"pausa_noturna": boolean,"tenant_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "frequencia_resumo"?: string,"pausa_noturna"?: boolean,"tenant_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "frequencia_resumo"?: string,"pausa_noturna"?: boolean,"tenant_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"notification_preference": {
+                  Row: {
+                    "channel": string,"enabled": boolean,"event_key": string,"tenant_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "channel": string,"enabled": boolean,"event_key": string,"tenant_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "channel"?: string,"enabled"?: boolean,"event_key"?: string,"tenant_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"professional_break": {
                   Row: {
                     "created_at": string,"ends_at": string,"id": string,"professional_link_id": string,"starts_at": string,"tenant_id": string,"updated_at": string,"weekdays": (number)[]
@@ -499,6 +553,11 @@ isOneToOne: false
 "link_rules_effective":
 { Args: { "p_tenant": string }; Returns: {
               "appointment_type": string,"clinic_service_id": string,"key": string,"level": string,"v": number
+            }[]
+                           },
+"notification_events":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "category": string,"key": string,"ord": number
             }[]
                            },
 "set_setting":
