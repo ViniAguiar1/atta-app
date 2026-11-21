@@ -68,6 +68,54 @@ export const textos = {
     fimDoDocumento: "Fim do documento", // simulador
     semDado: "—", // regra do stage: o que falta aparece como travessão
   },
+  documentosDoAtta: {
+    titulo: "Documentos do ATTA que o paciente assina", // simulador, captura 46 (R46: só leitura, conferido com o PDD §16)
+    subtitulo: "Documentos da plataforma", // simulador
+    texto:
+      "Além dos documentos da clínica, o paciente aceita documentos padronizados do ATTA, iguais para toda a rede. A clínica não cria, não edita e não configura prazo deles, e eles não aparecem em Termos & Docs. Entram no check-in sozinhos, sem nenhuma ação da recepção.", // simulador (PDD §17.2: documento padronizado da ATTA, não criado nem editado pela clínica)
+    legenda: "Tabela dos documentos do ATTA: como e quando o paciente aceita, e a validade", // provisório (legenda da tabela, só leitor de tela)
+    colunas: { documento: "Documento do ATTA", como: "Como o paciente aceita", quando: "Quando aparece no check-in", validade: "Validade" }, // simulador
+    linhas: [
+      {
+        documento: "Termo de Uso do Check-in Digital (Paciente)", // PDD §16 / §17.2
+        como: "Aceite por clique, depois de ler o texto até o fim. Não usa ATTA Sign.", // simulador (PDD §16: "Aceito os termos" só no fim do texto)
+        quando: "No primeiro check-in do paciente (CPF), em qualquer clínica que use o ATTA-in. Depois só volta se sair uma versão nova.", // simulador (PDD RN-TUC-01 a 03)
+        validade: "Sem prazo: vale até mudar a versão.", // simulador (PDD §17.2, RN-TUC-01)
+      },
+      {
+        documento: "Aviso de Privacidade do Paciente e Registro de Ciência", // PDD §17.2
+        como: "Confirmação de leitura com o ATTA Sign.", // simulador
+        quando: "No primeiro check-in do paciente, uma única vez para toda a rede. Volta quando vence ou quando sai versão nova com mudança relevante.", // simulador (PDD §17.2: uma vez por CPF, para toda a rede)
+        validade: "12 meses, fixos da plataforma.", // PDD §17.2 ("12 meses, fixo da plataforma (não configurável)")
+      },
+      {
+        documento: "Quadro de Identificação da Controladora", // PDD §16 / §17.2
+        detalhe: "dados da própria clínica: nome fantasia, CNPJ, Responsável Técnico, WhatsApp e e-mail", // simulador
+        como: "Só ciência (\"Estou ciente\").", // simulador
+        quando: "No primeiro atendimento do paciente em cada clínica, logo depois do Aviso. Aparece de novo se algum desses dados mudar.", // simulador (PDD §17.2: por Estabelecimento)
+        validade: "Sem prazo: acompanha os dados do Perfil da Clínica.", // simulador
+      },
+    ],
+    nota: "Antes do primeiro Termo ou Aviso pendente, o paciente vê uma tela de aviso inicial, com o botão \"Continuar\", explicando que esses documentos são aceitos uma única vez, ficam disponíveis no ATTA me (Conta) e valem em todas as clínicas que usam o ATTA-in. Quem já aceitou não vê essa tela de novo.", // simulador (PDD §16, RN-TUC-05)
+  },
+  validade: {
+    titulo: "Validade documental", // simulador, captura 46 (R46: só leitura)
+    subtitulo: "Frequência e prazo", // simulador
+    texto:
+      "A validade de cada modelo \"Única\" é de 3, 6 ou 12 meses, ou indeterminada, e muda numa nova versão do modelo, em Termos & Docs. A nova validade vale só para os próximos documentos.", // provisório (PDD RN-V-01; R46: sem edição aqui)
+    legenda: "Modelos de frequência Única e a validade de cada um", // provisório (legenda da tabela)
+    colunas: { modelo: "Modelo \"Única\"", estado: "Estado", validade: "Validade", obrigatorio: "Obrigatório" }, // simulador (Validade em meses, RN-V-01)
+    meses: (n: 3 | 6 | 12 | null) => (n === null ? "Indeterminada" : `${n} meses`), // PDD RN-V-01
+    estados: { rascunho: "Rascunho", ativo: "Ativo", inativo: "Inativo" }, // PDD §10.3.1
+    obrigatorio: { sim: "Obrigatório", nao: "Opcional", semEscolha: "—" }, // simulador / RN-DOC-04
+    versao: (v: number) => `v${v}`, // simulador
+    abrir: "Abrir em Termos & Docs", // provisório (cada linha leva ao modelo; R46)
+    abrirFalado: (titulo: string) => `Abrir ${titulo} em Termos & Docs`, // provisório
+    nenhum: "Nenhum modelo \"Única\" ativo.", // provisório
+    porProcedimento: (nomes: string[]) =>
+      nomes.length === 0 ? "" : `${nomes.length} modelo(s) "Por procedimento" sem validade: ${nomes.join(", ")}.`, // simulador (rodapé)
+    erro: "Não conseguimos carregar os modelos agora.", // provisório
+  },
   semRt: {
     destaque: "Falta o Responsável Técnico.", // provisório (rt_complete = false; CTO, 21/11)
     texto: "O modelo escolhido inclui a assinatura do RT, e o Perfil da Clínica ainda não tem RT. Os documentos só ficam definitivos depois que ele for cadastrado em Perfil da Clínica.", // provisório (PDD §10.4.1, CA-E01-02)

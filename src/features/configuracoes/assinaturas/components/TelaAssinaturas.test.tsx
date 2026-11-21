@@ -26,6 +26,15 @@ const preview = () => screen.getByRole("region", { name: "Preview do ATTA Sign" 
 describe("Configurações › Assinaturas & Validade (PDD §10.4.2, captura 46)", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("os cartões só leitura (Documentos do ATTA e Validade) entram com os modelos e esperam enquanto carregam", () => {
+    const { rerender } = abrir();
+    expect(screen.queryByRole("region", { name: "Validade documental" })).toBeNull();
+    const vazio = { ativos: null, obrigatorios: null, opcionais: null, vencendo: null, vencidos: null, assinados: null, percentualAttaSign: null };
+    rerender(<TelaAssinaturas resultado={{ ok: true, data: DADOS }} modelos={{ ok: true, data: { modelos: [], resumo: vazio } }} />);
+    expect(screen.getByRole("region", { name: "Documentos do ATTA que o paciente assina" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Validade documental" })).toBeInTheDocument();
+  });
+
   it("sem leitura real (porta vazia), abre no estado vazio do design", () => {
     const { container } = abrir(null);
     expect(estadoDeDados(container)).toBe("vazio");
