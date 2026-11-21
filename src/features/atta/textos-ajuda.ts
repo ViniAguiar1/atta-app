@@ -23,6 +23,12 @@ export const textosAjuda = {
       { titulo: "Compliance e LGPD", texto: "Papéis, bases legais e guarda." },
     ],
   },
+  planilha: {
+    titulo: "Planilha modelo de pacientes", // provisório (PDD §10.1: "a clínica baixa a planilha modelo no módulo ATTA")
+    subtitulo: "Para importar a base de pacientes da clínica", // provisório
+    texto: "Baixe a planilha modelo da ATTA, preencha os pacientes e faça a importação no módulo Pacientes.", // provisório (PDD §10.1)
+    baixar: "Baixar planilha modelo (.xlsx)", // provisório
+  },
   faq: {
     titulo: "FAQ", // simulador
     subtitulo: "O que fazer quando algo foge do roteiro.", // simulador

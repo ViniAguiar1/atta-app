@@ -19,6 +19,8 @@ test("o ATTA abre a Central de Ajuda, com as 5 subabas do simulador", async ({ p
   await page.locator("summary", { hasText: "A recepção pode ver as respostas do Formulário de Saúde?" }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByText(/Não, em nenhuma tela\. Nem o ADMIN acessa o conteúdo/)).toBeVisible();
+  // planilha modelo de pacientes (§10.1), pela porta da importação (simulada fora da produção)
+  await expect(page.getByRole("link", { name: "Baixar planilha modelo (.xlsx)" })).toHaveAttribute("href", /planilha-de-pacientes\.xlsx/);
   expect((await axe(page)).violations).toEqual([]);
 });
 
