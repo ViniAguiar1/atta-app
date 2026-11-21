@@ -51,6 +51,8 @@ jobs:
         run: sh scripts/ci-filtro.sh
       - name: testes do filtro do CI
         run: sh scripts/ci-filtro.test.sh
+      - name: testes do trem.sh (apelidos e veredito dos revisores)
+        run: bash scripts/trem.test.sh
       # versões das migrations, sem Supabase (pedido do TL em 20/11; ADR 0001 §3): nada repetido e, no PR (e no vagão do
       # trem), toda migration nova maior que a última da main. No PR, a árvore é a do PR já juntado com a main.
       - name: versões das migrations (únicas e maiores que a última da main)
