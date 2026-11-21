@@ -33,9 +33,9 @@ export function FormularioDoCodigo({ inicial = "" }: { inicial?: string }) {
           autoComplete="off"
           autoCapitalize="characters"
           spellCheck={false}
-          className="min-h-12 flex-1 rounded-md border border-border-functional bg-surface-raised px-4 text-sm tracking-wide font-codigo"
+          className="min-h-11.5 flex-1 rounded-sm border-[1.5px] border-text-primary bg-surface-raised px-3 font-codigo text-base"
         />
-        <button type="submit" disabled={ocupado} className="min-h-12 rounded-md bg-brand px-6 font-medium text-on-brand disabled:opacity-60">
+        <button type="submit" disabled={ocupado} className="min-h-11.5 rounded-sm bg-brand px-4 text-sm font-semibold text-on-brand shadow-md disabled:opacity-60">
           {ocupado ? textos.verificando : textos.verificar}
         </button>
       </div>
