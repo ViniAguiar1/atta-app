@@ -1,6 +1,6 @@
 -- MIG-14b (1): PROpass pelo link do convite (PDD v206 §10.4.3; ADR 0004 §3). Dados fictícios: bytes e nomes inventados.
 begin;
-select plan(44);
+select plan(53);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -42,15 +42,54 @@ create function pg_temp.convidar(p_id uuid, p_email text, p_segredo text) return
                                  gen_random_uuid(), '\x01cc', 1::smallint, sha256(p_segredo::bytea))
 $$;
 
--- o que o servidor manda depois de validar, conferir o conselho e cifrar
-create function pg_temp.enviar(p_segredo text, p_email text, p_cpf text, p_numero text,
-                               p_conselho text default 'regularizado', p_nome text default null) returns text
-language sql as $$
-  select api.propass_submit(sha256(p_segredo::bytea), gen_random_uuid(), coalesce(p_nome, 'Dra. Fictícia ' || p_numero),
-                            'cro', 'SP', p_numero, sha256(p_cpf::bytea), '···.···.000-00', '\x01aa', '\x01a1',
-                            sha256(p_email::bytea), '\x01a2', '\x01bb', 1::smallint, p_conselho, 'v1')
-$$;
+-- chave do selo fictícia (o servidor confere a assinatura Ed25519; o banco confere o kid e a validade)
+insert into documents.seal_key (kid, public_key_spki, valid_from)
+values ('staging-seal-teste-propass', '\x302a300506032b6570032100'::bytea || sha256('chave-ficticia-propass'::bytea), '2026-01-01');
 
+-- o que o servidor manda no envio final: os dados cifrados, o pin_mac e o pacote do ATTA Sign do Termo de Autorização,
+-- montado sobre o modelo de sistema da clínica (seed, Backend 3). p_codigo troca o Código ATTA (pacote com defeito).
+create function pg_temp.enviar(p_segredo text, p_email text, p_cpf text, p_numero text,
+                               p_conselho text default 'regularizado', p_nome text default null,
+                               p_aviso text default 'v1', p_codigo text default null) returns text
+language plpgsql security definer as $$
+declare
+  v_link uuid; v_tenant uuid; v_doc uuid := gen_random_uuid(); v_payload bytea; tv record;
+begin
+  select g.professional_link_id, g.tenant_id into v_link, v_tenant from platform.access_grant g
+  where g.secret_hash = sha256(p_segredo::bytea);
+  select * into tv from documents.template_version t
+  where t.tenant_id = v_tenant and t.kind = 'termo_de_autorizacao' order by t.version desc limit 1;
+  v_payload := convert_to(jsonb_build_object(
+    'atta_sign_version', '1',
+    'document', jsonb_build_object('id', v_doc, 'type', 'termo_de_autorizacao', 'template_id', tv.template_id,
+                                   'template_version', tv.version, 'body_sha256', tv.body_sha256,
+                                   'body_normalization', tv.body_normalization),
+    'parties', jsonb_build_array(jsonb_build_object('ref', 'p1', 'role', 'professional',
+                                                    'name', coalesce(p_nome, 'Dra. Fictícia ' || p_numero))),
+    'signature', jsonb_build_object('signer', 'p1', 'level', 'atta_sign',
+                                    'signed_at', to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+                                    'stroke_sha256', repeat('a', 64)),
+    'context', jsonb_build_object('product', 'atta_in', 'context_type', 'professional_authorization', 'context_id', v_link)
+  )::text, 'UTF8');
+  return api.propass_submit(sha256(p_segredo::bytea), gen_random_uuid(), coalesce(p_nome, 'Dra. Fictícia ' || p_numero),
+    'cro', 'SP', p_numero, sha256(p_cpf::bytea), '···.···.000-00', '\x01aa', '\x01a1', sha256(p_email::bytea), '\x01a2',
+    '\x01bb', 1::smallint, p_conselho, sha256(('pin-' || p_numero)::bytea), 1::smallint, v_doc, v_payload,
+    coalesce(p_codigo, private.atta_code_from_sha256(encode(sha256(v_payload), 'hex'))), 'staging-seal-teste-propass',
+    sha512('selo-ficticio'::bytea),
+    jsonb_build_object('storage_path', coalesce(v_tenant::text, gen_random_uuid()::text) || '/' || v_doc || '/assinatura.png',
+                       'sha256_plain', repeat('a', 64), 'size_bytes', 2048, 'dek_wrapped', 'abcd', 'kek_version', 1),
+    p_aviso);
+end $$;
+create function pg_temp.termo(p_link uuid) returns text language sql security definer as $$
+  select string_agg(d.status, ',') from documents.document d where d.professional_link_id = p_link
+$$;
+create function pg_temp.pins() returns int language sql security definer as $$
+  select count(*)::int from platform.professional_pin
+$$;
+create function pg_temp.sem_ciencia(p_link uuid) returns boolean language sql security definer as $$
+  select privacy_notice_version is null and privacy_notice_ack_at is null and propass_completed_at is not null
+  from platform.professional_tenant_link where id = p_link
+$$;
 
 create function pg_temp.vivos(p_link uuid) returns int language sql security definer as $$
   select count(*)::int from platform.access_grant
@@ -96,7 +135,7 @@ select is((select idle from private.grant_policy('professional_propass')), null:
 select ok(not has_function_privilege('authenticated', 'api.propass_resolve(bytea)', 'EXECUTE'),
           'o navegador não abre o PROpass direto');
 select ok(not has_function_privilege('authenticated',
-          'api.propass_submit(bytea, uuid, text, text, text, text, bytea, text, bytea, bytea, bytea, bytea, bytea, smallint, text, text)',
+          'api.propass_submit(bytea, uuid, text, text, text, text, bytea, text, bytea, bytea, bytea, bytea, bytea, smallint, text, bytea, smallint, uuid, bytea, text, text, bytea, jsonb, text)',
           'EXECUTE'), 'o navegador não grava o PROpass direto');
 select ok(not has_function_privilege('authenticated', 'private.propass_issue(uuid, uuid, bytea)', 'EXECUTE')
           and not has_function_privilege('service_role', 'private.propass_issue(uuid, uuid, bytea)', 'EXECUTE'),
@@ -139,13 +178,16 @@ select throws_ok($$ select pg_temp.enviar('link-a1-b', 'outro@clinica-ficticia.t
 select throws_ok($$ select pg_temp.enviar('link-a1-b', 'dra1@clinica-ficticia.test', 'cpf-1', '1001', 'nao_confere') $$,
                  'P0001', 'ATTA-IN-0001', 'conselho que não confere nunca grava');
 select is(pg_temp.enviar('link-a1-b', 'dra1@clinica-ficticia.test', 'cpf-1', '1001'), 'ok',
-          'o profissional grava os próprios dados');
+          'o profissional grava os próprios dados, o Termo e o PIN num envio só');
+select is(pg_temp.termo('00000000-0000-4000-8000-0000000000c1'), 'assinado_definitivo',
+          'o Termo de Autorização nasce assinado no mesmo envio (ATTA Sign)');
+select is(pg_temp.pins(), 1, 'o PIN do Boarding Check fica guardado (só o pin_mac)');
 select is(pg_temp.profissionais(), 1, 'nasce o profissional');
 select is(pg_temp.conselho('1001'), 'regularizado|true', 'com consulta de verdade: regularizado, com a hora da conferência');
-select is((select step from api.propass_resolve(sha256('link-a1-b'::bytea))), 'termo',
-          'o link segue para o Termo (a última etapa, parte 2)');
+select throws_ok($$ select * from api.propass_resolve(sha256('link-a1-b'::bytea)) $$, '42501', 'ATTA-AUTH-0004',
+                 'concluído, o link do PROpass é consumido');
 select throws_ok($$ select pg_temp.enviar('link-a1-b', 'dra1@clinica-ficticia.test', 'cpf-1', '1001') $$,
-                 'P0001', 'ATTA-IN-0001', 'os dados não são gravados duas vezes');
+                 '42501', 'ATTA-AUTH-0004', 'nada é gravado duas vezes: o link já foi usado');
 
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
 select ok((select status = 'cadastro_concluido' and display_name = 'Dra. Fictícia 1001' and cpf_masked = '···.···.000-00'
@@ -160,6 +202,8 @@ select is(pg_temp.enviar('link-b1', 'dra1@clinica-ficticia.test', 'cpf-1', '1001
           'mesmo conselho, mesmo CPF e mesmo e-mail: liga ao existente');
 select is(pg_temp.profissionais(), 1, 'não nasce outro profissional');
 select is(pg_temp.nome_global('1001'), 'Dra. Fictícia 1001', 'os dados globais não mudam por um convite de outra clínica');
+select is(pg_temp.termo('00000000-0000-4000-8000-0000000000c2'), 'assinado_definitivo', 'a clínica B tem o Termo dela');
+select is(pg_temp.pins(), 1, 'o reaproveitado mantém o PIN que já tem');
 
 -- clínica C (outro e-mail): toda divergência dá a mesma resposta, nada é gravado, e a 5ª recusa revoga o link
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000c', 'ADMIN');
@@ -195,17 +239,26 @@ select pg_temp.servidor();
 select throws_ok($$ select * from api.grant_resolve(sha256('boarding-c1'::bytea), 'professional_boarding') $$,
                  '42501', 'ATTA-AUTH-0004', 'a clínica excluiu o profissional: o link do Boarding Check morre');
 
--- clínica D: sem consulta real ao conselho (R20), o PROpass grava 'nao_consultado', sem hora de conferência
+-- clínica D: pacote do Termo com defeito volta o envio inteiro; sem a consulta automática (R20) grava 'nao_consultado';
+-- com o Aviso desligado (P2b) conclui sem a ciência
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000d', 'ADMIN');
 select pg_temp.convidar('00000000-0000-4000-8000-0000000000c4', 'dr4@clinica-ficticia.test', 'link-d1');
+select pg_temp.convidar('00000000-0000-4000-8000-0000000000c5', 'dr5@clinica-ficticia.test', 'link-d2');
 select pg_temp.servidor();
-select is(pg_temp.enviar('link-d1', 'dr4@clinica-ficticia.test', 'cpf-4', '4004', 'nao_consultado'), 'ok',
-          'sem consulta ao conselho, grava como não consultado');
+select throws_ok($$ select pg_temp.enviar('link-d1', 'dr4@clinica-ficticia.test', 'cpf-4', '4004', 'nao_consultado',
+                                          null, null, 'ATTA-0000-0000-0000') $$,
+                 'P0001', 'ATTA-IN-0001', 'pacote do Termo com defeito (Código ATTA): o envio inteiro é recusado');
+select ok(pg_temp.profissionais() = 1 and pg_temp.pins() = 1 and pg_temp.termo('00000000-0000-4000-8000-0000000000c4') is null,
+          'nada ficou pela metade: nem profissional, nem PIN, nem Termo');
+select is((select step from api.propass_resolve(sha256('link-d1'::bytea))), 'dados', 'e o link continua valendo');
+select is(pg_temp.enviar('link-d1', 'dr4@clinica-ficticia.test', 'cpf-4', '4004', 'nao_consultado', null, null), 'ok',
+          'sem consulta ao conselho e com o Aviso desligado, o PROpass conclui');
 select is(pg_temp.conselho('4004'), 'nao_consultado|false', 'não consultado: sem afirmar a regularidade');
+select ok(pg_temp.sem_ciencia('00000000-0000-4000-8000-0000000000c4'), 'Aviso desligado: concluído sem a ciência (P2b)');
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000d', 'ADMIN');
-select api.professional_delete('00000000-0000-4000-8000-0000000000c4');
+select api.professional_delete('00000000-0000-4000-8000-0000000000c5');
 select pg_temp.servidor();
-select throws_ok($$ select * from api.propass_resolve(sha256('link-d1'::bytea)) $$, '42501', 'ATTA-AUTH-0004',
+select throws_ok($$ select * from api.propass_resolve(sha256('link-d2'::bytea)) $$, '42501', 'ATTA-AUTH-0004',
                  'a clínica excluiu o profissional: o link do PROpass não abre');
 
 -- auditoria
@@ -213,6 +266,7 @@ select set_config('role', 'postgres', true);
 select is(pg_temp.eventos('propass.submit'), 3, 'cada PROpass gravado vai para audit');
 select ok(pg_temp.eventos('grant.revoke') >= 1 and pg_temp.eventos('propass.open') >= 1,
           'o reenvio e a abertura vão para audit');
+select is(pg_temp.eventos('professional.pin_set'), 2, 'cada PIN criado vai para audit (sem o pin_mac)');
 
 select * from finish();
 rollback;
