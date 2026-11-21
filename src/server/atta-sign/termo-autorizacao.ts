@@ -35,6 +35,61 @@ export function registroDoConselho(conselho: string, uf: string, numero: string)
   return `${conselho.toUpperCase()}-${uf.toUpperCase()} ${numero}`;
 }
 
+/** CNPJ de 14 dígitos (platform.tenant.cnpj) na forma do texto e do payload: "00.000.000/0001-91". */
+export function formatarCnpj(cnpj: string): string {
+  const d = cnpj.replace(/\D/g, "");
+  if (d.length !== 14) throw new Error("CNPJ precisa de 14 dígitos");
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
+
+/** A linha do api.propass_authorization_context (ADR 0001, "Dados da clínica e texto do Termo"), como o banco devolve. */
+export type ContextoDoTermo = Readonly<{
+  legal_name: string;
+  trade_name: string;
+  cnpj: string; // 14 dígitos
+  template_id: string;
+  version: number;
+  body_sha256: string;
+  body_normalization: string;
+  body: string;
+}>;
+
+export type ProfissionalDoTermo = DadosDoTermo["profissional"];
+
+/** A clínica e o modelo do pacote, tirados do contexto: os mesmos valores do texto preenchido. */
+export function dadosDoContexto(c: ContextoDoTermo): Pick<DadosDoTermo, "clinica" | "modelo"> {
+  return {
+    clinica: { razaoSocial: c.legal_name, nomeFantasia: c.trade_name, cnpj: c.cnpj },
+    modelo: { id: c.template_id, versao: c.version, bodySha256: c.body_sha256, bodyNormalization: c.body_normalization },
+  };
+}
+
+/**
+ * O texto que o profissional lê (ADR 0001, "Dados da clínica e texto do Termo"; dono: Backend 3, Tech Lead em 21/11):
+ * o body da versão vigente, conferido contra o body_sha256 ANTES de preencher, com os {{campos}} trocados pelos MESMOS
+ * valores que o assinarTermoDeAutorizacao põe no payload. O banco não preenche texto, e ninguém mais preenche. Campo
+ * que sobrar, ou desconhecido, é erro: nunca se mostra um termo pela metade.
+ */
+export function preencherTermo(contexto: ContextoDoTermo, profissional: ProfissionalDoTermo): string {
+  if (!HEX_SHA256.test(contexto.body_sha256) || sha256(contexto.body) !== contexto.body_sha256) {
+    throw new Error("o texto do termo não é o da versão vigente");
+  }
+  const campos: Record<string, string> = {
+    "profissional.nome": profissional.nome,
+    "profissional.registro": registroDoConselho(profissional.conselho, profissional.uf, profissional.numero),
+    "clinica.razao_social": contexto.legal_name,
+    "clinica.cnpj": formatarCnpj(contexto.cnpj),
+    "clinica.nome": contexto.trade_name,
+  };
+  const texto = contexto.body.replace(/\{\{([a-z_.]+)\}\}/g, (_, chave: string) => {
+    const valor = campos[chave];
+    if (valor === undefined) throw new Error("campo desconhecido no termo");
+    return valor;
+  });
+  if (texto.includes("{{") || texto.includes("}}")) throw new Error("campo sem preencher no termo");
+  return texto;
+}
+
 export type DadosDoTermo = Readonly<{
   tenantId: string;
   vinculoId: string; // platform.professional_tenant_link.id
@@ -139,7 +194,7 @@ export async function assinarTermoDeAutorizacao(dados: DadosDoTermo, deps: Depen
       body_sha256: dados.modelo.bodySha256,
       body_normalization: dados.modelo.bodyNormalization,
     },
-    tenant: { legal_name: dados.clinica.razaoSocial, trade_name: dados.clinica.nomeFantasia, cnpj: dados.clinica.cnpj },
+    tenant: { legal_name: dados.clinica.razaoSocial, trade_name: dados.clinica.nomeFantasia, cnpj: formatarCnpj(dados.clinica.cnpj) },
     parties: [
       {
         ref: PARTE,
