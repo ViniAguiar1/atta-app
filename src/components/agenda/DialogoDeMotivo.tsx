@@ -70,7 +70,7 @@ export function DialogoDeMotivo({
       }}
       className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-lg border border-border bg-surface-raised p-6 text-corpo text-text-primary backdrop:bg-text-primary/40"
     >
-      <h2 id={idDoTitulo} className="mb-2 text-base font-medium">
+      <h2 id={idDoTitulo} className="mb-2 text-titulo font-medium">
         {titulo}
       </h2>
       <p className="mb-4 text-text-secondary">{texto}</p>
