@@ -48,10 +48,10 @@ export function CardDeResumo({ valor, rotulo, icone, legenda, tom = "neutro", de
         <span className={`font-sub text-[1.625rem] leading-none ${negativo ? "text-status-negative" : "text-text-primary"}`}>
           {valor ?? TRAVESSAO}
         </span>
-        <span className="text-xs font-medium tracking-wide text-text-secondary uppercase">{rotulo}</span>
+        <span className="text-[0.6875rem] font-medium tracking-wide text-text-secondary uppercase">{rotulo}</span>
       </span>
       {legenda && (
-        <span className="flex flex-col text-sm text-text-secondary" aria-hidden={filtro ? true : undefined}>
+        <span className="flex flex-col text-xs text-text-secondary" aria-hidden={filtro ? true : undefined}>
           {legenda}
         </span>
       )}
