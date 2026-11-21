@@ -61,18 +61,29 @@ select api.template_set_services(pg_temp.modelo('Imagem fictícia'), array['0000
 select api.atta_in_template_publish(pg_temp.modelo('TCLE fictício'));
 select api.atta_in_template_publish(pg_temp.modelo('Imagem fictícia'));
 
--- um Serviço sai, e um documento do TCLE é assinado (com evidência)
+-- um Serviço sai, e três documentos do TCLE ganham evidência: um fica Pré-assinado (atendimento aberto), um vira
+-- Assinado definitivo e um é cancelado. Só o definitivo (ou substituído) conta como assinado (§10.2.3, §17.6).
 select set_config('role', 'postgres', true);
 update atta_in.clinic_service set deleted_at = now() where id = '00000000-0000-4000-8000-0000000081a3';
 insert into documents.document (id, tenant_id, template_version_id, person_id, folder_section)
-select '00000000-0000-4000-8000-0000000083a1', '00000000-0000-4000-8000-0000000008a1', v.id,
-       '00000000-0000-4000-8000-0000000082a1', 'termos'
-from documents.template_version v where v.template_id = pg_temp.modelo('TCLE fictício');
-update documents.document set status = 'pre_assinado' where id = '00000000-0000-4000-8000-0000000083a1';
+select d.id, '00000000-0000-4000-8000-0000000008a1', v.id, '00000000-0000-4000-8000-0000000082a1', 'termos'
+from documents.template_version v,
+     (values ('00000000-0000-4000-8000-0000000083a1'::uuid), ('00000000-0000-4000-8000-0000000083a2'),
+             ('00000000-0000-4000-8000-0000000083a3')) d (id)
+where v.template_id = pg_temp.modelo('TCLE fictício');
+update documents.document set status = 'pre_assinado'
+where id in ('00000000-0000-4000-8000-0000000083a1', '00000000-0000-4000-8000-0000000083a2',
+             '00000000-0000-4000-8000-0000000083a3');
 insert into documents.evidence (tenant_id, document_id, atta_sign_version, payload_canonical, evidence_sha256, atta_code,
                                 signed_at)
-values ('00000000-0000-4000-8000-0000000008a1', '00000000-0000-4000-8000-0000000083a1', '1', pg_temp.payload(),
-        encode(sha256(pg_temp.payload()), 'hex'), 'ATTA-3M7K-QPX9-4BD2', '2026-11-20T14:05:09.412Z');
+select '00000000-0000-4000-8000-0000000008a1', x.doc, '1', pg_temp.payload(), encode(sha256(pg_temp.payload()), 'hex'),
+       x.code, '2026-11-20T14:05:09.412Z'
+from (values ('00000000-0000-4000-8000-0000000083a1'::uuid, 'ATTA-3M7K-QPX9-4BD2'),
+             ('00000000-0000-4000-8000-0000000083a2', 'ATTA-5N8P-2QRT-7VWX'),
+             ('00000000-0000-4000-8000-0000000083a3', 'ATTA-6H9J-3KMN-8PQR')) x (doc, code);
+update documents.document set status = 'assinado_definitivo' where id = '00000000-0000-4000-8000-0000000083a2';
+update documents.document set status = 'cancelado', cancel_reason = 'paciente_desistiu', cancelled_at = now()
+where id = '00000000-0000-4000-8000-0000000083a3';
 select pg_temp.entrar('00000000-0000-4000-8000-0000000008a1', 'ADMIN');
 
 -- lista ---------------------------------------------------------------------------------------------------------------
@@ -87,7 +98,7 @@ select is((select current_version_published_at from api.atta_in_template_list() 
 select is((select current_version_published_at from api.atta_in_template_list() where title = 'Rascunho fictício'),
           null::timestamptz, 'Rascunho: sem data de versão');
 select is((select signed_count from api.atta_in_template_list() where title = 'TCLE fictício'), 1,
-          'assinados: documento com evidência do ATTA Sign');
+          'assinados: só o Assinado definitivo; o Pré-assinado e o cancelado com evidência não contam');
 select is((select signed_count from api.atta_in_template_list() where title = 'Imagem fictícia'), 0, 'sem assinatura: 0');
 select is((select count(*)::int from api.atta_in_template_list()), 3, 'as colunas antigas continuam (3 modelos)');
 
@@ -96,7 +107,7 @@ select results_eq(
   $$ select active_count, active_required_count, active_optional_count, expiring_count, expired_count, signed_count,
             signed_atta_sign_count from api.atta_in_template_summary() $$,
   $$ values (2, 1, 1, null::integer, null::integer, 1, 1) $$,
-  'cartões: 2 ativos (1 obrigatório, 1 opcional), vencendo/vencidos nulos até a PO (R17), 1 assinado com ATTA Sign');
+  'cartões: 2 ativos (1 obrigatório, 1 opcional), vencendo/vencidos nulos até a PO (R17), 1 assinado (só o definitivo) com ATTA Sign');
 
 -- permissões e clínica ----------------------------------------------------------------------------------------------
 select ok(has_function_privilege('authenticated', 'api.atta_in_template_summary()', 'EXECUTE')
