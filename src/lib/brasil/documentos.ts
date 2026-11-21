@@ -85,19 +85,7 @@ export function formatarCnpj(valor: string): string {
   return s;
 }
 
-// CEP, telefone fixo e e-mail do Perfil da Clínica (PDD §10.4.1). O mascararCnpj ainda é só numérico: a tela do Perfil passa
-// ao formatarCnpj (com letra) no PR seguinte, e ele sai daqui.
-/** Máscara de digitação: 00.000.000/0000-00. */
-export function mascararCnpj(valor: string): string {
-  const d = soDigitos(valor).slice(0, 14);
-  let s = d.slice(0, 2);
-  if (d.length > 2) s += `.${d.slice(2, 5)}`;
-  if (d.length > 5) s += `.${d.slice(5, 8)}`;
-  if (d.length > 8) s += `/${d.slice(8, 12)}`;
-  if (d.length > 12) s += `-${d.slice(12)}`;
-  return s;
-}
-
+// CEP, telefone fixo e e-mail do Perfil da Clínica (PDD §10.4.1). O CNPJ usa o formatarCnpj, acima.
 /** Máscara de digitação: 00000-000. */
 export function mascararCep(valor: string): string {
   const d = soDigitos(valor).slice(0, 8);
