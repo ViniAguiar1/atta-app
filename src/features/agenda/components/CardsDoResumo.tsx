@@ -91,7 +91,7 @@ export function CardsDoResumo({ resumo, visao = "hoje", filtro, aoFiltrar }: Pro
         >
           <IconeQr />
         </span>
-        <h2 className="text-[0.6875rem] font-medium tracking-wide text-text-secondary uppercase">
+        <h2 className="text-rotulo font-medium tracking-wide text-text-secondary uppercase">
           {todos ? k.titulo : c.checkin.titulo}
         </h2>
         {/* os segmentos quebram em linhas quando o card é estreito: o rótulo inteiro sempre cabe (print de 390 px) */}
