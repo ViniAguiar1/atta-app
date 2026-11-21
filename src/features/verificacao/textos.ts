@@ -18,9 +18,14 @@ export const textos = {
     integridade: "Integridade", // simulador
   },
   existe: "Existe", // simulador
-  // O simulador mostra "Confere com a evidência" e "SHA-256 recalculado", mas o servidor ainda não recalcula nem confere o
-  // selo (Backend 6, 21/11): até ele conferir, a tela só mostra o hash guardado, sem afirmar a conferência.
-  shaDaEvidencia: (hash: string) => `SHA-256 da evidência: ${hash}`, // provisório
+  cnpj: (cnpj: string) => `CNPJ ${cnpj}`, // simulador (o CNPJ como foi assinado, sem formatar de novo)
+  // integridade calculada no servidor (recalcula o hash e confere o selo; ADR 0007, #225)
+  confereComAEvidencia: "Confere com a evidência", // simulador
+  shaRecalculado: (hash: string) => `SHA-256 recalculado: ${hash}`, // simulador
+  naoConfere: "Não confere com a evidência", // provisório (o simulador só tem o caso que confere)
+  naoConfereAviso:
+    "A integridade deste documento não confere: não confie no estabelecimento nem nos dados mostrados abaixo.", // provisório (Segurança)
+  shaDaEvidencia: (hash: string) => `SHA-256 da evidência: ${hash}`, // provisório (documento sem conferência)
   naoEncontrado: "Código não encontrado.", // simulador
   naoEncontradoAjuda: "Confira os 12 caracteres. A resposta nunca revela se um código \"quase\" existe.", // simulador
   limite: "Muitas consultas seguidas. Aguarde um minuto e tente de novo.", // provisório (30 por minuto por IP)
