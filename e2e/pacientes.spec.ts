@@ -22,7 +22,11 @@ test.describe("gestora da Clínica Alfa", () => {
     const aba = page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link", { name: "Pacientes" });
     await expect(aba).toHaveAttribute("aria-current", "page");
     const tabela = page.getByRole("table", { name: "Pacientes da clínica" });
-    await expect(tabela.getByRole("columnheader")).toHaveText(["Paciente", "Identificação", "Contato", "Último atendimento", "Documentos"]);
+    await expect(tabela.getByRole("columnheader")).toHaveText(["Paciente", "Identificação", "Contato", "Atendimento"]);
+    await expect(page.getByRole("navigation", { name: "Seções de Pacientes" }).getByRole("link", { name: "Pacientes" })).toHaveAttribute("aria-current", "page");
+    const cards = page.getByRole("region", { name: "Resumo dos pacientes" });
+    await expect(cards).toContainText("5"); // os 5 pacientes ativos da Alfa (total_active)
+    await expect(cards.getByText("—")).toHaveCount(3); // retorno, frequência e CSAT ainda sem dado
     // a célula traz também as iniciais do avatar (escondidas do leitor de tela, mas no texto): casa pelo nome
     await expect(tabela.getByRole("rowheader")).toHaveText(DA_ALFA.map((n) => new RegExp(n)));
     await expect(page.getByText("Otávio Ramos")).toHaveCount(0); // paciente só da Clínica Beta
