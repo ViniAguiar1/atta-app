@@ -1,7 +1,7 @@
 -- MIG-21c (parte 1): Termo de Autorização do profissional, modelo de sistema e gravação assinada. PDD v206 §10.4.3;
 -- decisões do CTO de 21/11; ADR 0001 §1. Só dado fictício.
 begin;
-select plan(29);
+select plan(32);
 
 create function pg_temp.detalhe(p_sql text) returns text language plpgsql as $$
 declare d text;
@@ -63,7 +63,8 @@ values ('staging-seal-teste-aut', '\x302a300506032b6570032100'::bytea || sha256(
 
 create function pg_temp.payload(p_doc uuid, p_tenant uuid default '00000000-0000-4000-8000-0000000005a1',
                                 p_link uuid default '00000000-0000-4000-8000-0000000005d1',
-                                p_stroke text default repeat('a', 64), p_signed_at text default '2026-11-21T10:00:00.000Z')
+                                p_stroke text default repeat('a', 64), p_signed_at text default '2026-11-21T10:00:00.000Z',
+                                p_council text default 'CRO-SP 11111')
 returns bytea language sql as $$
   select convert_to(jsonb_build_object(
     'atta_sign_version', '1',
@@ -72,7 +73,7 @@ returns bytea language sql as $$
                                    'body_normalization', v.body_normalization),
     'tenant', jsonb_build_object('legal_name', 'Clínica Fictícia Ltda', 'trade_name', 'Clínica Fictícia', 'cnpj', '00.000.000/0001-91'),
     'parties', jsonb_build_array(jsonb_build_object('ref', 'p1', 'role', 'professional', 'name', 'Dra. Fictícia Autorização',
-                                                    'council', 'CRO-SP 11111')),
+                                                    'council', p_council)),
     'signature', jsonb_build_object('signer', 'p1', 'level', 'atta_sign', 'signed_at', p_signed_at, 'stroke_sha256', p_stroke),
     'context', jsonb_build_object('product', 'atta_in', 'context_type', 'professional_authorization', 'context_id', p_link)
   )::text, 'UTF8')
@@ -128,6 +129,24 @@ select is(pg_temp.detalhe($$ select private.document_insert_signed_authorization
             'staging-seal-teste-aut', sha512('selo-ficticio'::bytea),
             pg_temp.traco('00000000-0000-4000-8000-0000000005c9', '00000000-0000-4000-8000-0000000005b1')) $$), 'stroke',
           'traço no Storage de outra clínica é recusado');
+-- revisões do #192 e do #208 (MIG-21c parte 2)
+select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000000005c9',
+            pg_temp.payload('00000000-0000-4000-8000-0000000005c9', p_council => 'CRM-RJ 99999')) $$), 'payload',
+          'signatário com registro de outro profissional é recusado (o termo nunca nomeia outra pessoa)');
+select is(pg_temp.detalhe($$ select private.document_insert_signed_authorization('00000000-0000-4000-8000-0000000005a1',
+            '00000000-0000-4000-8000-0000000005d1', '00000000-0000-4000-8000-0000000005c9',
+            pg_temp.payload('00000000-0000-4000-8000-0000000005c9'),
+            private.atta_code_from_sha256(encode(sha256(pg_temp.payload('00000000-0000-4000-8000-0000000005c9')), 'hex')),
+            'staging-seal-teste-aut', sha512('selo-ficticio'::bytea),
+            pg_temp.traco('00000000-0000-4000-8000-0000000005c9') || '{"storage_path": "00000000-0000-4000-8000-0000000005a1/00000000-0000-4000-8000-0000000005c9/..png"}') $$),
+          'stroke', 'caminho do traço com ".." é recusado');
+select is(pg_temp.detalhe($$ select private.document_insert_signed_authorization('00000000-0000-4000-8000-0000000005a1',
+            '00000000-0000-4000-8000-0000000005d1', '00000000-0000-4000-8000-0000000005c9',
+            pg_temp.payload('00000000-0000-4000-8000-0000000005c9'),
+            private.atta_code_from_sha256(encode(sha256(pg_temp.payload('00000000-0000-4000-8000-0000000005c9')), 'hex')),
+            'staging-seal-teste-aut', sha512('selo-ficticio'::bytea),
+            pg_temp.traco('00000000-0000-4000-8000-0000000005c9') || '{"size_bytes": 524289}') $$),
+          'stroke', 'traço acima de 512 KiB é recusado');
 select is((select count(*)::int from documents.document where professional_link_id = '00000000-0000-4000-8000-0000000005d1'), 0,
           'nenhuma recusa deixou documento');
 

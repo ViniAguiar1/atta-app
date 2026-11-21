@@ -64,8 +64,10 @@ begin
     'document', jsonb_build_object('id', v_doc, 'type', 'termo_de_autorizacao', 'template_id', tv.template_id,
                                    'template_version', tv.version, 'body_sha256', tv.body_sha256,
                                    'body_normalization', tv.body_normalization),
+    -- o registro do signatário confere com o profissional do envio (MIG-21c parte 2, Segurança no #208)
     'parties', jsonb_build_array(jsonb_build_object('ref', 'p1', 'role', 'professional',
-                                                    'name', coalesce(p_nome, 'Dra. Fictícia ' || p_numero))),
+                                                    'name', coalesce(p_nome, 'Dra. Fictícia ' || p_numero),
+                                                    'council', 'CRO-SP ' || p_numero)),
     'signature', jsonb_build_object('signer', 'p1', 'level', 'atta_sign',
                                     'signed_at', to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
                                     'stroke_sha256', repeat('a', 64)),
