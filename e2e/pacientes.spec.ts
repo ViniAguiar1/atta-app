@@ -85,6 +85,19 @@ test("a colaboradora da Alfa vê a mesma lista", async ({ page }) => {
   await expect(page.getByRole("rowheader")).toHaveCount(DA_ALFA.length);
 });
 
+/** CPF fictício com dígito verificador válido, novo a cada execução (nenhum real). */
+function cpfGerado() {
+  let d = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
+  while (new Set(d).size === 1) d = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)); // 111.111.111-11 não vale
+  const dv = (n: number) => {
+    const r = (d.slice(0, n).reduce((s, x, i) => s + x * (n + 1 - i), 0) * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  d.push(dv(9));
+  d.push(dv(10));
+  return d.join("");
+}
+
 // Novo paciente (simulador, capturas 15 a 18; PDD §10.1 e decisão do dono de 20/11), por último no arquivo: o cadastro
 // muda a lista da Alfa. O CPF da busca vai no corpo da action; o cartão da rede chega com o contato mascarado.
 test.describe("Novo paciente", () => {
@@ -125,7 +138,8 @@ test.describe("Novo paciente", () => {
     expect(await page.content()).not.toContain("98877-6655");
     expect((await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
 
-    await cpf.fill("98765432100"); // CPF gerado, fora da rede
+    const novo = cpfGerado(); // CPF gerado a cada execução: a nova tentativa do CI não encontra o da anterior
+    await cpf.fill(novo);
     await buscar.click();
     await expect(dialogo.getByText("Consulta interna: este CPF ainda não existe na base ATTA.")).toBeVisible();
     await dialogo.getByLabel("Nome civil").fill("Lucas Pereira");
@@ -134,6 +148,6 @@ test.describe("Novo paciente", () => {
     await dialogo.getByRole("button", { name: "Cadastrar paciente" }).click();
     await expect(dialogo).toBeHidden();
     await expect(page.getByRole("row", { name: /Lucas Pereira/ })).toContainText("(11) ·····-5566");
-    expect(page.url()).not.toContain("98765432100");
+    expect(page.url()).not.toContain(novo);
   });
 });
