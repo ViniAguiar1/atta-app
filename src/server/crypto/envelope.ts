@@ -15,7 +15,9 @@ const TAG = 16;
 const MIN_VALUE = HEADER + NONCE + TAG;
 // `health.answer` ou `person`: identificador, opcionalmente qualificado pelo schema; nunca o separador `|`
 const TABLE = /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)?$/;
-const COLUMN = /^[a-z_][a-z0-9_]*$/;
+// a coluna, ou o papel do objeto do Storage com a parte (ADR 0002, "PDF e objeto do Storage": 'signature_stroke:p1');
+// o sufixo segue o party_ref de documents.stored_object (^p[0-9]{1,2}$). O separador da AAD é '|', sem ambiguidade.
+const COLUMN = /^[a-z_][a-z0-9_]*(:p[0-9]{1,2})?$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export class CryptoError extends Error {
