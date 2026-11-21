@@ -44,12 +44,11 @@ export const textos = {
   indeterminada: "indeterminada", // PDD §16.5 (RN-V-01: "podendo ser indeterminado")
   obrigatorio: "Sim · obrigatório", // simulador
   opcional: "Não · opcional", // simulador
-  versao: (n: number) => `v${n}`, // simulador ("v3.ago.2026": o mês entra quando a data de publicação vier do banco)
+  versao: (n: number, mesAno: string) => `v${n}.${mesAno}`, // simulador ("v3.ago.2026")
   desde: (data: string) => `desde ${data}`, // simulador
   rascunho: "Rascunho", // PDD §10.3.1 (estado)
   inativo: "Inativo", // PDD §10.3.1 (estado)
   mais: (n: number) => `+${n}`, // simulador ("Toxina botulínica +3")
-  procedimentosSemNome: (n: number) => `${n} procedimento(s)`, // provisório: até o banco devolver o nome do Serviço
   semValor: "—", // regra do Tech Lead Frontend: número que não existe aparece como "—"
   rodape: (mostrados: number, total: number) => `${mostrados} de ${total} modelo(s)`, // simulador
   carregando: "modelos de documento", // provisório (leitor de tela)

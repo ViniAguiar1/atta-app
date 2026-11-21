@@ -1,8 +1,7 @@
 import "server-only";
 import { ok } from "@/lib/errors";
 import type { PortaDocumentos } from "./porta";
-import type { ModeloDeDocumento } from "./tipos";
-import { resumoDe } from "./real";
+import type { ModeloDeDocumento, ResumoDosModelos } from "./tipos";
 
 // Modelos fictícios para os testes da tela (a tela usa a real em todo ambiente). Um de cada estado, cobrindo o
 // "publicar" desabilitado sem procedimento vivo (disabled_reason 'service_ids', #69).
@@ -14,7 +13,7 @@ export const MODELOS_SIMULADOS: ModeloDeDocumento[] = [
   },
   {
     id: "dddd0000-0000-4000-8000-000000000002", tipo: "politica_cancelamento_no_show", titulo: "Política de cancelamento", estado: "rascunho", versaoAtual: null,
-    frequencia: "unica", validadeMeses: 12, obrigatorio: null, procedimentos: [], publicadoEm: null, assinados: null,
+    frequencia: "unica", validadeMeses: 12, obrigatorio: null, procedimentos: [], publicadoEm: null, assinados: 0,
     atualizadoEm: "2026-11-20T09:00:00.000Z", acoes: [{ acao: "editar", motivoDesabilitado: null }, { acao: "vincular_procedimentos", motivoDesabilitado: null }, { acao: "publicar", motivoDesabilitado: "service_ids" }],
   },
   {
@@ -24,8 +23,13 @@ export const MODELOS_SIMULADOS: ModeloDeDocumento[] = [
   },
 ];
 
+/** Resumo coerente com os modelos simulados, para os testes (na real, os totais vêm do banco). */
+export const RESUMO_SIMULADO: ResumoDosModelos = {
+  ativos: 1, obrigatorios: 1, opcionais: 0, vencendo: null, vencidos: null, assinados: 52, percentualAttaSign: 100,
+};
+
 export const portaDocumentosSimulada: PortaDocumentos = {
   async listar() {
-    return ok({ modelos: MODELOS_SIMULADOS, resumo: resumoDe(MODELOS_SIMULADOS) });
+    return ok({ modelos: MODELOS_SIMULADOS, resumo: RESUMO_SIMULADO });
   },
 };

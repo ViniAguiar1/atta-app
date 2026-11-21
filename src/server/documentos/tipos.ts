@@ -24,9 +24,9 @@ export type ModeloDeDocumento = {
   frequencia: "por_procedimento" | "unica" | null;
   validadeMeses: 3 | 6 | 12 | null; // RN-V-01: só na "Única"; null = indeterminada
   obrigatorio: boolean | null; // RN-DOC-04, sem valor padrão: null até a clínica escolher
-  procedimentos: { id: string; nome: string | null }[]; // Serviços vivos vinculados (§10.4.7); nome quando o banco devolver
-  publicadoEm: string | null; // ISO 8601 da versão atual; null até o banco devolver (ou Rascunho)
-  assinados: number | null; // documentos assinados com este modelo; null até o banco devolver
+  procedimentos: { id: string; nome: string }[]; // Serviços vivos vinculados (§10.4.7), por nome
+  publicadoEm: string | null; // ISO 8601 da versão atual; null em Rascunho
+  assinados: number; // documentos do modelo em Assinado definitivo ou Substituído (#148)
   atualizadoEm: string; // ISO 8601
   acoes: AcaoDeModelo[];
 };
