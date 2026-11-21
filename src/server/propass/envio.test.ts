@@ -85,6 +85,33 @@ describe("enviarPropass (envio final do PROpass)", () => {
     expect(selar.mock.calls[0]![0]).toMatchObject({ professionalId: PROF_EXISTENTE });
   });
 
+  it("quem já tem PIN (usar_pin_existente) envia sem PIN: o submit vai com o mac e a versão nulos", async () => {
+    const { rpc, chamadas } = banco({ propass_identity_check: { data: { status: "usar_pin_existente" }, error: null } });
+    const { d, macDoPin } = deps(rpc);
+    expect(await enviarPropass(HASH, { ...entrada(), pin: null }, d)).toEqual({ ok: true, data: { status: "ok" } });
+    expect(macDoPin).not.toHaveBeenCalled();
+    expect(chamadas.at(-1)!.args).toMatchObject({ p_pin_mac: null, p_pin_mac_version: null });
+  });
+
+  it("PIN junto de usar_pin_existente, ou falta de PIN com pedir_pin: VALIDACAO no pin, sem submit", async () => {
+    const com = banco({ propass_identity_check: { data: { status: "usar_pin_existente" }, error: null } });
+    const r1 = await enviarPropass(HASH, entrada(), deps(com.rpc).d);
+    expect(r1).toMatchObject({ ok: false, error: { code: "VALIDACAO", reason: "ATTA-IN-0001:pin_existente" } });
+    expect(com.chamadas.map((c) => c.fn)).not.toContain("propass_submit");
+    const sem = banco();
+    const r2 = await enviarPropass(HASH, { ...entrada(), pin: null }, deps(sem.rpc).d);
+    expect(r2).toMatchObject({ ok: false, error: { code: "VALIDACAO", reason: "ATTA-IN-0001:pin_obrigatorio" } });
+    expect(sem.chamadas.map((c) => c.fn)).not.toContain("propass_submit");
+  });
+
+  it("resposta do passo 2 fora do contrato (id que não é uuid) não chega ao pin_mac: INTERNO", async () => {
+    const { rpc, chamadas } = banco({ propass_identity_check: { data: { status: "pedir_pin", professional_id: "nao-e-uuid" }, error: null } });
+    const { d, macDoPin } = deps(rpc);
+    expect(await enviarPropass(HASH, entrada(), d)).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+    expect(macDoPin).not.toHaveBeenCalled();
+    expect(chamadas.map((c) => c.fn)).not.toContain("propass_submit");
+  });
+
   it("PIN óbvio ou fora do formato: VALIDACAO sem tocar no banco", async () => {
     for (const pin of ["1234", "0000", "12a4"]) {
       const { rpc } = banco();
