@@ -159,8 +159,9 @@ async function paraLinha(r: z.infer<typeof linhaSchema>, tenantId: string): Prom
     nome: r.display_name,
     usaNomeSocial: r.display_is_social,
     incompleto: r.is_incomplete,
-    // o banco só devolve o selo válido (em pending, nem ele); "Selo expirado" entra quando a API trouxer a expiração
-    selo: r.is_verified ? "com_selo" : null,
+    // selo válido → "Com selo"; selo vencido (verified_until no passado, is_verified falso; #158) → "Selo expirado";
+    // em pending o banco não devolve nada da rede, nem o selo
+    selo: r.is_verified ? "com_selo" : r.verified_until ? "selo_expirado" : null,
     identificacao: identificacaoDe(r.cpf_masked, r.foreign_doc_masked),
     nascimento: r.birth_date,
     contato: celular || email ? { celular, email } : null,
