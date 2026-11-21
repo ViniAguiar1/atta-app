@@ -8,15 +8,11 @@ export const textos = {
   contador: (n: number) => `${n} pendente${n === 1 ? "" : "s"}`,
   sino: (n: number) => (n > 0 ? `Notificações, ${n} nova${n === 1 ? "" : "s"}` : "Notificações"),
   // Módulos ainda sem tela de dados: estado vazio do design. O simulador não tem estes estados: tudo provisório,
-  // listado ao CTO. Cada módulo troca pela própria tela no item dele (MIG-44, MIG-45, MIG-46, MIG-48).
+  // listado ao CTO. Cada módulo troca pela própria tela no item dele (MIG-44, MIG-45, MIG-46; o ATTA já tem a dele, MIG-48).
   vazios: {
     documentos: {
       titulo: "Termos & Docs", // simulador (aba)
       vazio: { titulo: "Nenhum modelo de documento ainda", texto: "Os termos e documentos da clínica aparecem aqui." }, // provisório
-    },
-    atta: {
-      titulo: "ATTA", // simulador (aba)
-      vazio: { titulo: "Nada para mostrar agora", texto: "Ajuda, suporte, privacidade, ideias e soluções do ATTA ficam aqui." }, // provisório
     },
     metricas: {
       titulo: "Métricas", // simulador (aba)
