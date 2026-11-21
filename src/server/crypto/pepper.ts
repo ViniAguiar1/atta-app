@@ -1,4 +1,4 @@
-// Pepper de HMAC de documento, um por documento (ATTA_CPF_PEPPER, ATTA_RNE_PEPPER): hex, ≥ 32 bytes, só servidor.
+// Pepper de HMAC, um por finalidade (ATTA_CPF_PEPPER, ATTA_RNE_PEPPER, ATTA_PIN_PEPPER): hex, ≥ 32 bytes, só servidor.
 import "server-only";
 import { createHash } from "node:crypto";
 
@@ -10,6 +10,7 @@ import { createHash } from "node:crypto";
 export const CI_TEST_PEPPER_FINGERPRINTS: ReadonlySet<string> = new Set([
   "d0b79c527f7935a8543030bf8f864a68792c10b9de09717a8e5d0e92c03f941b", // CI_TEST_CPF_PEPPER_HEX
   "66909cca1e8c3122602e71fe5dea42a026e698fff15ec2c6482f2985057c55ed", // CI_TEST_RNE_PEPPER_HEX
+  "a6f0c476addb023e1254b7ab653929ec78b48082e72dbacde6e4f36ee42906c9", // CI_TEST_PIN_PEPPER_HEX
 ]);
 
 /** Produção e prévia da Vercel: onde as chaves de teste nunca valem. No CI e no local o VERCEL_ENV fica vazio. */

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CI_TEST_CPF_PEPPER_HEX, CI_TEST_RNE_PEPPER_HEX } from "../../../tests/fixtures/cofre-ci";
+import { CI_TEST_CPF_PEPPER_HEX, CI_TEST_PIN_PEPPER_HEX, CI_TEST_RNE_PEPPER_HEX } from "../../../tests/fixtures/cofre-ci";
 
 // Cada teste importa o módulo de novo: o pepper fica em cache por processo depois da primeira leitura.
 const carregar = async () => {
@@ -12,19 +12,21 @@ afterEach(() => vi.unstubAllEnvs());
 describe("pepperFromEnv", () => {
   it("as impressões digitais conferem com os peppers de teste do fixture", async () => {
     const { CI_TEST_PEPPER_FINGERPRINTS } = await carregar();
-    for (const hex of [CI_TEST_CPF_PEPPER_HEX, CI_TEST_RNE_PEPPER_HEX]) {
+    for (const hex of [CI_TEST_CPF_PEPPER_HEX, CI_TEST_RNE_PEPPER_HEX, CI_TEST_PIN_PEPPER_HEX]) {
       expect(CI_TEST_PEPPER_FINGERPRINTS.has(createHash("sha256").update(Buffer.from(hex, "hex")).digest("hex"))).toBe(true);
     }
   });
 
   for (const ambiente of ["production", "preview"]) {
-    it(`em ${ambiente} recusa os dois peppers de teste, sem pôr o valor na mensagem`, async () => {
+    it(`em ${ambiente} recusa os peppers de teste, sem pôr o valor na mensagem`, async () => {
       vi.stubEnv("VERCEL_ENV", ambiente);
       vi.stubEnv("ATTA_CPF_PEPPER", CI_TEST_CPF_PEPPER_HEX);
       vi.stubEnv("ATTA_RNE_PEPPER", CI_TEST_RNE_PEPPER_HEX);
+      vi.stubEnv("ATTA_PIN_PEPPER", CI_TEST_PIN_PEPPER_HEX);
       const { pepperFromEnv } = await carregar();
       expect(() => pepperFromEnv("ATTA_CPF_PEPPER")).toThrow("ATTA_CPF_PEPPER usa pepper de teste");
       expect(() => pepperFromEnv("ATTA_RNE_PEPPER")).toThrow("ATTA_RNE_PEPPER usa pepper de teste");
+      expect(() => pepperFromEnv("ATTA_PIN_PEPPER")).toThrow("ATTA_PIN_PEPPER usa pepper de teste");
       try {
         pepperFromEnv("ATTA_CPF_PEPPER");
       } catch (e) {
