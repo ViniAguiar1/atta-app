@@ -7,5 +7,6 @@ export const textos = {
   recusada: "Prefiro não responder", // PDD RN-FSA-10
   outro: (texto: string) => `Outro: ${texto}`, // provisório
   semResposta: "Sem resposta", // provisório
+  semRotulo: "—", // opção sem rótulo na definição atual
   destaque: "Destaque da clínica", // provisório (RN-FSA-14: sem interpretação, recomendação nem bloqueio)
 } as const;

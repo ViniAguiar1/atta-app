@@ -11,13 +11,16 @@ type Props = {
   respostas: Resposta[];
   /** RN-FSA-14: só no Boarding Check (o paciente não vê os destaques da clínica). */
   destaques?: Record<string, string>;
+  /** id do título visível da tela que nomeia a lista (aria-labelledby); sem ele, o nome vem do próprio componente. */
+  rotuladoPor?: string;
 };
 
-export function RespostasDoFormulario({ perguntas, respostas, destaques = {} }: Props) {
+export function RespostasDoFormulario({ perguntas, respostas, destaques = {}, rotuladoPor }: Props) {
   const porPergunta = new Map(respostas.map((r) => [r.perguntaId, r]));
-  const visiveis = perguntas.filter((p) => aplicavel(p, porPergunta));
+  const porId = new Map(perguntas.map((p) => [p.id, p]));
+  const visiveis = perguntas.filter((p) => aplicavel(p, porId, porPergunta));
   return (
-    <dl aria-label={textos.titulo} className="flex flex-col divide-y divide-border rounded-md border border-border bg-surface-raised text-lg">
+    <dl {...(rotuladoPor ? { "aria-labelledby": rotuladoPor } : { "aria-label": textos.titulo })} className="flex flex-col divide-y divide-border rounded-md border border-border bg-surface-raised text-lg">
       {visiveis.map((p) => {
         const resposta = porPergunta.get(p.id);
         const destaque = destaques[p.id];
@@ -52,9 +55,15 @@ export function RespostasDoFormulario({ perguntas, respostas, destaques = {} }: 
   );
 }
 
-/** Lógica condicional: sem condição, sempre; com condição, só quando a resposta da pergunta de origem bate. */
-function aplicavel(p: Pergunta, respostas: Map<string, Resposta>): boolean {
+/**
+ * Lógica condicional, em cadeia: a pergunta aparece só quando a resposta da pergunta de origem bate E a própria origem
+ * aparece (uma resposta guardada de uma pergunta escondida não abre as que dependem dela). Ciclo na definição: esconde.
+ */
+function aplicavel(p: Pergunta, perguntas: Map<string, Pergunta>, respostas: Map<string, Resposta>, vistas = new Set<string>()): boolean {
   if (!p.condicao) return true;
+  if (vistas.has(p.id)) return false;
+  const pai = perguntas.get(p.condicao.perguntaId);
+  if (!pai || !aplicavel(pai, perguntas, respostas, new Set(vistas).add(p.id))) return false;
   const origem = respostas.get(p.condicao.perguntaId);
   if (!origem || origem.recusada) return false;
   const v = origem.valor;
@@ -65,7 +74,8 @@ function aplicavel(p: Pergunta, respostas: Map<string, Resposta>): boolean {
 
 /** O valor em texto de leitura, pelos rótulos da pergunta (nunca o id). */
 export function formatar(p: Pergunta, v: Valor): string {
-  const rotulo = (lista: { id: string; rotulo: string }[] | undefined, id: string) => lista?.find((o) => o.id === id)?.rotulo ?? id;
+  // sem o rótulo (definição mudou), "—": nunca o id cru da opção na tela
+  const rotulo = (lista: { id: string; rotulo: string }[] | undefined, id: string) => lista?.find((o) => o.id === id)?.rotulo ?? textos.semRotulo;
   if (v.tipo === "aberta") return v.texto;
   if (v.tipo === "opcoes") {
     const partes = v.valores.map((id) => rotulo(p.opcoes, id));
