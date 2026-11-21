@@ -1,4 +1,4 @@
-import type { CampoDescartado, MotivoLinha } from "./tipos";
+import type { CampoDescartado, MotivoLinha } from "@/server/importacao/porta";
 
 // Textos da Importação de pacientes (PDD v206 §10.1, "Importação da base de pacientes"; Simulador ATTA-in, captura 48;
 // PLANO "Importação de pacientes, MIG-34"). O fluxo é um componente só, usado no módulo Pacientes e em Configurações

@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import type { Resultado } from "@/lib/errors";
 import { textosDaImportacao as t, VERSAO_DA_DECLARACAO } from "./textos";
-import type { PreviaDaImportacao } from "./tipos";
+import type { PreviaImportacao as PreviaDaImportacao } from "@/server/importacao/porta";
 
 // Fluxo "Importar base de pacientes" (PDD v206 §10.1; PLANO "Importação de pacientes, MIG-34"; decisão do CTO de 21/11:
 // um componente só, usado no módulo Pacientes e em Configurações › Importação). Em um <dialog> modal:
@@ -60,7 +60,7 @@ export function FluxoDeImportacao({ acoes, enviarArquivo = enviarPorPut, aoConcl
         ref={gatilho}
         type="button"
         onClick={() => setAberto(true)}
-        className="min-h-11 w-fit rounded-md bg-text-primary px-4 text-corpo font-semibold text-on-brand medium:min-h-9"
+        className="min-h-11 w-fit rounded-md bg-text-primary px-3.5 text-corpo font-semibold text-on-brand medium:min-h-8"
       >
         {t.importar}
       </button>
