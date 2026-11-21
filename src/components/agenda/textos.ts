@@ -50,6 +50,7 @@ export const textosDaAgenda = {
     motivo: "Motivo", // PDD §10.2.2 e §10.2.3 ("motivo obrigatório")
     voltar: "Voltar", // provisório
     escolhaMotivo: "Escolha um motivo.", // provisório
+    motivoSemTexto: "Motivo sem descrição", // provisório (código sem rótulo: nunca o código cru)
     cancelar: {
       titulo: "Cancelar agendamento", // PDD §10.2.2
       texto: "Escolha o motivo. O cancelamento fica registrado na auditoria, com o seu nome e o horário.", // provisório
