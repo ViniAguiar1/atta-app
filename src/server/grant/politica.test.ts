@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { gerarSegredo, hashDoSegredo, opcoesDoCookie, POLITICA } from "./politica";
+import { gerarSegredo, hashDoSegredo, MAX_USOS, opcoesDoCookie, POLITICA } from "./politica";
 
 const migration = readFileSync(
   join(process.cwd(), "supabase/migrations/20261120160000_platform_access_grant.sql"),
@@ -24,6 +24,14 @@ describe("política do grant", () => {
   it("o link do PROpass vale 7 dias, sem inatividade, como em private.grant_policy (PDD §10.4.3)", () => {
     expect(POLITICA.professional_propass).toEqual({ inatividadeSeg: null, tetoSeg: 604800 });
     expect(migrationPropass).toContain("when 'professional_propass' then interval '7 days'");
+  });
+
+  it("o download dos PDFs do PROpass vale 30 min absolutos e no máximo 20 vezes, como no banco (ADR 0001)", () => {
+    const download = readFileSync(join(process.cwd(), "supabase/migrations/20261121144506_platform_propass_download_grant.sql"), "utf8");
+    expect(POLITICA.propass_download).toEqual({ inatividadeSeg: null, tetoSeg: 1800 });
+    expect(MAX_USOS).toEqual({ propass_download: 20 });
+    expect(download).toContain("when 'propass_download' then interval '30 minutes'");
+    expect(download).toContain("case p_purpose when 'propass_download' then 20 end");
   });
 
   it("segredo de 32 bytes, diferente a cada vez; o hash é o sha256 de 32 bytes", () => {

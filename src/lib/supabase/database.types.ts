@@ -223,7 +223,7 @@ export type Database = {
             }[]
                            },
 "propass_submit":
-{ Args: { "p_atta_code": string,"p_council": string,"p_council_number": string,"p_council_status": string,"p_council_uf": string,"p_cpf_enc": string,"p_cpf_hmac": string,"p_cpf_masked": string,"p_dek_wrapped": string,"p_display_name": string,"p_document_id": string,"p_email_enc": string,"p_email_hmac": string,"p_kek_version": number,"p_payload_canonical": string,"p_phone_enc": string,"p_pin_mac": string,"p_pin_mac_version": number,"p_privacy_notice_version"?: string,"p_professional_id": string,"p_seal": string,"p_seal_kid": string,"p_secret_hash": string,"p_stroke": Json }; Returns: string
+{ Args: { "p_atta_code": string,"p_council": string,"p_council_number": string,"p_council_status": string,"p_council_uf": string,"p_cpf_enc": string,"p_cpf_hmac": string,"p_cpf_masked": string,"p_dek_wrapped": string,"p_display_name": string,"p_document_id": string,"p_download_secret_hash"?: string,"p_email_enc": string,"p_email_hmac": string,"p_kek_version": number,"p_payload_canonical": string,"p_phone_enc": string,"p_pin_mac": string,"p_pin_mac_version": number,"p_privacy_notice_version"?: string,"p_professional_id": string,"p_seal": string,"p_seal_kid": string,"p_secret_hash": string,"p_stroke": Json }; Returns: string
                            },
 "rate_limit_hit":
 { Args: { "p_bucket": string,"p_key_hash": string,"p_limit": number,"p_window_seconds": number }; Returns: boolean
@@ -782,14 +782,14 @@ isOneToOne: false
           Tables: {
             "access_grant": {
                   Row: {
-                    "appointment_id": string | null,"created_at": string,"expires_at": string,"id": string,"last_used_at": string | null,"person_id": string | null,"pin_failures_streak": number,"pin_failures_total": number,"pin_locked_until": string | null,"professional_link_id": string | null,"propass_failures": number,"purpose": string,"revoked_at": string | null,"secret_hash": string,"sent_at": string | null,"session_started_at": string | null,"tenant_id": string
+                    "appointment_id": string | null,"created_at": string,"expires_at": string,"id": string,"last_used_at": string | null,"person_id": string | null,"pin_failures_streak": number,"pin_failures_total": number,"pin_locked_until": string | null,"professional_link_id": string | null,"propass_failures": number,"purpose": string,"revoked_at": string | null,"secret_hash": string,"sent_at": string | null,"session_started_at": string | null,"tenant_id": string,"use_count": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "appointment_id"?: string | null,"created_at"?: string,"expires_at": string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"pin_failures_streak"?: number,"pin_failures_total"?: number,"pin_locked_until"?: string | null,"professional_link_id"?: string | null,"propass_failures"?: number,"purpose": string,"revoked_at"?: string | null,"secret_hash": string,"sent_at"?: string | null,"session_started_at"?: string | null,"tenant_id": string
+                    "appointment_id"?: string | null,"created_at"?: string,"expires_at": string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"pin_failures_streak"?: number,"pin_failures_total"?: number,"pin_locked_until"?: string | null,"professional_link_id"?: string | null,"propass_failures"?: number,"purpose": string,"revoked_at"?: string | null,"secret_hash": string,"sent_at"?: string | null,"session_started_at"?: string | null,"tenant_id": string,"use_count"?: number
                   }
                   Update: {
-                    "appointment_id"?: string | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"pin_failures_streak"?: number,"pin_failures_total"?: number,"pin_locked_until"?: string | null,"professional_link_id"?: string | null,"propass_failures"?: number,"purpose"?: string,"revoked_at"?: string | null,"secret_hash"?: string,"sent_at"?: string | null,"session_started_at"?: string | null,"tenant_id"?: string
+                    "appointment_id"?: string | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"last_used_at"?: string | null,"person_id"?: string | null,"pin_failures_streak"?: number,"pin_failures_total"?: number,"pin_locked_until"?: string | null,"professional_link_id"?: string | null,"propass_failures"?: number,"purpose"?: string,"revoked_at"?: string | null,"secret_hash"?: string,"sent_at"?: string | null,"session_started_at"?: string | null,"tenant_id"?: string,"use_count"?: number
                   }
                   Relationships: [
                     {

@@ -6,7 +6,7 @@ import { createHash, randomBytes } from "node:crypto";
  * de verdade (`private.grant_is_valid`): aqui eles servem para o `Max-Age` do cookie e para a tela. Se o PDD ou a PO
  * mudarem a validade, muda aqui e na migration, nos dois lugares, com o teste de paridade abaixo.
  */
-export const FINALIDADES = ["patient_checkin", "professional_boarding", "professional_propass"] as const;
+export const FINALIDADES = ["patient_checkin", "professional_boarding", "professional_propass", "propass_download"] as const;
 export type Finalidade = (typeof FINALIDADES)[number];
 
 export const POLITICA: Readonly<Record<Finalidade, { inatividadeSeg: number | null; tetoSeg: number }>> = {
@@ -16,7 +16,12 @@ export const POLITICA: Readonly<Record<Finalidade, { inatividadeSeg: number | nu
   professional_boarding: { inatividadeSeg: null, tetoSeg: 8 * 60 * 60 },
   // PROpass: o link do convite vale 7 dias da emissão; o reenvio invalida o anterior (PDD v206 §10.4.3)
   professional_propass: { inatividadeSeg: null, tetoSeg: 7 * 24 * 60 * 60 },
+  // download dos PDFs do fim do PROpass: 30 min absolutos, sem renovar por uso (ADR 0001, "Download dos PDFs")
+  propass_download: { inatividadeSeg: null, tetoSeg: 30 * 60 },
 };
+
+/** Teto de usos (private.grant_max_uses): o download dos PDFs do PROpass vale no máximo 20 vezes. Sem chave = sem teto. */
+export const MAX_USOS: Readonly<Partial<Record<Finalidade, number>>> = { propass_download: 20 };
 
 export const COOKIE_GRANT = "atta_grant";
 
