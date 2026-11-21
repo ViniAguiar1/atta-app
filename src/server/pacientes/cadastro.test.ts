@@ -126,3 +126,19 @@ describe("cadastrar (primeira vez na rede)", () => {
     expect(r).toMatchObject({ ok: false, error: { code: "CONFLITO", reason: "ATTA-IN-0002:cpf" } });
   });
 });
+
+describe("reportar divergência pelo CPF (RN-PAC-08, #171)", () => {
+  it("manda só o HMAC e o motivo da lista; a resposta é sempre recebido", async () => {
+    rpc.mockResolvedValueOnce({ data: { status: "recebido" }, error: null });
+    expect(await porta.reportarDivergenciaPorCpf(CPF, "nome_nao_confere")).toEqual({ ok: true, data: { recebido: true } });
+    expect(rpc).toHaveBeenCalledWith("report_divergence_by_cpf", { p_cpf_hmac: HMAC, p_reason: "nome_nao_confere" });
+    expect(JSON.stringify(rpc.mock.calls)).not.toContain(CPF);
+  });
+
+  it("CPF inválido não vai ao banco; o limite vira LIMITE", async () => {
+    expect((await porta.reportarDivergenciaPorCpf("111.111.111-11", "outro")).ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "54000", message: "ATTA-IN-0005", details: null, hint: null } });
+    expect(await porta.reportarDivergenciaPorCpf(CPF, "outro")).toMatchObject({ ok: false, error: { code: "LIMITE" } });
+  });
+});

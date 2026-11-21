@@ -359,6 +359,23 @@ export const portaPacientesReal: PortaPacientes = {
     return falha("INDISPONIVEL", "Edição ainda não ligada.");
   },
 
+  async reportarDivergenciaPorCpf(cpf, motivo) {
+    const normal = normalizeCpf(cpf);
+    if (!normal || !isValidCpf(normal)) return falha("VALIDACAO", "CPF inválido.", [{ campo: "cpf", code: "VALIDACAO" }]);
+    const { api } = await contexto();
+    let hmac: string;
+    try {
+      hmac = paraBytea(cpfHmac(normal));
+    } catch {
+      return malFormado("pacientes.hmac_indisponivel");
+    }
+    // api.report_divergence_by_cpf (#171 do Backend 2): sempre { status: 'recebido' }, sem revelar se o CPF está na rede
+    const { data, error } = await api.rpc("report_divergence_by_cpf", { p_cpf_hmac: hmac, p_reason: motivo });
+    if (error) return falhaDoBanco(error);
+    const lido = z.object({ status: z.literal("recebido") }).safeParse(data);
+    return lido.success ? ok({ recebido: true as const }) : malFormado("pacientes.reporte_fora_do_formato");
+  },
+
   async reportarDivergencia(id, motivo) {
     const { api } = await contexto();
     const { data, error } = await api.rpc("report_divergence", { p_person_id: id, p_reason: motivo });

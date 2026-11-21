@@ -1,3 +1,4 @@
+import type { MotivoDeDivergencia } from "@/server/pacientes/porta";
 // Textos da tela de Pacientes (MIG-43). Fonte: o Simulador ATTA-in (capturas 09 a 11 e o README "Pacientes, Pasta do
 // Paciente e Novo paciente"), que aqui vale por cima do PDD §10 (decisão do dono de 20/11, PLANO "Abas e fidelidade ao
 // simulador"). O que não está no simulador é provisório e vai para o textos-para-a-po.md. As linhas de demonstração do
@@ -90,6 +91,20 @@ export const textos = {
     cadastrar: "Cadastrar paciente", // simulador, captura 18
     enviando: "Cadastrando…", // provisório
     erroCampo: "Confira este campo.", // provisório
+    reportar: {
+      // simulador, captura 16/17 (sem a referência à regra)
+      explicacao: "Se o nome informado no contato (ex.: WhatsApp) não bate com o CPF encontrado, a clínica reporta ao time ATTA; não decide nem bloqueia sozinha.",
+      link: "Algum dado não confere? Reportar à ATTA", // simulador, captura 16
+      pergunta: "O que não confere?", // simulador, captura 17 (sem o texto livre: motivo em lista fechada, decisão do dono)
+      motivos: {
+        nome_nao_confere: "Nome não confere", // PLANO, decisão do dono de 20/11 (RN-PAC-08)
+        data_nascimento_nao_confere: "Data de nascimento não confere", // PLANO, decisão do dono
+        cpf_nao_e_do_paciente: "Paciente diz que o CPF não é dele", // PLANO, decisão do dono
+        outro: "Outro (sem detalhes)", // PLANO, decisão do dono
+      } satisfies Record<MotivoDeDivergencia, string>,
+      enviar: "Enviar à ATTA", // simulador, captura 17
+      enviado: "Reporte enviado ao time ATTA. O atendimento segue normalmente.", // provisório
+    },
     erro: {
       CONFLITO: "Este paciente já está cadastrado nesta clínica.", // provisório
       LIMITE: "Muitas buscas seguidas. Aguarde um pouco e tente de novo.", // provisório
