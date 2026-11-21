@@ -4,7 +4,8 @@ import { falha, falhaDoBanco, MENSAGENS, ok, type ErroDoBanco } from "@/lib/erro
 import { logger } from "@/lib/logger";
 import type { Database } from "@/lib/supabase/database.types";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import type { CampoDaEmpresa, PerfilDaClinica, PortaPerfil } from "./porta";
+import { CAMPOS_DA_EMPRESA, type CampoDaEmpresa } from "./campos";
+import type { PerfilDaClinica, PortaPerfil } from "./porta";
 
 // Porta real do Perfil da Clínica (MIG-42) sobre api.clinic_profile e api.clinic_profile_set (#296, Backend 1; ADR 0001,
 // §"Perfil da Clínica"). Cliente de servidor com a sessão do usuário: quem confere ADMIN com aal2, formato, CNPJ e campo
@@ -13,13 +14,14 @@ import type { CampoDaEmpresa, PerfilDaClinica, PortaPerfil } from "./porta";
 
 const texto = z.string().nullable();
 
-// Só tipos vêm da porta.ts (ela importa este módulo; um import de valor fecharia o ciclo). Os campos da empresa chegam
-// como um registro de texto: a lista fechada e o formato de cada um são do banco (api.clinic_profile devolve todos).
+// Só tipos vêm da porta.ts (ela importa este módulo; um import de valor fecharia o ciclo). A lista dos campos vem do
+// campos.ts: a resposta precisa trazer as 14 chaves, e uma fora do contrato vira INTERNO.
+const campos = z.object(Object.fromEntries(CAMPOS_DA_EMPRESA.map((c) => [c, z.string().nullable()])) as Record<CampoDaEmpresa, z.ZodNullable<z.ZodString>>);
 const perfilDoBanco = z.object({
   created_at: z.string().nullable(),
   timezone: z.string().min(1),
   saved_at: z.string().nullable(),
-  fields: z.record(z.string(), texto),
+  fields: campos,
   protected_fields: z.array(z.string()),
   manager: z.object({ full_name: texto, cpf_masked: texto, email_masked: texto, whatsapp_masked: texto }).nullable(),
   technical_lead: z
@@ -56,7 +58,7 @@ export function lerPerfil(data: unknown): PerfilDaClinica | null {
   return {
     desde: r.data.created_at,
     fuso: r.data.timezone,
-    campos: r.data.fields as Record<CampoDaEmpresa, string | null>,
+    campos: r.data.fields,
     gestor: g && { nome: g.full_name, cpfMascarado: g.cpf_masked, emailMascarado: g.email_masked, whatsappMascarado: g.whatsapp_masked },
     responsavelTecnico: rt && {
       nome: rt.full_name,
