@@ -1,10 +1,22 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { violacoesDoAxe } from "@/components/ui/axe-de-teste";
 import { falha, ok } from "@/lib/errors";
 import type { CartaoDaRede } from "@/server/pacientes/porta";
 import { formatarCpf, NovoPaciente } from "./NovoPaciente";
+
+// o jsdom não implementa o modo modal do <dialog>: o substituto abre e registra a chamada; o foco preso e o fundo
+// inerte do navegador são provados no e2e (Tab no último botão)
+const showModal = vi.fn(function (this: HTMLDialogElement) {
+  this.setAttribute("open", "");
+});
+beforeAll(() => {
+  HTMLDialogElement.prototype.showModal = showModal;
+  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+    this.removeAttribute("open");
+  };
+});
 
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
@@ -41,15 +53,18 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     expect(formatarCpf("1122")).toBe("112.2");
   });
 
-  it("abre o modal com o foco no CPF, sem a linha de exemplos, passa no axe e fecha com Esc devolvendo o foco", async () => {
+  it("abre o <dialog> em modo modal com o foco no CPF, sem a linha de exemplos, passa no axe e fecha com Esc devolvendo o foco", async () => {
     montar(ok({ situacao: "nao_encontrado" }));
     const dialogo = await abrir();
+    expect(dialogo.tagName).toBe("DIALOG");
+    expect(showModal).toHaveBeenCalled();
     expect(within(dialogo).getByLabelText("CPF")).toHaveFocus();
     expect(dialogo).toHaveTextContent("Cada CPF existe uma única vez na rede ATTA.");
     expect(dialogo).not.toHaveTextContent(/Exemplos|RN-PAC|PDD/);
     expect(within(dialogo).getByText("Aguardando busca")).toBeInTheDocument();
     expect(await violacoesDoAxe(dialogo)).toEqual([]);
-    await userEvent.keyboard("{Escape}");
+    // o Esc do navegador vira o evento cancel do <dialog>
+    fireEvent(dialogo, new Event("cancel", { cancelable: true }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByRole("button", { name: "+ Novo paciente" })).toHaveFocus();
   });
@@ -119,5 +134,30 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     await buscarCpf(dialogo);
     expect(await within(dialogo).findByRole("alert")).toHaveTextContent("Muitas buscas seguidas. Aguarde um pouco e tente de novo.");
     expect(dialogo).not.toHaveTextContent("texto do servidor");
+  });
+
+  it("cadastro que reaproveita a pessoa (CPF entrou na rede no meio) avisa e mostra o estado atual, sem fechar", async () => {
+    const acoes = montar(ok({ situacao: "nao_encontrado" }));
+    acoes.cadastrar.mockResolvedValueOnce(ok({ id: cartao.id, reaproveitado: true }));
+    const dialogo = await abrir();
+    await buscarCpf(dialogo);
+    await within(dialogo).findByText("Consulta interna: este CPF ainda não existe na base ATTA.");
+    acoes.consultar.mockResolvedValueOnce(ok({ situacao: "ja_paciente", id: cartao.id }));
+    await userEvent.type(within(dialogo).getByLabelText("Nome civil"), "Lucas Pereira");
+    await userEvent.type(within(dialogo).getByLabelText("Data de nascimento"), "12/04/1991");
+    await userEvent.type(within(dialogo).getByLabelText("Celular"), "11987655566");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Cadastrar paciente" }));
+    expect(await within(dialogo).findByText(/Este CPF entrou na rede enquanto o cadastro era feito/)).toBeInTheDocument();
+    expect(await within(dialogo).findByText("Não é possível criar outro cadastro.")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("validação leva o foco ao primeiro campo com problema", async () => {
+    montar(ok({ situacao: "nao_encontrado" }));
+    const dialogo = await abrir();
+    await buscarCpf(dialogo);
+    await within(dialogo).findByText("Consulta interna: este CPF ainda não existe na base ATTA.");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Cadastrar paciente" }));
+    await waitFor(() => expect(within(dialogo).getByLabelText("Nome civil")).toHaveFocus());
   });
 });
