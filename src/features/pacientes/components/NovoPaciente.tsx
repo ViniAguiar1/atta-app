@@ -60,20 +60,32 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
   const router = useRouter();
   const idTitulo = useId();
   const primeiro = useRef<HTMLInputElement>(null);
+  const caixa = useRef<HTMLDialogElement>(null);
+  const formulario = useRef<HTMLDivElement>(null);
   const [estrangeiro, setEstrangeiro] = useState(false);
   const [documento, setDocumento] = useState("");
   const [situacao, setSituacao] = useState<Situacao>({ tipo: "aguardando" } as Situacao);
   const [dados, setDados] = useState(VAZIO);
   const [invalidos, setInvalidos] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [ocupado, iniciar] = useTransition();
 
+  // <dialog> nativo em modo modal (showModal): prende o foco dentro dele, deixa o resto da página inerte e trata o Esc
+  // pelo evento cancel (WCAG 2.1.2 e 2.4.3; Tech Lead Frontend e Frontend, #167)
   useEffect(() => {
+    const d = caixa.current;
+    if (d && !d.open) d.showModal();
     primeiro.current?.focus();
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && aoFechar();
-    document.addEventListener("keydown", esc);
-    return () => document.removeEventListener("keydown", esc);
-  }, [aoFechar]);
+    return () => {
+      if (d?.open) d.close();
+    };
+  }, []);
+
+  // depois da validação, o foco vai ao primeiro campo com problema
+  useEffect(() => {
+    if (invalidos.length) formulario.current?.querySelector<HTMLInputElement>('[aria-invalid="true"]')?.focus();
+  }, [invalidos]);
 
   const tipo = "situacao" in situacao ? situacao.situacao : "aguardando";
   const mostraFormulario = estrangeiro || tipo === "nao_encontrado";
@@ -83,6 +95,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
 
   function buscar() {
     setErro(null);
+    setAviso(null);
     iniciar(async () => {
       const r = await acoes.consultar({ cpf: documento });
       if (r.ok) setSituacao(r.data);
@@ -112,8 +125,14 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
     setInvalidos([]);
     iniciar(async () => {
       const r = await acoes.cadastrar(entrada);
-      if (r.ok) concluir();
-      else setErro(mensagemDe(r.error.code));
+      if (!r.ok) return setErro(mensagemDe(r.error.code));
+      if (!r.data.reaproveitado) return concluir();
+      // o CPF entrou na rede entre a busca e o envio: a pessoa foi reaproveitada (RN-PAC-09). Não fecha como se fosse
+      // um cadastro novo: avisa e mostra o estado atual, para a recepção conferir (Frontend, #167)
+      setAviso(m.reaproveitado);
+      router.refresh();
+      const nova = await acoes.consultar({ cpf: documento });
+      if (nova.ok) setSituacao(nova.data);
     });
   }
 
@@ -127,13 +146,16 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
     tipo === "aguardando" ? m.resumo.aguardando : tipo === "nao_encontrado" ? m.resumo.primeiraVez : m.resumo.jaExiste;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-text-primary/40 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={idTitulo}
-        className="flex max-h-full w-full max-w-[45rem] flex-col overflow-hidden rounded-lg bg-surface-raised shadow-xl"
-      >
+    <dialog
+      ref={caixa}
+      aria-labelledby={idTitulo}
+      onCancel={(e) => {
+        e.preventDefault(); // o Esc fecha pelo mesmo caminho do ✕, que devolve o foco ao botão
+        aoFechar();
+      }}
+      className="m-auto max-h-[calc(100%-2rem)] w-[calc(100%-2rem)] max-w-[45rem] overflow-hidden rounded-lg bg-surface-raised p-0 text-text-primary shadow-xl backdrop:bg-text-primary/40"
+    >
+      <div className="flex max-h-[calc(100vh-2rem)] flex-col">
         <header className="flex items-center gap-3 bg-brand px-4 py-3 text-on-brand">
           <Monograma className="size-6" />
           <div className="flex-1">
@@ -183,14 +205,14 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                         setSituacao({ tipo: "aguardando" } as Situacao);
                       }}
                       onKeyDown={(e) => e.key === "Enter" && !estrangeiro && buscar()}
-                      className="h-9 flex-1 rounded-md border border-border-functional px-3 font-mono"
+                      className="h-9 flex-1 rounded-md border border-border-functional px-3 font-mono text-[0.8125rem] medium:h-8"
                     />
                     {!estrangeiro && (
                       <button
                         type="button"
                         onClick={buscar}
                         disabled={ocupado || documento.replace(/\D/g, "").length !== 11}
-                        className="h-9 rounded-md border border-border-functional px-3 font-medium disabled:opacity-60"
+                        className="h-9 rounded-md border border-border-functional px-3 font-medium disabled:opacity-60 medium:h-8"
                       >
                         {ocupado && tipo === "aguardando" ? m.buscando : m.buscar}
                       </button>
@@ -213,7 +235,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
               ) : (
                 <>
                   <p>{m.dadosNovo}</p>
-                  <div className="grid gap-4 medium:grid-cols-2">
+                  <div ref={formulario} className="grid gap-4 medium:grid-cols-2">
                     {(["nomeCivil", "nomeSocial", "nascimento", "celular", "email"] as const).map((c) => (
                       <Campo key={c} rotulo={m.campos[c].rotulo} ajuda={m.campos[c].ajuda} invalido={invalidos.includes(c)}>
                         {(id, ajudaId) => (
@@ -226,7 +248,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                             inputMode={c === "celular" || c === "nascimento" ? "numeric" : c === "email" ? "email" : "text"}
                             autoComplete="off"
                             onChange={(e) => setDados((d) => ({ ...d, [c]: e.target.value }))}
-                            className="h-9 rounded-md border border-border-functional px-3 aria-invalid:border-status-negative"
+                            className="h-9 rounded-md border border-border-functional px-3 text-[0.8125rem] aria-invalid:border-status-negative medium:h-8"
                           />
                         )}
                       </Campo>
@@ -262,7 +284,10 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
           <button type="button" onClick={aoFechar} className="h-9 rounded-md border border-border-functional px-4 text-[0.8125rem] font-medium">
             {m.cancelar}
           </button>
-          <p role="alert" className="flex-1 text-right text-[0.8125rem] text-status-negative">{erro}</p>
+          <div className="flex-1 text-right text-[0.8125rem]">
+            <p role="status">{aviso}</p>
+            <p role="alert" className="text-status-negative">{erro}</p>
+          </div>
           {podeEnviar && (
             <button
               type="button"
@@ -275,7 +300,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
           )}
         </footer>
       </div>
-    </div>
+    </dialog>
   );
 }
 

@@ -92,9 +92,25 @@ test.describe("Novo paciente", () => {
 
   test("já paciente, na rede (cartão da outra clínica, sem contato inteiro) e primeira vez na rede, com o cadastro", async ({ page }) => {
     await page.goto("/painel/pacientes");
-    await page.getByRole("button", { name: "+ Novo paciente" }).click();
+    const gatilho = page.getByRole("button", { name: "+ Novo paciente" });
+    await gatilho.click();
     const dialogo = page.getByRole("dialog", { name: "Novo paciente" });
     const cpf = dialogo.getByLabel("CPF", { exact: true });
+
+    // <dialog> modal: o Tab a partir do último botão não sai para a lista atrás; o Esc fecha e o foco volta ao botão
+    await dialogo.getByRole("button", { name: "Cancelar" }).focus();
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press("Tab");
+      const dentro = await page.evaluate(() => {
+        const ativo = document.activeElement;
+        return !ativo || ativo === document.body || ativo.closest("dialog") !== null;
+      });
+      expect(dentro).toBe(true);
+    }
+    await page.keyboard.press("Escape");
+    await expect(dialogo).toBeHidden();
+    await expect(gatilho).toBeFocused();
+    await gatilho.click();
     const buscar = dialogo.getByRole("button", { name: "Buscar na rede" });
 
     await cpf.fill("52998224725");
