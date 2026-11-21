@@ -127,4 +127,7 @@
      (#f0f4f4 de fundo e #e0e8e8 de contorno). O texto é text-primary: 16.0:1 sobre o fundo. */
   --faixa-info-bg: color-mix(in srgb, var(--ref-info) 8%, var(--ref-branco));
   --faixa-info-borda: color-mix(in srgb, var(--ref-info) 15%, var(--ref-branco));
+  /* FaixaInformativa tom="neutro" (Configurações, capturas 42 e 48): fundo branco e a borda esquerda no oliva da aba
+     ativa do ATTA-in (#6c7563, medido #6a6f61); o contorno é o border comum. Ícone e texto em text-primary. */
+  --faixa-neutra-borda: var(--ref-atta-in-aba-ativa);
 }

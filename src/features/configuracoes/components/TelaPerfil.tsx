@@ -60,7 +60,9 @@ function Perfil({ perfil }: { perfil: PerfilDaClinica }) {
   return (
     <div className="flex flex-col gap-4 text-corpo">
       <h2 className="sr-only">{t.titulo}</h2>
-      <FaixaInformativa destaque={t.faixa.destaque}>{t.faixa.texto}</FaixaInformativa>
+      <FaixaInformativa tom="neutro" destaque={t.faixa.destaque}>
+        {t.faixa.texto}
+      </FaixaInformativa>
       {salvoEm && <p className="-mt-2 text-xs text-text-secondary">{t.salvoEm(formatar(salvoEm, perfil.fuso, { hour: "2-digit", minute: "2-digit" }))}</p>}
       {perfil.faltando.length > 0 && (
         <div role="status" className="rounded-md border border-border border-l-4 border-l-status-pending bg-surface-raised p-3">
