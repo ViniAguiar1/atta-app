@@ -86,6 +86,29 @@ export type DadosDoCadastro = {
   email: string | null;
 };
 
+/**
+ * Cartão do paciente que já está na rede ATTA (PDD §10.1, decisão do dono de 20/11): a recepção vê o cadastro existente
+ * para confirmar e vincular, sem redigitar. Contato mascarado (§19.8); do Formulário de Saúde, só a contagem, nunca o
+ * conteúdo. A consulta fica na auditoria (patient.lookup).
+ */
+export type CartaoDaRede = {
+  id: string;
+  nome: string; // de exibição: o social, quando houver
+  nomeCivil: string;
+  nomeSocial: string | null;
+  nascimento: string | null;
+  identificacao: Identificacao;
+  incompleto: boolean;
+  contato: Contato | null;
+  selo: { validoAte: string } | null;
+  respostasDeSaude: number;
+};
+
+export type ConsultaDeCpf =
+  | { situacao: "nao_encontrado" } // primeira vez na rede: a recepção faz o cadastro mínimo
+  | { situacao: "ja_paciente"; id: string } // já é paciente desta clínica: não cria outro (RN-PAC-01)
+  | { situacao: "na_rede"; cartao: CartaoDaRede }; // existe em outra clínica: confirma e vincula
+
 /** O que a recepção pode mudar; toda mudança leva justificativa (RN-PAC-03). */
 export type MudancaDoCadastro = Partial<Pick<DadosDoCadastro, "nomeCivil" | "nomeSocial" | "nascimento" | "celular" | "email">>;
 
@@ -108,7 +131,14 @@ export type PortaPacientes = {
   buscar(termo: string): Promise<Resultado<LinhaDePaciente[]>>;
   /** NAO_ENCONTRADO: inexistente ou sem vínculo com esta clínica (a mesma resposta, de propósito). */
   obter(id: string): Promise<Resultado<FichaDoPaciente>>;
-  /** CPF já na rede reaproveita a pessoa (RN-PAC-09). CONFLITO: já cadastrado nesta clínica (RN-PAC-01). */
+  /**
+   * "Buscar na rede" do Novo paciente (§10.1; simulador, capturas 15 a 18): o CPF vira HMAC no servidor. VALIDACAO: CPF
+   * inválido. LIMITE: excesso de consultas (o banco limita por usuário e por clínica).
+   */
+  consultarCpf(cpf: string): Promise<Resultado<ConsultaDeCpf>>;
+  /** Vincula à clínica a pessoa que já está na rede, sem redigitar (§10.1). NAO_ENCONTRADO: o CPF não está na rede. */
+  vincularPorCpf(cpf: string): Promise<Resultado<{ id: string; situacao: "vinculado" | "ja_paciente" }>>;
+  /** Cadastro mínimo de quem é novo na rede (§10.1). CONFLITO: já cadastrado nesta clínica (RN-PAC-01). */
   cadastrar(dados: DadosDoCadastro): Promise<Resultado<{ id: string; reaproveitado: boolean }>>;
   /** VALIDACAO: sem justificativa (RN-PAC-03). */
   atualizar(id: string, mudanca: MudancaDoCadastro, justificativa: string): Promise<Resultado<{ salvoEm: string }>>;
