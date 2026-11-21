@@ -165,7 +165,7 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
       {/* Linha de controles do simulador (captura 01): o segmento das visões e a busca lado a lado. */}
       <div className="flex flex-wrap items-start gap-3">
         <SegmentoDasVisoes visao={visao} aoMudar={mudarVisao} />
-        <div className="flex w-full max-w-sm flex-col gap-1">
+        <div className="flex w-full max-w-[17rem] flex-col gap-1">
         <div className="relative">
           <label htmlFor={idDaBusca} className="sr-only">
             {textos.busca.rotulo}
@@ -185,7 +185,7 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
             value={busca}
             aria-describedby={pronto ? undefined : idDaDica}
             onChange={(evento) => mudarBusca(evento.target.value)}
-            className="min-h-9 w-full rounded-full border border-border-functional bg-surface-raised pr-4 pl-10 text-[0.8125rem]"
+            className="min-h-8 w-full rounded-full border border-border-functional bg-surface-raised pr-4 pl-10 text-[0.8125rem]"
           />
         </div>
         {!pronto && (
