@@ -87,6 +87,9 @@
   --text-numero: 1.625rem;
   --text-numero--line-height: 1;
   /* número grande de indicador (36 px) e número dos blocos secundários (22 px), medidos na captura 40 */
+  /* título de página pública (Prata 30 px; captura 53; Tech Lead Frontend) */
+  --text-manchete: 1.875rem;
+  --text-manchete--line-height: 1.15;
   --text-destaque: 2.25rem;
   --text-destaque--line-height: 1;
   --text-numero-menor: 1.375rem;
@@ -104,6 +107,7 @@
   --radius-*: initial;
   --radius-sm: 6px;
   --radius-md: 10px;
+  --radius-lg: 12px; /* cartão da página pública (captura 53; Tech Lead Frontend) */
 
   /* Breakpoints do M3 (planning/05 §4.4); abaixo de medium é compact. */
   --breakpoint-*: initial;
