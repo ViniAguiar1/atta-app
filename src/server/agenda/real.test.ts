@@ -161,6 +161,66 @@ describe("porta real da agenda: HMAC indisponível", () => {
   });
 });
 
+describe("porta real da agenda: Todos e Concluídos (agenda_range)", () => {
+  const range = (view: "todos" | "concluidos", linhas: unknown[]) => ({
+    view,
+    from: "2026-11-21",
+    to: "2027-02-20",
+    today_local_date: "2026-11-21",
+    timezone: "America/Sao_Paulo",
+    data: linhas,
+    page: { next_cursor: null },
+  });
+
+  it("Todos sem período: só a view (o banco usa hoje até +91); com período, estado e busca, os argumentos certos", async () => {
+    const { rpc, porta } = clienteFalso({ data: range("todos", [linha()]), error: null });
+    const r = await porta.periodo({});
+    expect(rpc).toHaveBeenLastCalledWith("agenda_range", { p_view: "todos" });
+    if (!r.ok) throw new Error("esperava ok");
+    expect(r.data).toMatchObject({ hojeLocal: "2026-11-21", fuso: "America/Sao_Paulo", proximoCursor: null });
+    expect(r.data.linhas.map((l) => l.id)).toEqual([id(1)]);
+
+    await porta.periodo({ de: "2026-11-22", ate: "2026-11-30", status: ["agendado"], busca: "Juliana", vinculoProfissionalId: id(901) });
+    expect(rpc).toHaveBeenLastCalledWith("agenda_range", {
+      p_view: "todos",
+      p_from: "2026-11-22",
+      p_to: "2026-11-30",
+      p_status: ["agendado"],
+      p_professional_link_id: id(901),
+      p_search: "Juliana",
+    });
+  });
+
+  it("Concluídos: semana ou mês calculado no banco; CPF inteiro só como HMAC", async () => {
+    const { rpc, porta } = clienteFalso({ data: range("concluidos", [linha({ status: "concluido" })]), error: null });
+    const r = await porta.concluidos({ periodo: "mes" });
+    expect(rpc).toHaveBeenLastCalledWith("agenda_range", { p_view: "concluidos", p_period: "mes" });
+    if (!r.ok) throw new Error("esperava ok");
+    expect(r.data.linhas[0]?.status).toBe("concluido");
+
+    await porta.concluidos({ periodo: "semana", busca: "43157280120" });
+    const args = rpc.mock.calls.at(-1)?.[1] ?? {};
+    expect(args).toMatchObject({ p_view: "concluidos", p_period: "semana" });
+    expect(args).toHaveProperty("p_cpf_hmac");
+    expect(JSON.stringify(args)).not.toContain("43157280120");
+  });
+
+  it("resposta fora do formato é INTERNO; linha inválida sai sem derrubar a lista; erro do banco com reason", async () => {
+    const quebrada = clienteFalso({ data: { view: "todos", data: [] }, error: null });
+    expect(await quebrada.porta.periodo({})).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+
+    const misturada = clienteFalso({ data: range("todos", [linha(), linha({ id: id(9), status: "liberado" })]), error: null });
+    const r = await misturada.porta.periodo({});
+    expect(r.ok && r.data.linhas.map((l) => l.id)).toEqual([id(1)]);
+
+    const recusada = clienteFalso({ data: null, error: { code: "P0001", message: "ATTA-IN-0001", details: "period", hint: null } });
+    expect(await recusada.porta.concluidos({ periodo: "semana" })).toMatchObject({
+      ok: false,
+      error: { code: "VALIDACAO", reason: "ATTA-IN-0001:period" },
+    });
+  });
+});
+
 describe("porta real da agenda: resumo", () => {
   it("resumo vem de api.agenda_summary, no contrato da tela", async () => {
     const banco = {

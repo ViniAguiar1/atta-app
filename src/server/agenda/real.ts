@@ -13,14 +13,18 @@ import {
   STATUS,
   TIPOS,
   filtroDoDiaSchema,
+  filtroDoPeriodoSchema,
+  filtroDosConcluidosSchema,
   termoPronto,
   type DiaDaAgenda,
   type LinhaDaAgenda,
+  type ListaDaAgenda,
   type ResumoDaAgenda,
 } from "@/features/agenda/schema";
 import type { PortaAgenda } from "./porta";
 
-// Porta real da Agenda (MIG-41) sobre api.agenda_day e api.agenda_summary do Backend 2 (MIG-11c, #130), no formato combinado em migracao/desenho/mig-41-agenda-contrato.md. Cliente de servidor com a sessão do
+// Porta real da Agenda (MIG-41) sobre api.agenda_day, api.agenda_summary (MIG-11c, #130) e api.agenda_range (Todos e
+// Concluídos, #183) do Backend 2, no formato combinado em migracao/desenho/mig-41-agenda-contrato.md. Cliente de servidor com a sessão do
 // usuário (RLS e has_permission), nunca a secret key (ADR 0001 §4). A resposta do banco passa pelo Zod antes de virar o
 // tipo da tela; erro do banco sai por falhaDoBanco, com o reason (ADR 0001 §5). Busca: nome em p_search; CPF inteiro
 // vira HMAC no servidor (p_cpf_hmac, bytea em hex com \x), nunca em claro, na URL ou no log.
@@ -60,6 +64,17 @@ const diaDoBanco = z.object({
   today_local_date: z.iso.date(),
   timezone: z.string().min(1),
   // cada linha é conferida à parte: uma linha fora do formato não derruba o dia inteiro
+  data: z.array(z.unknown()),
+  page: z.object({ next_cursor: z.string().nullable() }),
+});
+
+/** Visões Todos e Concluídos (agenda_range): as mesmas linhas do dia, com o intervalo usado para o rótulo. */
+const rangeDoBanco = z.object({
+  view: z.enum(["todos", "concluidos"]),
+  from: z.iso.date(),
+  to: z.iso.date(),
+  today_local_date: z.iso.date(),
+  timezone: z.string().min(1),
   data: z.array(z.unknown()),
   page: z.object({ next_cursor: z.string().nullable() }),
 });
@@ -109,9 +124,12 @@ export function linhaDaTela(l: z.infer<typeof linhaDoBanco>): LinhaDaAgenda {
 type FuncoesDaApi = Database["api"]["Functions"];
 type ArgsDoDia = FuncoesDaApi["agenda_day"]["Args"];
 type ArgsDoResumo = FuncoesDaApi["agenda_summary"]["Args"];
+type ArgsDoRange = FuncoesDaApi["agenda_range"]["Args"];
 type RespostaDoBanco = PromiseLike<{ data: unknown; error: ErroDoBanco | null }>;
 export type ClienteDaAgenda = {
-  schema(nome: "api"): { rpc(fn: "agenda_day" | "agenda_summary", args: ArgsDoDia | ArgsDoResumo): RespostaDoBanco };
+  schema(nome: "api"): {
+    rpc(fn: "agenda_day" | "agenda_summary" | "agenda_range", args: ArgsDoDia | ArgsDoResumo | ArgsDoRange): RespostaDoBanco;
+  };
 };
 
 /** Resposta fora do contrato: INTERNO, com o evento no log e nunca o corpo (ele tem nome e CPF mascarado). */
@@ -121,6 +139,30 @@ function foraDoFormato(evento: string) {
 }
 
 export type Hmac = (cpf: string) => Buffer;
+
+/** Cada linha conferida à parte: a fora do formato sai da lista (log com a quantidade, nunca o corpo). */
+function lerLinhas(brutas: unknown[]): LinhaDaAgenda[] {
+  const linhas = brutas.flatMap((bruta) => {
+    const linha = linhaDoBanco.safeParse(bruta);
+    return linha.success ? [linhaDaTela(linha.data)] : [];
+  });
+  const descartadas = brutas.length - linhas.length;
+  if (descartadas > 0) logger.error("agenda.linha_fora_do_formato", { code: "INTERNO", quantidade: descartadas });
+  return linhas;
+}
+
+/** Resposta do agenda_range no tipo da tela; fora do formato, INTERNO com o evento no log. */
+function listaDoRange(data: unknown) {
+  const r = rangeDoBanco.safeParse(data);
+  if (!r.success) return foraDoFormato("agenda.range_fora_do_formato");
+  const lista: ListaDaAgenda = {
+    hojeLocal: r.data.today_local_date,
+    fuso: r.data.timezone,
+    linhas: lerLinhas(r.data.data),
+    proximoCursor: r.data.page.next_cursor,
+  };
+  return ok(lista);
+}
 
 /**
  * Busca única (decisão do Tech Lead): CPF inteiro vira p_cpf_hmac; o resto com 2+ letras vai em p_search. Devolve null
@@ -142,8 +184,9 @@ export function argumentosDaBusca(
   }
 }
 
-/** O que já tem leitura real no banco (MIG-11c): o dia e os cards. Todos, Concluídos e avisos vêm depois. */
-export type PortaAgendaReal = Pick<PortaAgenda, "dia" | "resumo">;
+/** O que já tem leitura real no banco: o dia e os cards (MIG-11c) e as visões Todos e Concluídos (#183). Os avisos
+ *  (agenda_alerts) vêm com o MIG-13. */
+export type PortaAgendaReal = Pick<PortaAgenda, "dia" | "resumo" | "periodo" | "concluidos">;
 
 export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>, hmac: Hmac = cpfHmac): PortaAgendaReal {
   return {
@@ -165,12 +208,7 @@ export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>, hm
       if (error) return falhaDoBanco(error);
       const dia = diaDoBanco.safeParse(data);
       if (!dia.success) return foraDoFormato("agenda.dia_fora_do_formato");
-      const linhas = dia.data.data.flatMap((bruta) => {
-        const linha = linhaDoBanco.safeParse(bruta);
-        return linha.success ? [linhaDaTela(linha.data)] : [];
-      });
-      const descartadas = dia.data.data.length - linhas.length;
-      if (descartadas > 0) logger.error("agenda.linha_fora_do_formato", { code: "INTERNO", quantidade: descartadas });
+      const linhas = lerLinhas(dia.data.data);
       const resultado: DiaDaAgenda = {
         dataLocal: dia.data.local_date,
         hojeLocal: dia.data.today_local_date,
@@ -206,6 +244,45 @@ export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>, hm
         semDocumento: r.data.no_document,
       };
       return ok(resumo);
+    },
+
+    async periodo(filtro) {
+      const lido = filtroDoPeriodoSchema.safeParse(filtro);
+      if (!lido.success) return falha("VALIDACAO", MENSAGENS.VALIDACAO, [{ campo: "filtro", code: "VALIDACAO" }]);
+      const busca = argumentosDaBusca(lido.data.busca, hmac);
+      if (busca === null) return falha("VALIDACAO", MENSAGENS.VALIDACAO, [{ campo: "busca", code: "VALIDACAO" }]);
+      if (busca === "indisponivel") return foraDoFormato("agenda.hmac_indisponivel");
+      // sem período escolhido, o banco usa hoje (fuso da clínica) até +91 dias e devolve o intervalo usado
+      const args: ArgsDoRange = {
+        p_view: "todos",
+        ...(lido.data.de ? { p_from: lido.data.de } : {}),
+        ...(lido.data.ate ? { p_to: lido.data.ate } : {}),
+        ...(lido.data.vinculoProfissionalId ? { p_professional_link_id: lido.data.vinculoProfissionalId } : {}),
+        ...(lido.data.status ? { p_status: lido.data.status } : {}),
+        ...(lido.data.cursor ? { p_cursor: lido.data.cursor } : {}),
+        ...busca,
+      };
+      const { data, error } = await (await cliente()).schema("api").rpc("agenda_range", args);
+      if (error) return falhaDoBanco(error);
+      return listaDoRange(data);
+    },
+
+    async concluidos(filtro) {
+      const lido = filtroDosConcluidosSchema.safeParse(filtro);
+      if (!lido.success) return falha("VALIDACAO", MENSAGENS.VALIDACAO, [{ campo: "filtro", code: "VALIDACAO" }]);
+      const busca = argumentosDaBusca(lido.data.busca, hmac);
+      if (busca === null) return falha("VALIDACAO", MENSAGENS.VALIDACAO, [{ campo: "busca", code: "VALIDACAO" }]);
+      if (busca === "indisponivel") return foraDoFormato("agenda.hmac_indisponivel");
+      // semana (segunda a domingo) ou mês, calculado no banco no fuso da clínica
+      const args: ArgsDoRange = {
+        p_view: "concluidos",
+        p_period: lido.data.periodo,
+        ...(lido.data.cursor ? { p_cursor: lido.data.cursor } : {}),
+        ...busca,
+      };
+      const { data, error } = await (await cliente()).schema("api").rpc("agenda_range", args);
+      if (error) return falhaDoBanco(error);
+      return listaDoRange(data);
     },
   };
 }
