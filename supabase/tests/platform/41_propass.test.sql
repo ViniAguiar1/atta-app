@@ -2,11 +2,11 @@
 begin;
 select plan(53);
 
-insert into platform.tenant (id, name) values
-  ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
-  ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B'),
-  ('00000000-0000-4000-8000-00000000000c', 'Clínica Fictícia C'),
-  ('00000000-0000-4000-8000-00000000000d', 'Clínica Fictícia D');
+insert into platform.tenant (id, name, legal_name, cnpj) values
+  ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A', 'Clínica Fictícia A Ltda', '00000000004101'),
+  ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B', 'Clínica Fictícia B Ltda', '00000000004102'),
+  ('00000000-0000-4000-8000-00000000000c', 'Clínica Fictícia C', 'Clínica Fictícia C Ltda', '00000000004103'),
+  ('00000000-0000-4000-8000-00000000000d', 'Clínica Fictícia D', 'Clínica Fictícia D Ltda', '00000000004104');
 
 create function pg_temp.entrar(p_tenant uuid, p_role text) returns void language plpgsql as $$
 declare
@@ -64,6 +64,9 @@ begin
     'document', jsonb_build_object('id', v_doc, 'type', 'termo_de_autorizacao', 'template_id', tv.template_id,
                                    'template_version', tv.version, 'body_sha256', tv.body_sha256,
                                    'body_normalization', tv.body_normalization),
+    -- a clínica do payload é a do cadastro (ADR 0001, "Dados da clínica e texto do Termo")
+    'tenant', (select jsonb_build_object('legal_name', c.legal_name, 'trade_name', c.name, 'cnpj', c.cnpj)
+               from platform.tenant c where c.id = v_tenant),
     -- o registro do signatário confere com o profissional do envio (MIG-21c parte 2, Segurança no #208)
     'parties', jsonb_build_array(jsonb_build_object('ref', 'p1', 'role', 'professional',
                                                     'name', coalesce(p_nome, 'Dra. Fictícia ' || p_numero),

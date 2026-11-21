@@ -1,7 +1,7 @@
 -- MIG-21c (parte 1): Termo de Autorização do profissional, modelo de sistema e gravação assinada. PDD v206 §10.4.3;
 -- decisões do CTO de 21/11; ADR 0001 §1. Só dado fictício.
 begin;
-select plan(32);
+select plan(35);
 
 create function pg_temp.detalhe(p_sql text) returns text language plpgsql as $$
 declare d text;
@@ -20,9 +20,9 @@ select is(private.atta_code_from_sha256('4ca2539340575ba8069afdc607b8884d8bafa9d
           'ATTA-9JH5-74T0-AXDT', 'Código ATTA do caso-02');
 select is(private.atta_code_from_sha256('não é hash'), null, 'entrada fora do formato: nulo');
 
-insert into platform.tenant (id, name) values
-  ('00000000-0000-4000-8000-0000000005a1', 'Clínica Fictícia Autorização A'),
-  ('00000000-0000-4000-8000-0000000005b1', 'Clínica Fictícia Autorização B');
+insert into platform.tenant (id, name, legal_name, cnpj) values
+  ('00000000-0000-4000-8000-0000000005a1', 'Clínica Fictícia Autorização A', 'Clínica Fictícia Autorização A Ltda', '00000000000501'),
+  ('00000000-0000-4000-8000-0000000005b1', 'Clínica Fictícia Autorização B', 'Clínica Fictícia Autorização B Ltda', '00000000000502');
 
 -- seed ---------------------------------------------------------------------------------------------------------------
 select ok(private.authorization_template_ready('00000000-0000-4000-8000-0000000005a1'),
@@ -71,7 +71,9 @@ returns bytea language sql as $$
     'document', jsonb_build_object('id', p_doc, 'type', 'termo_de_autorizacao', 'template_id', v.template_id,
                                    'template_version', v.version, 'body_sha256', v.body_sha256,
                                    'body_normalization', v.body_normalization),
-    'tenant', jsonb_build_object('legal_name', 'Clínica Fictícia Ltda', 'trade_name', 'Clínica Fictícia', 'cnpj', '00.000.000/0001-91'),
+    'tenant', (select jsonb_build_object('legal_name', c.legal_name, 'trade_name', c.name,
+                                         'cnpj', regexp_replace(c.cnpj, '^(..)(...)(...)(....)(..)$', '\1.\2.\3/\4-\5'))
+               from platform.tenant c where c.id = p_tenant),
     'parties', jsonb_build_array(jsonb_build_object('ref', 'p1', 'role', 'professional', 'name', 'Dra. Fictícia Autorização',
                                                     'council', p_council)),
     'signature', jsonb_build_object('signer', 'p1', 'level', 'atta_sign', 'signed_at', p_signed_at, 'stroke_sha256', p_stroke),
@@ -129,6 +131,21 @@ select is(pg_temp.detalhe($$ select private.document_insert_signed_authorization
             'staging-seal-teste-aut', sha512('selo-ficticio'::bytea),
             pg_temp.traco('00000000-0000-4000-8000-0000000005c9', '00000000-0000-4000-8000-0000000005b1')) $$), 'stroke',
           'traço no Storage de outra clínica é recusado');
+-- a clínica do payload é a do cadastro (ADR 0001, "Dados da clínica e texto do Termo")
+update platform.tenant set legal_name = 'Outra Razão Social Ltda' where id = '00000000-0000-4000-8000-0000000005a1';
+select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000000005c9',
+            convert_to(replace(convert_from(pg_temp.payload('00000000-0000-4000-8000-0000000005c9'), 'UTF8'),
+                               'Outra Razão Social Ltda', 'Clínica Fictícia Autorização A Ltda'), 'UTF8')) $$), 'payload',
+          'razão social do payload diferente da do cadastro é recusada');
+update platform.tenant set legal_name = null where id = '00000000-0000-4000-8000-0000000005a1';
+select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000000005c9',
+            pg_temp.payload('00000000-0000-4000-8000-0000000005c9')) $$), 'legal_name',
+          'clínica sem razão social: nada se assina');
+update platform.tenant set legal_name = 'Clínica Fictícia Autorização A Ltda', cnpj = null where id = '00000000-0000-4000-8000-0000000005a1';
+select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000000005c9',
+            pg_temp.payload('00000000-0000-4000-8000-0000000005c9')) $$), 'cnpj',
+          'clínica sem CNPJ: nada se assina');
+update platform.tenant set cnpj = '00000000000501' where id = '00000000-0000-4000-8000-0000000005a1';
 -- revisões do #192 e do #208 (MIG-21c parte 2)
 select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000000005c9',
             pg_temp.payload('00000000-0000-4000-8000-0000000005c9', p_council => 'CRM-RJ 99999')) $$), 'payload',
