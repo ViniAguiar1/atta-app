@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { Subabas } from "@/components/ui/Subabas";
-import { ErroDaPasta } from "@/features/pacientes/components/ErroDaPasta";
+import { EstadoDaPasta } from "@/features/pacientes/components/EstadoDaPasta";
 import { PastaDoPaciente } from "@/features/pacientes/components/PastaDoPaciente";
 import { abrirPasta } from "@/features/pacientes/pasta";
 import { SUBABAS_DE_PACIENTES } from "@/features/pacientes/subabas";
@@ -30,26 +29,11 @@ export default function Page({ searchParams }: Props) {
 async function Conteudo({ searchParams }: Props) {
   await connection(); // por requisição: a ficha é da clínica da sessão, e cada abertura fica na Auditoria
   const { paciente } = await searchParams;
-  if (paciente === undefined) return <Aviso titulo={textos.pasta.vazioTitulo} texto={textos.pasta.vazioTexto} />;
+  if (paciente === undefined) return <EstadoDaPasta tipo="vazio" titulo={textos.pasta.vazioTitulo} texto={textos.pasta.vazioTexto} />;
   const ficha = await abrirPasta(paciente);
   if (ficha.ok) return <PastaDoPaciente ficha={ficha.data} />;
-  if (ficha.error.code === "NAO_ENCONTRADO" || ficha.error.code === "VALIDACAO") return <Aviso titulo={textos.pasta.naoEncontrado} />;
-  return <ErroDaPasta codigo={ficha.error.code} />;
-}
-
-function Aviso({ titulo, texto }: { titulo: string; texto?: string }) {
-  return (
-    <section className="flex flex-col items-start gap-2 rounded-md border border-border bg-surface-raised p-6">
-      <p className="font-sub text-lg text-text-primary">{titulo}</p>
-      {texto && <p className="text-text-secondary">{texto}</p>}
-      <Link
-        href="/painel/pacientes"
-        className="mt-2 inline-flex min-h-11 items-center rounded-md border border-border-functional px-5 font-medium text-text-primary hover:bg-surface-card"
-      >
-        {textos.pasta.irParaLista}
-      </Link>
-    </section>
-  );
+  if (ficha.error.code === "NAO_ENCONTRADO" || ficha.error.code === "VALIDACAO") return <EstadoDaPasta tipo="vazio" titulo={textos.pasta.naoEncontrado} />;
+  return <EstadoDaPasta tipo="erro" codigo={ficha.error.code} />;
 }
 
 function Carregando() {

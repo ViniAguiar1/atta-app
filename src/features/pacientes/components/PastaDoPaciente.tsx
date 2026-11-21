@@ -1,4 +1,5 @@
 import type { FichaDoPaciente } from "@/server/pacientes/porta";
+import { useId } from "react";
 import { CartaoDeSecao } from "@/components/ui/CartaoDeSecao";
 import { textos } from "../textos";
 import { Documento } from "./Documento";
@@ -72,9 +73,10 @@ function ItemDoResumo({ rotulo, children }: { rotulo: string; children: React.Re
 
 function Resumo({ ficha }: { ficha: FichaDoPaciente }) {
   const incompleto = ficha.identificacao.tipo === "incompleto";
+  const titulo = useId();
   return (
-    <aside aria-labelledby="resumo-do-paciente" className="flex flex-col gap-4 rounded-md bg-surface-app p-4">
-      <h2 id="resumo-do-paciente" className="text-[0.6875rem] font-semibold tracking-wide text-text-primary uppercase">
+    <aside aria-labelledby={titulo} className="flex flex-col gap-4 rounded-md bg-surface-app p-4">
+      <h2 id={titulo} className="text-[0.6875rem] font-semibold tracking-wide text-text-primary uppercase">
         {t.resumo.titulo}
       </h2>
       <dl className="-mt-2.5">
