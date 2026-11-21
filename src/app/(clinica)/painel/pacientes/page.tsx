@@ -26,11 +26,12 @@ export default function Page() {
 async function Conteudo() {
   await connection(); // por requisição: a lista é da clínica da sessão
   const inicial = await listarPacientes();
+  // espaçamento da captura 09: ~37 px das subabas aos cards (gap da página + mt-3), ~16 px dos cards à busca
   return (
-    <>
+    <div className="flex flex-col gap-4">
       <CardsDePacientes total={inicial.ok ? inicial.data.total : null} />
       <ListaDePacientes inicial={inicial} listar={listarPacientes} buscar={buscarPacientes} />
-    </>
+    </div>
   );
 }
 

@@ -89,10 +89,10 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex w-full max-w-[19rem] flex-col gap-1">
+        <div className="flex w-full max-w-[13.75rem] flex-col gap-1">
           <label className="relative block">
             <span className="sr-only">{textos.busca.rotulo}</span>
-            <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-text-secondary">
+            <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-text-secondary">
               <IconeBusca />
             </span>
             <input
@@ -102,11 +102,11 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
               placeholder={textos.busca.placeholder}
               autoComplete="off"
               aria-describedby={termoCurto ? idDaDica : undefined}
-              className="min-h-11 w-full rounded-full border border-border-functional bg-surface-raised pr-4 pl-11 text-text-primary placeholder:text-text-secondary"
+              className="h-[2.1875rem] w-full rounded-full border border-border-functional bg-surface-raised pr-3 pl-9 text-[0.8125rem] text-text-primary placeholder:text-text-secondary"
             />
           </label>
           {termoCurto && (
-            <p id={idDaDica} className="text-sm text-text-secondary">
+            <p id={idDaDica} className="text-xs text-text-secondary">
               {textos.busca.curta}
             </p>
           )}
@@ -126,7 +126,7 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
       </div>
 
       {!buscando && !erro && pagina && pagina.itens.length > 0 && pagina.total !== null && (
-        <p className="text-sm text-text-secondary">{textos.rodape(pagina.itens.length, pagina.total)}</p>
+        <p className="text-xs text-text-secondary">{textos.rodape(pagina.itens.length, pagina.total)}</p>
       )}
 
       {!buscando && !erro && pagina?.proxima && (
@@ -134,7 +134,7 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
           type="button"
           disabled={carregando}
           onClick={() => pagina.proxima && carregarMais(pagina.proxima)}
-          className="min-h-11 self-center rounded-md border border-border-functional bg-surface-raised px-5 font-medium text-text-primary hover:bg-surface-card disabled:opacity-60"
+          className="h-9 self-center rounded-md border border-border-functional bg-surface-raised px-4 text-[0.8125rem] font-medium text-text-primary hover:bg-surface-card disabled:opacity-60"
         >
           {textos.carregarMais}
         </button>

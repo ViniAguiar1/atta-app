@@ -29,14 +29,15 @@ const PONTO_DO_CHIP = { incompleto: "bg-text-secondary", com_selo: "bg-text-prim
 
 function Chip({ tipo }: { tipo: keyof typeof PONTO_DO_CHIP }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface-card px-2.5 py-0.5 text-xs font-medium text-text-primary">
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface-card px-2 py-0.5 text-xs font-medium text-text-primary">
       <span aria-hidden="true" className={`size-1.5 rounded-full ${PONTO_DO_CHIP[tipo]}`} />
       {textos.chip[tipo]}
     </span>
   );
 }
 
-const cabecalho = "px-4 py-3 text-left font-semibold whitespace-nowrap text-text-primary";
+// régua da área (ORDEM do Tech Lead Frontend): corpo e cabeçalho em 13 px (o cabeçalho em 500), linha secundária em 12 px
+const cabecalho = "px-4 py-3 text-left font-medium whitespace-nowrap text-text-primary";
 const celula = "px-4 py-3.5 align-top";
 
 export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] }) {
@@ -49,7 +50,7 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
       tabIndex={0}
       className="relative overflow-x-auto rounded-md border border-border bg-surface-raised"
     >
-      <table className="w-full min-w-[60rem] border-collapse text-sm">
+      <table className="w-full min-w-[60rem] border-collapse text-[0.8125rem]">
         <caption className="sr-only">{textos.tabela}</caption>
         <thead className="border-b border-border bg-surface-app">
           <tr>
@@ -66,12 +67,12 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
                 <span className="flex items-center gap-3">
                   <span
                     aria-hidden="true"
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-card text-xs font-semibold"
+                    className="flex size-[2.125rem] shrink-0 items-center justify-center rounded-full bg-surface-card text-xs font-semibold"
                   >
                     {iniciais(p.nome)}
                   </span>
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-[0.9375rem]">
+                    <span>
                       {p.nome}
                       {p.usaNomeSocial && (
                         <>
@@ -86,7 +87,7 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
                 </span>
               </th>
               <td className={`${celula} whitespace-nowrap`}>
-                <span className="flex flex-col gap-1">
+                <span className="flex flex-col gap-0.5 text-xs">
                   <Documento identificacao={p.identificacao} />
                   {p.nascimento ? (
                     <span>{textos.identificacao.nascimento(p.nascimento)}</span>
@@ -99,17 +100,17 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
                 </span>
               </td>
               <td className={celula}>
-                <span className="flex flex-col gap-1">
+                <span className="flex flex-col gap-0.5">
                   <span className="whitespace-nowrap">{p.contato?.celular ?? textos.semCelular}</span>
-                  <span>{p.contato?.email ?? textos.semEmail}</span>
+                  <span className="text-xs">{p.contato?.email ?? textos.semEmail}</span>
                 </span>
               </td>
               <td className={celula}>
                 {p.atendimento ? (
-                  <span className="flex flex-col gap-1">
-                    <span>{textos.atendimento.rotulo[p.atendimento.tipo]}</span>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-xs">{textos.atendimento.rotulo[p.atendimento.tipo]}</span>
                     <span className="font-semibold whitespace-nowrap">{textos.atendimento.quando(p.atendimento.em)}</span>
-                    <span>{textos.atendimento.oQue(p.atendimento.procedimento, p.atendimento.profissional)}</span>
+                    <span className="text-xs">{textos.atendimento.oQue(p.atendimento.procedimento, p.atendimento.profissional)}</span>
                   </span>
                 ) : (
                   <span>{textos.atendimento.nenhum}</span>
