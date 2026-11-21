@@ -4,7 +4,7 @@ begin;
 select plan(10);
 
 insert into platform.tenant (id, name, legal_name, cnpj) values
-  ('00000000-0000-4000-8000-0000000007a1', 'Clínica Fictícia Contexto', 'Clínica Fictícia Contexto Ltda', '00000000000701');
+  ('00000000-0000-4000-8000-0000000007a1', 'Clínica Fictícia Contexto', 'Clínica Fictícia Contexto Ltda', '00000000070130');
 insert into platform.professional_tenant_link (id, tenant_id, invite_email_hmac, invite_email_enc, envelope_id, dek_wrapped,
                                                kek_version)
 values ('00000000-0000-4000-8000-0000000007d1', '00000000-0000-4000-8000-0000000007a1', sha256('ctx@a.test'::bytea), '\x01',
@@ -28,7 +28,7 @@ select ok(has_function_privilege('service_role', 'api.propass_authorization_cont
           'só o servidor (service_role) chama');
 select results_eq(
   $$ select legal_name, trade_name, cnpj from api.propass_authorization_context(sha256('segredo-ficticio-contexto'::bytea)) $$,
-  $$ values ('Clínica Fictícia Contexto Ltda', 'Clínica Fictícia Contexto', '00000000000701') $$,
+  $$ values ('Clínica Fictícia Contexto Ltda', 'Clínica Fictícia Contexto', '00000000070130') $$,
   'pelo link: razão social, nome e CNPJ do cadastro');
 select ok((select c.template_id = v.template_id and c.version = v.version and c.body_sha256 = v.body_sha256
                   and c.body = v.body and c.body_normalization = v.body_normalization
@@ -50,7 +50,7 @@ select is(pg_temp.detalhe($$ select * from api.propass_authorization_context(sha
 update platform.tenant set legal_name = 'Clínica Fictícia Contexto Ltda', cnpj = null where id = '00000000-0000-4000-8000-0000000007a1';
 select is(pg_temp.detalhe($$ select * from api.propass_authorization_context(sha256('segredo-ficticio-contexto'::bytea)) $$),
           'ATTA-IN-0003:cnpj', 'sem CNPJ: recusa');
-update platform.tenant set cnpj = '00000000000701' where id = '00000000-0000-4000-8000-0000000007a1';
+update platform.tenant set cnpj = '00000000070130' where id = '00000000-0000-4000-8000-0000000007a1';
 update documents.template set status = 'inativo' where tenant_id = '00000000-0000-4000-8000-0000000007a1';
 select is(pg_temp.detalhe($$ select * from api.propass_authorization_context(sha256('segredo-ficticio-contexto'::bytea)) $$),
           'ATTA-IN-0003:authorization_template', 'sem o modelo de sistema Ativo: recusa');

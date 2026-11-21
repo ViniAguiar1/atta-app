@@ -3,10 +3,10 @@ begin;
 select plan(54);
 
 insert into platform.tenant (id, name, legal_name, cnpj) values
-  ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A', 'Clínica Fictícia A Ltda', '00000000004101'),
-  ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B', 'Clínica Fictícia B Ltda', '00000000004102'),
-  ('00000000-0000-4000-8000-00000000000c', 'Clínica Fictícia C', 'Clínica Fictícia C Ltda', '00000000004103'),
-  ('00000000-0000-4000-8000-00000000000d', 'Clínica Fictícia D', 'Clínica Fictícia D Ltda', '00000000004104');
+  ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A', 'Clínica Fictícia A Ltda', '00000000410179'),
+  ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B', 'Clínica Fictícia B Ltda', '00000000410250'),
+  ('00000000-0000-4000-8000-00000000000c', 'Clínica Fictícia C', 'Clínica Fictícia C Ltda', '00000000410330'),
+  ('00000000-0000-4000-8000-00000000000d', 'Clínica Fictícia D', 'Clínica Fictícia D Ltda', '00000000410411');
 update platform.tenant set timezone = 'America/Manaus' where id = '00000000-0000-4000-8000-00000000000a';
 
 create function pg_temp.entrar(p_tenant uuid, p_role text) returns void language plpgsql as $$

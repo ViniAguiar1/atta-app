@@ -25,7 +25,7 @@ insert into auth.users (id, email, aud, role) values
   ('f5f5f5f5-0000-4000-8000-0000000000f5', 'convidadoa@exemplo.test', 'authenticated', 'authenticated');
 insert into platform.tenant (id, name, cnpj) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'Clínica Alfa Ficticia', '11222333000181'),
-  ('bbbbbbbb-0000-4000-8000-000000000002', 'Clínica Beta Ficticia', '22333444000192');
+  ('bbbbbbbb-0000-4000-8000-000000000002', 'Clínica Beta Ficticia', '22333444000181');
 insert into platform.membership (tenant_id, user_id, app_role, status, deleted_at) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'a1a1a1a1-0000-4000-8000-0000000000a1', 'ADMIN', 'active', null),
   ('aaaaaaaa-0000-4000-8000-000000000001', 'c1c1c1c1-0000-4000-8000-0000000000c1', 'COLABORADOR', 'active', null),
