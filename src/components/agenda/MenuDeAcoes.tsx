@@ -75,7 +75,7 @@ export function MenuDeAcoes({ itens, paciente, aoEscolher, ocupado = false }: Pr
         aria-busy={ocupado || undefined}
         disabled={ocupado}
         onClick={() => setAberto((a) => !a)}
-        className="flex size-9 items-center justify-center rounded-md border border-transparent text-text-secondary hover:border-border-functional aria-expanded:border-border-functional"
+        className="flex size-11 items-center justify-center rounded-md border border-transparent medium:size-9 text-text-secondary hover:border-border-functional aria-expanded:border-border-functional"
       >
         <IconeMais />
       </button>
