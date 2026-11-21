@@ -54,6 +54,7 @@ create table platform.tenant_responsible (
   phone_masked text,
   phone_enc bytea,
   same_as_manager boolean not null default false,
+  -- lista do RT no §10.4.1 ("Conselho (lista: CRM, CRBM, CRO, COREN, CREFITO)"); a de 8 do §10.4.3 é a do profissional
   council text check (council is null or council in ('crm', 'crbm', 'cro', 'coren', 'crefito')),
   council_uf text check (council_uf is null or council_uf ~ '^[A-Z]{2}$'),
   council_number text check (council_number is null or council_number ~ '^[0-9A-Za-z./-]{1,20}$'),
@@ -77,6 +78,11 @@ alter table platform.tenant_responsible force row level security;
 revoke all on platform.tenant_responsible from public, anon, authenticated, service_role;
 create trigger tenant_responsible_set_updated_at before update on platform.tenant_responsible
   for each row execute function private.set_updated_at();
+
+-- Escrita da clínica só por função, com validação e trilha (Segurança e TL no #296): o grant de coluna antigo
+-- (update de name e timezone, MIG-02) sai, e a policy de update com ele. Nenhum código do app grava direto na tabela.
+revoke update on platform.tenant from authenticated;
+drop policy tenant_update on platform.tenant;
 
 insert into audit.action (action, kind, scope) values
   ('tenant.profile_update', 'change', 'tenant'),
@@ -213,7 +219,7 @@ $$;
 -- ---------------------------------------------------------------------------------------------------------------
 -- Escrita de um campo da empresa (settings.edit, ADMIN com aal2). Lista fechada; o valor chega normalizado (só dígitos
 -- no CNPJ, no CEP e nos telefones; e-mail em minúsculas) e é validado aqui (formato e, no CNPJ, o dígito). Nulo
--- apaga um campo opcional ou obrigatório (o aviso do topo mostra); o nome fantasia não fica vazio.
+-- apaga um campo opcional ou obrigatório (o aviso do topo mostra); o nome fantasia e o fuso não ficam vazios.
 -- CNPJ e razão social: só o primeiro preenchimento (nulo -> valor). Depois, protected_field.
 -- ---------------------------------------------------------------------------------------------------------------
 create function api.clinic_profile_set(p_field text, p_value text) returns timestamptz
@@ -230,19 +236,21 @@ begin
   end if;
   if p_field is null or p_field not in ('trade_name', 'legal_name', 'cnpj', 'tax_registration', 'main_specialty',
        'address_cep', 'address_street', 'address_number', 'address_complement', 'address_city', 'address_uf', 'phone',
-       'clinic_whatsapp', 'commercial_email') then
+       'clinic_whatsapp', 'commercial_email', 'timezone') then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'field';
   end if;
   select * into t from platform.tenant where id = v_tenant and deleted_at is null for update;
-  -- CNPJ: normaliza antes de gravar (maiúsculas, sem pontuação), como o normalizarCnpj da tela
+  -- CNPJ: normaliza antes de gravar como o normalizarCnpj (#291): maiúsculas, sem ponto, barra, hífen e espaço;
+  -- outro caractere fica e cai na validação
   if p_field = 'cnpj' then
-    v_value := nullif(regexp_replace(upper(v_value), '[^0-9A-Z]', '', 'g'), '');
+    v_value := nullif(regexp_replace(upper(v_value), '[./[:space:]-]', '', 'g'), '');
   end if;
 
   if p_field in ('cnpj', 'legal_name') and (case when p_field = 'cnpj' then t.cnpj else t.legal_name end) is not null then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'protected_field';
   end if;
-  if (p_field = 'trade_name' and v_value is null)
+  if (p_field in ('trade_name', 'timezone') and v_value is null)
+     or (p_field = 'timezone' and not exists (select 1 from pg_catalog.pg_timezone_names z where z.name = v_value))
      or (p_field = 'cnpj' and v_value is not null and not private.cnpj_is_valid(v_value))
      or (p_field = 'address_uf' and v_value is not null and v_value <> upper(v_value))
      or (p_field = 'commercial_email' and v_value is not null and v_value <> lower(v_value)) then
@@ -265,9 +273,12 @@ begin
       phone = case when p_field = 'phone' then v_value else phone end,
       clinic_whatsapp = case when p_field = 'clinic_whatsapp' then v_value else clinic_whatsapp end,
       commercial_email = case when p_field = 'commercial_email' then v_value else commercial_email end,
+      timezone = case when p_field = 'timezone' then v_value else timezone end,
       profile_saved_at = v_now
     where id = v_tenant;
-  exception when check_violation then
+  exception when unique_violation then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'cnpj_in_use';
+  when check_violation then
     -- formato fora do contrato: a mesma resposta de validação, com o nome do campo (nunca o valor)
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = p_field;
   end;
