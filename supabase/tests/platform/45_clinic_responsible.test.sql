@@ -1,7 +1,7 @@
--- MIG-42: gestor e Responsável Técnico do Perfil da Clínica. Só dado fictício: HMAC de texto inventado, máscaras de
+-- MIG-42: gestor e Responsável Técnico (45: o 44 é do Boarding Check) do Perfil da Clínica. Só dado fictício: HMAC de texto inventado, máscaras de
 -- CPF gerado, bytes cifrados de mentira (o banco não abre cifra; quem cifra é o servidor).
 begin;
-select plan(26);
+select plan(30);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-0000000004f5', 'Clínica Fictícia Responsáveis');
 
@@ -24,6 +24,10 @@ begin
   return v_user;
 end $$;
 grant execute on function pg_temp.entrar(uuid, text, text) to authenticated;
+
+-- cifrado fictício no formato 1 (0x01, versão, nonce, dado, tag): 32 bytes
+create function pg_temp.cifra(p_n int) returns bytea language sql as $$ select decode('01' || repeat(lpad(to_hex(p_n), 2, '0'), 31), 'hex') $$;
+grant execute on function pg_temp.cifra(int) to authenticated;
 
 create function pg_temp.trilha() returns text language sql security definer as $$
   select string_agg(details::text, ';' order by seq) from audit.event
@@ -53,20 +57,26 @@ select lives_ok($$ select api.clinic_responsible_set('manager', 'full_name', 'Ge
   'primeira escrita com o envelope cria a linha');
 select is((select envelope_id::text from api.clinic_responsible_envelope('manager')), '00000000-0000-4000-8000-0000000004e9',
   'o envelope volta para o servidor cifrar os próximos campos');
-select throws_ok($$ select api.clinic_responsible_set('manager', 'email', p_masked => 'g•••@exemplo.test', p_enc => '\x01bb',
+select throws_ok($$ select api.clinic_responsible_set('manager', 'email', p_masked => 'g···@exemplo.test', p_enc => pg_temp.cifra(63),
   p_envelope_id => gen_random_uuid(), p_dek_wrapped => '\x01cc', p_kek_version => 1::smallint) $$, 'P0001', 'ATTA-IN-0003',
   'outro envelope na mesma linha é recusado');
 
 -- ---------------------------------------------------------------- campos do gestor
 select isnt(api.clinic_responsible_set('manager', 'cpf', p_hmac => sha256('cpf-ficticio'::bytea), p_masked => '···.···.938-60',
-  p_enc => '\x01dd'), null, 'CPF do gestor gravado (HMAC, máscara e cifrado) e saved_at devolvido');
-select throws_ok($$ select api.clinic_responsible_set('manager', 'cpf', p_hmac => sha256('x'::bytea), p_masked => '938-60', p_enc => '\x01') $$,
+  p_enc => pg_temp.cifra(178)), null, 'CPF do gestor gravado (HMAC, máscara e cifrado) e saved_at devolvido');
+select throws_ok($$ select api.clinic_responsible_set('manager', 'cpf', p_hmac => sha256('x'::bytea), p_masked => '938-60', p_enc => pg_temp.cifra(73)) $$,
   'P0001', 'ATTA-IN-0001', 'máscara de CPF fora do formato');
 select throws_ok($$ select api.clinic_responsible_set('manager', 'cpf', p_masked => '···.···.938-60') $$,
   'P0001', 'ATTA-IN-0001', 'CPF sem o HMAC e o cifrado é recusado');
-select lives_ok($$ select api.clinic_responsible_set('manager', 'email', p_masked => 'g•••@exemplo.test', p_enc => '\x01ee') $$,
+select throws_ok($$ select api.clinic_responsible_set('manager', 'email', p_masked => 'gestora@exemplo.test', p_enc => pg_temp.cifra(9)) $$,
+  'P0001', 'ATTA-IN-0001', 'e-mail em claro na coluna da máscara é recusado');
+select throws_ok($$ select api.clinic_responsible_set('manager', 'whatsapp', p_masked => '(11) 99001-0099', p_enc => pg_temp.cifra(9)) $$,
+  'P0001', 'ATTA-IN-0001', 'WhatsApp em claro na coluna da máscara é recusado');
+select throws_ok($$ select api.clinic_responsible_set('manager', 'email', p_masked => 'g···@exemplo.test', p_enc => '\x01aa') $$,
+  'P0001', 'ATTA-IN-0001', 'cifrado curto (fora do formato 1) é recusado');
+select lives_ok($$ select api.clinic_responsible_set('manager', 'email', p_masked => 'g···@exemplo.test', p_enc => pg_temp.cifra(182)) $$,
   'e-mail do gestor gravado');
-select lives_ok($$ select api.clinic_responsible_set('manager', 'whatsapp', p_masked => '(11) •••••-0099', p_enc => '\x01ff') $$,
+select lives_ok($$ select api.clinic_responsible_set('manager', 'whatsapp', p_masked => '(11) ·····-0099', p_enc => pg_temp.cifra(87)) $$,
   'WhatsApp do gestor gravado');
 select throws_ok($$ select api.clinic_responsible_set('manager', 'council', 'crm') $$, 'P0001', 'ATTA-IN-0001',
   'gestor não tem conselho');
@@ -78,8 +88,10 @@ select lives_ok($$ select api.clinic_responsible_set('technical_lead', 'council'
   'primeira escrita do RT (conselho) com o envelope dele');
 select throws_ok($$ select api.clinic_responsible_set('technical_lead', 'council', 'oab') $$, 'P0001', 'ATTA-IN-0001',
   'conselho fora da lista do RT (§10.4.1)');
-select throws_ok($$ select api.clinic_responsible_set('technical_lead', 'email', p_masked => 'r@exemplo.test', p_enc => '\x01') $$,
+select throws_ok($$ select api.clinic_responsible_set('technical_lead', 'email', p_masked => 'r···@exemplo.test', p_enc => pg_temp.cifra(73)) $$,
   'P0001', 'ATTA-IN-0001', 'RT não tem e-mail nesta tela');
+select throws_ok($$ select api.clinic_responsible_set('technical_lead', 'council_uf', 'XX') $$, 'P0001', 'ATTA-IN-0001',
+  'UF do conselho fora da lista');
 select lives_ok($$ select api.clinic_responsible_set('technical_lead', 'council_uf', 'sp') $$, 'UF do conselho');
 select lives_ok($$ select api.clinic_responsible_set('technical_lead', 'council_number', '999906') $$, 'número do registro');
 select lives_ok($$ select api.clinic_responsible_set('technical_lead', 'same_as_manager', p_bool => true) $$, 'RT é a mesma pessoa');
