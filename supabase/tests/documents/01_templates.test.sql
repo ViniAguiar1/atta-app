@@ -151,7 +151,8 @@ select throws_ok($$ update documents.template set kind = 'consentimento_procedim
 
 -- Colaborador: módulo documents liberado no stub do MIG-06 ------------------------------------------------------
 select pg_temp.entrar('00000000-0000-4000-8000-0000000000d1', 'COLABORADOR');
-select is((select count(*)::int from documents.template_version), 2, 'Colaborador da clínica vê as versões');
+-- o Termo de Autorização de sistema (seed em toda clínica, MIG-21c) fica fora destas contagens
+select is((select count(*)::int from documents.template_version where title <> 'Termo de Autorização de Uso de Imagem de Assinatura Digital'), 2, 'Colaborador da clínica vê as versões');
 select lives_ok(
   $$ insert into documents.template (kind, title, frequency, validity_months, required, draft_body)
      values ('personalizado', 'Política fictícia da casa', 'unica', 12, false, 'Texto fictício da política.') $$,
@@ -170,8 +171,8 @@ select throws_ok($$ select * from api.template_publish(current_setting('teste.mo
                  '42501', 'ATTA-AUTH-0004', 'ADMIN sem 2º fator não publica');
 
 select pg_temp.entrar('00000000-0000-4000-8000-0000000000d2', 'ADMIN');
-select is((select count(*)::int from documents.template), 0, 'outra clínica não vê os modelos');
-select is((select count(*)::int from documents.template_version), 0, 'outra clínica não vê as versões');
+select is((select count(*)::int from documents.template where title <> 'Termo de Autorização de Uso de Imagem de Assinatura Digital'), 0, 'outra clínica não vê os modelos');
+select is((select count(*)::int from documents.template_version where title <> 'Termo de Autorização de Uso de Imagem de Assinatura Digital'), 0, 'outra clínica não vê as versões');
 select throws_ok($$ select * from api.template_publish(current_setting('teste.modelo_a')::uuid) $$,
                  'P0002', 'ATTA-CORE-0005', 'outra clínica publicando: "não encontrado"');
 select throws_ok($$ select api.template_deactivate(current_setting('teste.modelo_a')::uuid) $$,

@@ -100,14 +100,15 @@ select is((select current_version_published_at from api.atta_in_template_list() 
 select is((select signed_count from api.atta_in_template_list() where title = 'TCLE fictício'), 1,
           'assinados: só o Assinado definitivo; o Pré-assinado e o cancelado com evidência não contam');
 select is((select signed_count from api.atta_in_template_list() where title = 'Imagem fictícia'), 0, 'sem assinatura: 0');
-select is((select count(*)::int from api.atta_in_template_list()), 3, 'as colunas antigas continuam (3 modelos)');
+-- o Termo de Autorização de sistema (seed em toda clínica, MIG-21c) é um termo Ativo e obrigatório: entra nos cartões
+select is((select count(*)::int from api.atta_in_template_list() where title <> 'Termo de Autorização de Uso de Imagem de Assinatura Digital'), 3, 'as colunas antigas continuam (3 modelos)');
 
 -- resumo --------------------------------------------------------------------------------------------------------------
 select results_eq(
   $$ select active_count, active_required_count, active_optional_count, expiring_count, expired_count, signed_count,
             signed_atta_sign_count from api.atta_in_template_summary() $$,
-  $$ values (2, 1, 1, null::integer, null::integer, 1, 1) $$,
-  'cartões: 2 ativos (1 obrigatório, 1 opcional), vencendo/vencidos nulos até a PO (R17), 1 assinado (só o definitivo) com ATTA Sign');
+  $$ values (3, 2, 1, null::integer, null::integer, 1, 1) $$,
+  'cartões: 3 ativos com o Termo de Autorização de sistema (2 obrigatórios, 1 opcional), vencendo/vencidos nulos até a PO (R17), 1 assinado (só o definitivo) com ATTA Sign');
 
 -- permissões e clínica ----------------------------------------------------------------------------------------------
 select ok(has_function_privilege('authenticated', 'api.atta_in_template_summary()', 'EXECUTE')
@@ -117,9 +118,9 @@ select ok(has_function_privilege('authenticated', 'api.atta_in_template_summary(
 select pg_temp.entrar('00000000-0000-4000-8000-0000000008a1', 'ADMIN', 'aal1');
 select throws_ok($$ select * from api.atta_in_template_summary() $$, '42501', 'ATTA-AUTH-0004', 'ADMIN sem 2º fator');
 select pg_temp.entrar('00000000-0000-4000-8000-0000000008b1', 'ADMIN');
-select results_eq($$ select active_count, signed_count from api.atta_in_template_summary() $$, $$ values (0, 0) $$,
-                  'outra clínica: zero, não vê os números da primeira');
-select is((select count(*)::int from api.atta_in_template_list()), 0, 'outra clínica: lista vazia');
+select results_eq($$ select active_count, signed_count from api.atta_in_template_summary() $$, $$ values (1, 0) $$,
+                  'outra clínica: só o próprio Termo de Autorização de sistema, não vê os números da primeira');
+select is((select count(*)::int from api.atta_in_template_list() where title <> 'Termo de Autorização de Uso de Imagem de Assinatura Digital'), 0, 'outra clínica: lista vazia');
 select set_config('role', 'anon', true);
 select throws_ok($$ select * from api.atta_in_template_summary() $$, '42501', null, 'anon barrado');
 
