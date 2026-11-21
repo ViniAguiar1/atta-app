@@ -11,7 +11,8 @@
     "test": "sh scripts/carga-ok.sh && vitest run",
     "test:e2e": "sh scripts/carga-ok.sh && playwright test",
     "test:e2e:producao": "sh scripts/carga-ok.sh && playwright test -c playwright.producao.config.ts",
-    "db": "sh scripts/supabase-local.sh"
+    "db": "sh scripts/supabase-local.sh",
+    "maquina": "sh scripts/maquina.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
