@@ -43,7 +43,7 @@ test.describe("com sessão", () => {
     await expect(page.getByRole("link", { name: /^Notificações/ })).toBeVisible();
     for (const [rota, aba, vazio] of [
       ["/painel/documentos", "Termos & Docs", "Nenhum modelo de documento ainda"],
-      ["/painel/atta", "ATTA", "Nada para mostrar agora"],
+      ["/painel/atta", "ATTA", "Nenhum guia publicado"], // abre a Central de Ajuda (MIG-48), ainda no estado vazio
       ["/painel/metricas", "Métricas", "Ainda não há dados para as métricas"],
       ["/painel/notificacoes", null, "Nenhuma notificação"],
     ] as const) {
