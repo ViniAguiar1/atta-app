@@ -8,24 +8,16 @@ import { CaixaDeNotificacoes, type ItemDaCaixa } from "@/features/notificacoes/c
 import { ComoChegam } from "@/features/notificacoes/components/ComoChegam";
 import { ErroDaCaixa } from "@/features/notificacoes/components/ErroDaCaixa";
 import { grupoDoDia, rotuloDoQuando } from "@/features/notificacoes/formato";
-import type { Notificacao } from "@/features/notificacoes/schema";
 import { textos } from "@/features/notificacoes/textos";
 import { portaNotificacoes } from "@/server/notificacoes/porta";
+import { atalhoDeConfiguracoes, destinoDoAtalho } from "./atalhos";
 
 // O sino do painel (MIG-45; PDD v206 §21 e §10.4.6), como o Simulador ATTA-in (captura 41): a Caixa de notificações e,
 // ao lado, como as notificações chegam. Visível para o Colaborador e para o Gestor (§21); o que cada perfil vê é a
 // LAC-050, em aberto, e por isso os dois veem o mesmo. Vazia na produção até o MIG-15; simulada fora dela.
 export const metadata: Metadata = { title: "Notificações · ATTA-in" };
 
-const FUSO = "America/Sao_Paulo"; // padrão de platform.tenant.timezone, como na Agenda
-const HREF: Record<NonNullable<Notificacao["destino"]>, string> = {
-  agenda: "/painel/agenda",
-  pacientes: "/painel/pacientes",
-  documentos: "/painel/documentos",
-  equipe: "/painel/configuracoes/equipe",
-  configuracoes: "/painel/configuracoes",
-};
-const SO_ADMIN = new Set<Notificacao["destino"]>(["equipe", "configuracoes"]); // Configurações é só do ADMIN (§10.4.3)
+
 
 export default function Pagina() {
   return (
@@ -45,6 +37,7 @@ async function Conteudo() {
   if (!r.ok) return <ErroDaCaixa codigo={r.error.code} />;
   const admin = sessao?.papel === "ADMIN";
   const agora = new Date();
+  const fuso = r.data.fuso;
   const itens: ItemDaCaixa[] = r.data.itens.map((n) => ({
     id: n.id,
     tipo: n.tipo,
@@ -52,14 +45,14 @@ async function Conteudo() {
     titulo: n.titulo,
     corpo: n.corpo,
     lida: n.lida,
-    grupo: grupoDoDia(n.em, agora, FUSO),
-    quando: rotuloDoQuando(n.em, agora, FUSO),
-    destino: n.destino && (admin || !SO_ADMIN.has(n.destino)) ? { rotulo: textos.destinos[n.destino], href: HREF[n.destino] } : null,
+    grupo: grupoDoDia(n.em, agora, fuso),
+    quando: rotuloDoQuando(n.em, agora, fuso),
+    destino: n.destino ? destinoDoAtalho(n.destino, admin) : null,
   }));
   return (
     <div className="grid grid-cols-1 items-start gap-4 large:grid-cols-[minmax(0,1fr)_20rem]">
       <CaixaDeNotificacoes itens={itens} />
-      <ComoChegam canais={r.data.canais} admin={admin} />
+      <ComoChegam canais={r.data.canais} configurar={atalhoDeConfiguracoes(admin)} />
     </div>
   );
 }

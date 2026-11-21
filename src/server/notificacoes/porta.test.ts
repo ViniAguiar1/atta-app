@@ -4,7 +4,7 @@ import { escolherPortaNotificacoes } from "./porta";
 
 describe("porta do sino (MIG-45)", () => {
   it("na produção, sem leitura real, a caixa vem vazia e os canais sem configuração", async () => {
-    expect(await escolherPortaNotificacoes("production").caixa()).toEqual({ ok: true, data: { itens: [], canais: CANAIS_VAZIOS } });
+    expect(await escolherPortaNotificacoes("production").caixa()).toEqual({ ok: true, data: { itens: [], canais: CANAIS_VAZIOS, fuso: "America/Sao_Paulo" } });
   });
 
   it("na prévia, no local e no CI vem a simulada, pelo mesmo schema, sem palavra de saúde no texto", async () => {
