@@ -27,7 +27,7 @@ describe("política do grant", () => {
   });
 
   it("o download dos PDFs do PROpass vale 30 min absolutos e no máximo 20 vezes, como no banco (ADR 0001)", () => {
-    const download = readFileSync(join(process.cwd(), "supabase/migrations/20261121144506_platform_propass_download_grant.sql"), "utf8");
+    const download = readFileSync(join(process.cwd(), "supabase/migrations/20261121153312_platform_propass_download_grant.sql"), "utf8");
     expect(POLITICA.propass_download).toEqual({ inatividadeSeg: null, tetoSeg: 1800 });
     expect(MAX_USOS).toEqual({ propass_download: 20 });
     expect(download).toContain("when 'propass_download' then interval '30 minutes'");
