@@ -31,7 +31,7 @@ export const GRUPOS: Grupo[] = [
       { caminho: "termos", titulo: "Termos & Políticas", exibir: "nunca" }, // simulador
     ],
   },
-  { titulo: "Pacientes", secoes: [{ caminho: "importacao", titulo: "Importação de pacientes", exibir: "nunca" }] }, // simulador
+  { titulo: "Pacientes", secoes: [{ caminho: "importacao", titulo: "Importação de pacientes", exibir: "fora-da-producao" }] }, // simulador (porta simulada do MIG-34 até a real)
   {
     titulo: "Conta", // simulador
     secoes: [

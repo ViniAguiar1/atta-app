@@ -6,7 +6,7 @@ import { DataState } from "@/components/ui/DataState";
 import { FaixaInformativa } from "@/components/ui/FaixaInformativa";
 import { FluxoDeImportacao, type AcoesDaImportacao } from "@/components/importacao/FluxoDeImportacao";
 import { textosDaImportacao as t } from "@/components/importacao/textos";
-import type { SituacaoDaImportacao } from "@/components/importacao/tipos";
+import type { SituacaoImportacao as SituacaoDaImportacao } from "@/server/importacao/porta";
 import type { Resultado } from "@/lib/errors";
 
 // Configurações › Importação de pacientes (Simulador ATTA-in, captura 48; PDD v206 §10.1 por cima, PLANO "Importação de
