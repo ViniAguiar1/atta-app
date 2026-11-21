@@ -20,9 +20,9 @@ test.describe("Agenda › Hoje", () => {
     expect(await page.locator("main").innerText()).not.toMatch(PROIBIDO);
   });
 
-  test("a aba Agendamentos ainda não aparece na barra", async ({ page }) => {
+  test("a aba Agendamentos aparece na barra e fica ativa (as 6 abas sempre, decisão do dono)", async ({ page }) => {
     await page.goto("/painel/agenda");
-    await expect(page.getByRole("banner").getByRole("link", { name: /Agendamentos/ })).toHaveCount(0);
+    await expect(page.getByRole("banner").getByRole("link", { name: /Agendamentos/ })).toHaveAttribute("aria-current", "page");
   });
 
   test("a busca filtra sem levar o termo à URL", async ({ page }) => {
