@@ -110,16 +110,28 @@ begin
   return substr(p, 13, 1)::int = d1 and substr(p, 14, 1)::int = d2;
 end;
 $$;
-revoke all on function private.cnpj_is_valid(text) from public, anon;
--- Exceção à regra do private (ADR 0001 §1): a função entra no CHECK da coluna, e o Postgres confere o EXECUTE de quem
--- grava a linha (o ADMIN que renomeia a clínica pelo grant de coluna, o service_role). É pura e imutável: não lê
--- tabela nem devolve dado de ninguém, só true/false para o texto recebido.
-grant execute on function private.cnpj_is_valid(text) to authenticated, service_role;
+revoke all on function private.cnpj_is_valid(text) from public, anon, authenticated, service_role;
 
--- o CNPJ guardado é sempre a forma + o DV (contrato do Tech Lead, ADR 0001 §"CNPJ alfanumérico"): maiúsculas, sem
--- pontuação. Os CNPJs fictícios que já estão no banco (seed e nuvem) passam no DV.
+-- O CNPJ guardado é sempre a forma + o DV (contrato do Tech Lead, ADR 0001 §"CNPJ alfanumérico"): maiúsculas, sem
+-- pontuação. A forma fica no CHECK da coluna; o DV, num gatilho SECURITY DEFINER que só dispara quando o CNPJ muda.
+-- (Uma função no CHECK exigiria EXECUTE de quem grava a linha, e o private só abre as funções de policy: portões do
+-- MIG-02.) Os CNPJs fictícios que já estão no banco (seed e nuvem) passam no DV.
 alter table platform.tenant drop constraint tenant_cnpj_check;
-alter table platform.tenant add constraint tenant_cnpj_check check (cnpj is null or private.cnpj_is_valid(cnpj));
+alter table platform.tenant add constraint tenant_cnpj_check check (cnpj ~ '^[0-9A-Z]{12}[0-9]{2}$');
+
+create function private.tenant_cnpj_guard() returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if new.cnpj is not null and not private.cnpj_is_valid(new.cnpj) then
+    raise exception using errcode = '23514', message = 'ATTA-IN-0001', detail = 'cnpj';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function private.tenant_cnpj_guard() from public, anon, authenticated, service_role;
+create trigger tenant_cnpj_guard before insert or update of cnpj on platform.tenant
+  for each row execute function private.tenant_cnpj_guard();
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- O que falta para consolidar documentos (§10.4.1: "enquanto faltar CNPJ, gestor ou RT completos"). Uma regra só,
