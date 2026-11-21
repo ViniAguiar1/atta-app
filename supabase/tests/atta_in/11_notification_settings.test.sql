@@ -1,7 +1,7 @@
 -- MIG-15 (parte 1): Configurações › Notificações (PDD v206 §10.4.6 e §21). Dados fictícios; envelope de teste (bytes
 -- fictícios, sem chave real: o banco não abre o envelope, só confere a forma e a máscara).
 begin;
-select plan(25);
+select plan(27);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
                                               ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
@@ -94,6 +94,12 @@ select is(pg_temp.erro($$ select api.notification_channel_set('email', true, pg_
 select is(pg_temp.erro($$ select api.notification_channel_set('email', true, pg_temp.enc(), 'recepcao@clinica.test',
                                                               gen_random_uuid(), pg_temp.enc(), 1::smallint) $$),
           'P0001:ATTA-IN-0001:address', 'endereço em claro no lugar da máscara: recusado');
+select is(pg_temp.erro($$ select api.notification_channel_set('email', false, pg_temp.enc(), 're•••@cl•••.test',
+                                                              gen_random_uuid(), pg_temp.enc(), 1::smallint) $$),
+          'P0001:ATTA-IN-0003:estado', 'trocar o endereço com o canal desligado: recusado (ligue para editar)');
+select is(pg_temp.erro($$ select api.notification_channel_set('email', true, pg_temp.enc(), 're•••@cl•••.test',
+                                                              gen_random_uuid(), pg_temp.enc(), 0::smallint) $$),
+          'P0001:ATTA-IN-0001:address', 'versão de chave inválida no envelope: recusada');
 select lives_ok($$ select api.notification_channel_set('whatsapp', true, pg_temp.enc(), '(11) •••••-••01',
                                                        gen_random_uuid(), pg_temp.enc(), 1::smallint) $$,
                 'liga o WhatsApp com o envelope e a máscara');
