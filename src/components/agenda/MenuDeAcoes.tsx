@@ -133,7 +133,7 @@ function ItemDaLista({
       </button>
       {/* o motivo aparece na tela também, não só para o leitor (nota do FE3 no #277), fora do nome do botão */}
       {desabilitada && (
-        <span id={idDoMotivo} className="-mt-1 block px-4 pb-1 text-xs text-text-tertiary">
+        <span id={idDoMotivo} className="-mt-1 block px-4 pb-1 text-xs text-text-secondary">
           {motivo(item.desabilitadaPor ?? "")}
         </span>
       )}
