@@ -129,6 +129,9 @@ test.describe("gestora da Clínica Alfa", () => {
         const caixa = await page.getByRole("button", { name: nome }).boundingBox();
         expect(caixa && caixa.x >= 0 && caixa.x + caixa.width <= largura).toBe(true);
       }
+      // alvo de toque de 44 px no celular (régua do painel; nota do Frontend no #327)
+      const novo = await page.getByRole("button", { name: "+ Novo paciente" }).boundingBox();
+      if (largura < 600) expect(novo && novo.height >= 44).toBe(true);
     });
   }
 });
