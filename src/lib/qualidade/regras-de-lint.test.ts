@@ -57,6 +57,21 @@ describe("regras do tema no ESLint", { timeout: 60_000 }, () => {
     expect(await avisos(tela("text-[0.8125rem]"), "src/features/exemplo/Tela.test.tsx")).toEqual([]);
   });
 
+  it("classe que o tema não gera vira aviso; tokens, variantes do tema e as classes próprias do globals.css não", async () => {
+    const desconhecidas = async (codigo: string, arquivo = "src/features/exemplo/Tela.tsx") => {
+      const [resultado] = await eslint.lintText(codigo, { filePath: join(RAIZ, arquivo) });
+      return (resultado?.messages ?? []).filter((m) => m.ruleId === "better-tailwindcss/no-unknown-classes");
+    };
+    // o tema zera os raios além de sm e md (e a fonte mono): o Tailwind não gera estas classes
+    for (const classe of ["rounded-xl", "font-mono"]) {
+      const [aviso] = await desconhecidas(tela(classe));
+      expect(aviso?.severity, classe).toBe(1);
+    }
+    const conhecidas = "rounded-md rounded-sm text-corpo text-titulo bg-brand text-on-brand medium:px-5 large:flex has-[[data-subabas]]:pt-0 sobre-marca cartao-do-site";
+    expect(await desconhecidas(tela(conhecidas))).toEqual([]);
+    expect(await desconhecidas(tela("rounded-xl"), "src/features/exemplo/Tela.test.tsx")).toEqual([]);
+  });
+
   it("nos testes, cor e breakpoint não são cobrados", async () => {
     expect(await mensagens(tela("bg-[#fff] md:flex"), "src/features/exemplo/Tela.test.tsx")).toEqual([]);
   });
