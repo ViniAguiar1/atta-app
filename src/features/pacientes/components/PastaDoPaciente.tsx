@@ -17,7 +17,8 @@ const dataBr = (aaaaMmDd: string) => aaaaMmDd.split("-").reverse().join("/");
 
 function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-1 gap-1 border-b border-border py-2.5 last:border-b-0 medium:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] medium:gap-4">
+    // captura 12: linhas de ~32 px e a coluna do valor a ~35% da largura do cartão
+    <div className="grid grid-cols-1 gap-0.5 border-b border-border py-1.5 last:border-b-0 medium:grid-cols-[35%_minmax(0,1fr)] medium:gap-4">
       <dt className="text-xs font-medium text-text-primary">{rotulo}</dt>
       <dd className="text-[0.8125rem] text-text-primary">{children}</dd>
     </div>
@@ -43,7 +44,7 @@ function Selo({ ficha }: { ficha: FichaDoPaciente }) {
 function DadosCadastrais({ ficha }: { ficha: FichaDoPaciente }) {
   return (
     <CartaoDeSecao titulo={t.dados.titulo} subtitulo={t.dados.subtitulo} icone="👤">
-      <dl className="-my-2.5">
+      <dl className="-mt-4 -mb-1.5">
         {ficha.nomeSocial && <Linha rotulo={t.campos.nomeSocial}>{ficha.nomeSocial}</Linha>}
         <Linha rotulo={t.campos.nomeCivil}>{ficha.nomeCivil}</Linha>
         <Linha rotulo={t.campos.identificacao}>
@@ -64,7 +65,7 @@ function DadosCadastrais({ ficha }: { ficha: FichaDoPaciente }) {
 
 function ItemDoResumo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 border-b border-border py-2.5">
+    <div className="flex flex-col gap-0.5 border-b border-border py-2">
       <dt className="text-[0.6875rem] font-semibold tracking-wide text-text-secondary uppercase">{rotulo}</dt>
       <dd className="text-[0.8125rem] text-text-primary">{children}</dd>
     </div>
@@ -75,11 +76,11 @@ function Resumo({ ficha }: { ficha: FichaDoPaciente }) {
   const incompleto = ficha.identificacao.tipo === "incompleto";
   const titulo = useId();
   return (
-    <aside aria-labelledby={titulo} className="flex flex-col gap-4 rounded-md bg-surface-app p-4">
+    <aside aria-labelledby={titulo} className="flex flex-col gap-4 border-t border-border p-4 large:border-t-0 large:border-l">
       <h2 id={titulo} className="text-[0.6875rem] font-semibold tracking-wide text-text-primary uppercase">
         {t.resumo.titulo}
       </h2>
-      <dl className="-mt-2.5">
+      <dl className="-mt-2">
         <ItemDoResumo rotulo={t.resumo.paciente}>{ficha.nome}</ItemDoResumo>
         <ItemDoResumo rotulo={t.resumo.identificacao}>
           <Documento identificacao={ficha.identificacao} />
@@ -104,8 +105,9 @@ function Resumo({ ficha }: { ficha: FichaDoPaciente }) {
 
 export function PastaDoPaciente({ ficha }: { ficha: FichaDoPaciente }) {
   return (
-    <div className="grid grid-cols-1 gap-4 large:grid-cols-[minmax(0,1fr)_17.5rem]">
-      <div className="flex min-w-0 flex-col gap-4">
+    // captura 12: os cartões num painel claro com 16 px de respiro; o resumo à direita, separado por uma linha
+    <div className="grid grid-cols-1 gap-4 large:grid-cols-[minmax(0,1fr)_16.5rem]">
+      <div className="flex min-w-0 flex-col gap-4 rounded-md bg-surface-raised p-4">
         <DadosCadastrais ficha={ficha} />
       </div>
       <Resumo ficha={ficha} />

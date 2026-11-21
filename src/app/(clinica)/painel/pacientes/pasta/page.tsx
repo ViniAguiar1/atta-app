@@ -16,7 +16,8 @@ type Props = { searchParams: Promise<{ paciente?: string | string[] }> };
 
 export default function Page({ searchParams }: Props) {
   return (
-    <div className="flex flex-col gap-6">
+    // captura 12: 16 px das subabas ao painel da Pasta
+    <div className="flex flex-col gap-4">
       <h1 className="sr-only">{textos.subabas.pasta}</h1>
       <Subabas rotulo={textos.subabas.rotulo} itens={SUBABAS_DE_PACIENTES} ativa="/painel/pacientes/pasta" />
       <Suspense fallback={<Carregando />}>
