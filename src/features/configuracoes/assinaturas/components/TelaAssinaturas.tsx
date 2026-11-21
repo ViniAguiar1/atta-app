@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { CartaoDeSecao } from "@/components/ui/CartaoDeSecao";
 import { DataState } from "@/components/ui/DataState";
+import { FaixaInformativa } from "@/components/ui/FaixaInformativa";
 import { Monograma } from "@/components/ui/Monograma";
 import type { Resultado } from "@/lib/errors";
-import { type Chancela, type ConfiguracaoDeAssinatura, MODELOS, type ModeloDeAssinatura } from "@/server/assinaturas/tipos";
+import { type Chancela, type ConfiguracaoDeAssinatura, MODELOS, MODELOS_COM_RT, type ModeloDeAssinatura } from "@/server/assinaturas/tipos";
 import { salvarModelo } from "../actions";
 import { textos as t } from "../textos";
 
@@ -100,6 +101,9 @@ export function TelaAssinaturas({ resultado }: Props) {
                     })}
                   </div>
                 </fieldset>
+                {!dados.rtCompleto && dados.modelo && MODELOS_COM_RT.includes(dados.modelo) && (
+                  <FaixaInformativa destaque={t.semRt.destaque}>{t.semRt.texto}</FaixaInformativa>
+                )}
                 <p className="text-text-secondary">{t.modelo.rodape}</p>
                 {erro && (
                   <p role="alert" className="text-status-negative">
