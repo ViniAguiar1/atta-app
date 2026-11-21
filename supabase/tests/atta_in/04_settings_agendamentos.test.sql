@@ -57,7 +57,7 @@ end $$;
 
 -- leitura da tela: padrões do PDD e limites (PDD omisso nos limites: decididos pelo CTO, R9)
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
-select is((select count(*)::int from atta_in.settings_screen()), 7, 'a tela lê as 7 chaves numa chamada');
+select is((select count(*)::int from atta_in.settings_screen()), 10, 'a tela lê as 10 chaves numa chamada (com as 3 durações do §10.2)');
 select results_eq($$ select key, value_int, source, min_int, max_int from atta_in.settings_screen()
                      where key in ('link_envio_antecedencia_h', 'link_validade_apos_h', 'lembrete_1_min', 'lembrete_2_min')
                      order by key $$,
