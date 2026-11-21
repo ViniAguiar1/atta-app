@@ -14,6 +14,11 @@ test("o ATTA abre a Central de Ajuda, com as 5 subabas do simulador", async ({ p
   const subabas = page.getByRole("navigation", { name: "Seções do ATTA" }).getByRole("link");
   await expect(subabas).toHaveText(["Central de Ajuda", "Suporte & Chamados", "Privacidade & Dados (LGPD)", "Co-criação", "Soluções ATTA"]);
   await expect(subabas.first()).toHaveAttribute("aria-current", "page");
+  // Central de Ajuda (§10.6.1): os 7 guias do PDD e o FAQ, que abre pelo teclado
+  await expect(page.getByRole("region", { name: "Guias por módulo" }).getByRole("heading", { level: 3 })).toHaveCount(7);
+  await page.locator("summary", { hasText: "A recepção pode ver as respostas do Formulário de Saúde?" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/Não, em nenhuma tela\. Nem o ADMIN acessa o conteúdo/)).toBeVisible();
   expect((await axe(page)).violations).toEqual([]);
 });
 
