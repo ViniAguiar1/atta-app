@@ -18,6 +18,34 @@ export const textos = {
     vazioTitulo: "Nenhum paciente aberto",
     vazioTexto: "Escolha um paciente na lista de Pacientes para abrir a Pasta dele.",
     irParaLista: "Ir para a lista de Pacientes",
+    naoEncontrado: "Este paciente não foi encontrado nesta clínica.", // provisório
+    estado: "pasta do paciente", // provisório (rótulo do DataState para leitor de tela)
+    dados: { titulo: "Dados cadastrais", subtitulo: "Nome, contato e endereço" }, // simulador, captura 12
+    campos: {
+      // simulador, captura 12
+      nomeSocial: "Nome social", nomeCivil: "Nome civil", identificacao: "Identificação", nascimento: "Nascimento",
+      celular: "Celular", email: "E-mail", endereco: "Endereço", emergencia: "Contato de emergência",
+      selo: "Identidade verificada", convenio: "Convênio", carteirinha: "Carteirinha",
+    },
+    semDado: "—", // simulador, captura 12 (Carteirinha); provisório nos campos que a API ainda não traz
+    selo: {
+      sem: "Sem selo", // simulador, captura 12
+      semTexto: "Sem ATTA me. O selo só vem do ATTA me; a ausência nunca bloqueia o atendimento.", // simulador, captura 12
+      com: "Com selo", // simulador, captura 10 (chip)
+      comTexto: (ate: string) => `Verificado pelo ATTA me. Vale até ${data(ate.slice(0, 10))}.`, // provisório
+      expirado: "Selo expirado", // simulador, captura 12
+      expiradoTexto: (em: string) => `Selo expirado em ${data(em.slice(0, 10))} (vale 1 ano). O paciente refaz a verificação no ATTA me.`, // simulador, captura 12
+    },
+    resumo: {
+      titulo: "Resumo do paciente", // simulador, captura 12
+      paciente: "Paciente", identificacao: "Identificação", situacao: "Situação", // simulador, captura 12
+      atendimentosHoje: "Atendimentos hoje", termosAssinados: "Termos assinados", pendencias: "Pendências", // simulador, captura 12
+      completo: "Completo", // simulador, captura 12
+    },
+    registro: {
+      titulo: "Registro e métricas", // simulador, captura 12
+      texto: "Abrir a pasta é leitura de dado pessoal e fica na Auditoria.", // simulador, captura 12
+    },
   },
   cards: {
     rotulo: "Resumo dos pacientes", // provisório (nome da região para o leitor de tela)
@@ -62,6 +90,7 @@ export const textos = {
       // simulador, captura 16 (o mesmo CPF já é paciente desta clínica)
       negrito: "Não é possível criar outro cadastro.",
       texto: "Esta identificação já existe uma vez na rede ATTA. A clínica só vincula: abra a pasta ou agende um atendimento com este CPF; os dados vêm prontos.",
+      abrirPasta: "Abrir pasta existente", // simulador, captura 16
     },
     naRede: {
       // provisório (PDD §10.1 e decisão do dono de 20/11: o cadastro da rede aparece para a recepção confirmar e vincular)
@@ -124,6 +153,7 @@ export const textos = {
     com_selo: "Com selo", // simulador, captura 10
     selo_expirado: "Selo expirado", // simulador, captura 09
   },
+  abrirPasta: (nome: string) => `Abrir a pasta de ${nome}`, // simulador, captura 09 (rótulo do nome na lista)
   nomeSocial: "usa nome social", // provisório (o asterisco do simulador, dito ao leitor de tela)
   identificacao: {
     cpfFalado: (final: string) => `CPF terminado em ${final}`, // provisório (padrão do painel, ADR 0002 §6)

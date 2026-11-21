@@ -151,7 +151,19 @@ describe("porta real de Pacientes (MIG-43)", () => {
     });
     const r = await porta.obter(ID);
     expect(rpc).toHaveBeenCalledWith("patient_get", { p_person_id: ID });
-    expect(r.ok && r.data).toMatchObject({ nascimento: "1990-09-17", selo: { validoAte: "2027-06-30T00:00:00Z" }, origem: "atta_me", acessoARede: "proprio" });
+    expect(r.ok && r.data).toMatchObject({ nascimento: "1990-09-17", selo: { validoAte: "2027-06-30T00:00:00Z" }, seloExpirouEm: null, origem: "atta_me", acessoARede: "proprio" });
+  });
+
+  it("selo vencido não vale, mas a Pasta recebe a data em que expirou (RN-PAC-06)", async () => {
+    rpc.mockResolvedValue({
+      data: [{
+        ...(await linha()), full_name: "Juliana Prates", social_name: null, birth_date: null, foreign_doc_type: null,
+        is_incomplete: false, is_verified: false, verified_until: "2026-06-01T00:00:00Z", origin: "recepcao",
+      }],
+      error: null,
+    });
+    const r = await porta.obter(ID);
+    expect(r.ok && r.data).toMatchObject({ selo: null, seloExpirouEm: "2026-06-01T00:00:00Z" });
   });
 
   it("celular e e-mail: formato e máscara (só DDD, 4 finais, 2 letras e domínio)", () => {

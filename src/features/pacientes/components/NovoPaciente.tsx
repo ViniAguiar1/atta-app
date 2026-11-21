@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
 import { CartaoDeSecao } from "@/components/ui/CartaoDeSecao";
@@ -280,6 +281,15 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                 <div role="status" className="rounded-md border border-border border-l-4 border-l-status-negative p-3">
                   <strong>{m.jaExiste.negrito}</strong> {m.jaExiste.texto}
                 </div>
+              )}
+              {tipo === "ja_paciente" && daClinica && (
+                // captura 16: o paciente já é desta clínica, então a recepção abre a Pasta dele
+                <Link
+                  href={`/painel/pacientes/pasta/${daClinica.id}`}
+                  className="inline-flex h-8 w-fit items-center rounded-md border border-border-functional px-3 text-xs font-medium hover:bg-surface-card"
+                >
+                  {m.jaExiste.abrirPasta}
+                </Link>
               )}
               {tipo === "na_rede" && cartao && <CartaoDaPessoa cartao={cartao} explicar />}
               {/* "Algum dado não confere? Reportar à ATTA" (captura 17; RN-PAC-08): a clínica só reporta, não decide nem

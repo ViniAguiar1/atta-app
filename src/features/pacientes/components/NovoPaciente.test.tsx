@@ -97,6 +97,7 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     expect(dialogo).toHaveTextContent("(11) ·····-5566");
     expect(dialogo).not.toHaveTextContent("Respostas de saúde"); // a ficha não traz a contagem
     expect(within(dialogo).queryByRole("button", { name: "Cadastrar paciente" })).toBeNull();
+    expect(within(dialogo).getByRole("link", { name: "Abrir pasta existente" })).toHaveAttribute("href", `/painel/pacientes/pasta/${cartao.id}`);
   });
 
   it("primeira vez na rede: abre os campos, valida na tela e cadastra pelo corpo da action", async () => {

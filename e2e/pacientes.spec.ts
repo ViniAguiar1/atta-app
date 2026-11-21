@@ -61,6 +61,30 @@ test.describe("gestora da Clínica Alfa", () => {
     await expect(page.getByRole("rowheader")).toHaveCount(DA_ALFA.length);
   });
 
+  test("o nome abre a Pasta do Paciente (captura 12): contato inteiro só aqui, CPF mascarado, nada de outra clínica", async ({ page }) => {
+    await page.goto("/painel/pacientes");
+    await page.getByRole("link", { name: "Abrir a pasta de Juliana Prates" }).click();
+    await expect(page).toHaveURL(/\/painel\/pacientes\/pasta\/[0-9a-f-]{36}$/);
+    await expect(page.getByRole("navigation", { name: "Seções de Pacientes" }).getByRole("link", { name: "Pasta do Paciente" })).toHaveAttribute("aria-current", "page");
+    const dados = page.getByRole("region", { name: "Dados cadastrais" });
+    await expect(dados).toContainText("Juliana Prates");
+    await expect(dados).toContainText("17/09/1990");
+    await expect(dados).toContainText("(11) 98765-4321"); // a Pasta é a leitura auditada (patient.read)
+    await expect(dados).toContainText("juliana.prates@");
+    await expect(dados).toContainText("···.···.247-25");
+    expect(await page.content()).not.toContain("52998224725");
+    await expect(page.getByRole("complementary", { name: "Resumo do paciente" })).toContainText("Completo");
+    expect((await axe(page)).violations).toEqual([]);
+    expect(page.url()).not.toMatch(/juliana|529/i);
+
+    // paciente só da Clínica Beta (seed): o mesmo "não encontrado" de um id qualquer, sem dizer se existe na rede
+    await page.goto("/painel/pacientes/pasta/eeee0000-0000-4000-8000-000000000106");
+    await expect(page.getByText("Este paciente não foi encontrado nesta clínica.")).toBeVisible();
+    await expect(page.getByText("Otávio Ramos")).toHaveCount(0);
+    await page.goto("/painel/pacientes/pasta/nao-e-um-id");
+    await expect(page.getByText("Este paciente não foi encontrado nesta clínica.")).toBeVisible();
+  });
+
   for (const largura of [1280, 390]) {
     test(`em ${largura} px passa no axe, sem texto de ambiente e sem rolagem lateral da página`, async ({ page }) => {
       await page.setViewportSize({ width: largura, height: 800 });

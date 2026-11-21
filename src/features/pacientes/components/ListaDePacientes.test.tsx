@@ -66,6 +66,8 @@ describe("lista de Pacientes (MIG-43; simulador, capturas 09 a 11)", () => {
     const linha = within(screen.getByRole("row", { name: /Carla Siqueira/ }));
     expect(linha.getByText("Incompleto")).toBeInTheDocument();
     expect(linha.getByRole("rowheader")).toHaveTextContent("Carla Siqueira*, usa nome social");
+    // o nome abre a Pasta (PDD §10, Pacientes, lista): só o id na URL
+    expect(linha.getByRole("link", { name: "Abrir a pasta de Carla Siqueira" })).toHaveAttribute("href", expect.stringMatching(/^\/painel\/pacientes\/pasta\/[0-9a-f-]{36}$/));
     expect(linha.getByText("Nascimento não informado")).toHaveClass("sr-only");
     expect(linha.queryByText("Com selo")).toBeNull();
     for (const t of ["Sem documento", "Sem celular", "Sem e-mail", "Nenhum atendimento aqui"]) {

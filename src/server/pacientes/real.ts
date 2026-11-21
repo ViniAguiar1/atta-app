@@ -234,6 +234,7 @@ export const portaPacientesReal: PortaPacientes = {
         identificacao: identificacaoDe(f.cpf_masked, f.foreign_doc_masked),
         contato: contato.celular || contato.email ? { celular: celularParaTela(contato.celular), email: contato.email } : null,
         selo: f.is_verified && f.verified_until ? { validoAte: f.verified_until } : null,
+        seloExpirouEm: !f.is_verified && f.verified_until ? f.verified_until : null,
         origem: f.origin,
         vinculadoEm: f.linked_at,
         acessoARede: f.network_access === "pending" ? "pendente" : f.network_access === "granted" ? "autorizado" : "proprio",

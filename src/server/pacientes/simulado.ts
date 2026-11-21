@@ -140,6 +140,7 @@ export function criarPortaSimulada(pacientes: readonly Simulado[] = PACIENTES_SI
         identificacao: p.identificacao,
         contato: p.contato,
         selo: p.ficha.selo,
+        seloExpirouEm: null,
         origem: p.ficha.origem,
         vinculadoEm: "2026-11-01T12:00:00Z",
         acessoARede: p.ficha.acessoARede,
