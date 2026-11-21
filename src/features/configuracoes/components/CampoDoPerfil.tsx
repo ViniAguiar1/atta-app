@@ -1,26 +1,30 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { cnpjValido, emailValido, mascararCep, mascararCnpj, mascararTelefone, soDigitos } from "@/lib/brasil/documentos";
-import type { Erro } from "@/lib/errors";
+import { cnpjValido, emailValido, formatarCnpj, mascararCep, mascararTelefone, normalizarCnpj, soDigitos } from "@/lib/brasil/documentos";
+import { falha, type Erro } from "@/lib/errors";
 import type { CampoDaEmpresa } from "@/server/perfil/porta";
 import { salvarCampoDoPerfil } from "../actions";
 import { textos } from "../textos";
 
 // Um campo do Perfil da Clínica, salvo sozinho (PDD §10.4.1: salvamento automático, campo a campo, sem botão): ao sair do
-// campo ou no Enter; a UF logo depois de escolher. CNPJ, CEP e telefones aparecem com máscara e vão só com os dígitos.
+// campo ou no Enter; a UF logo depois de escolher. CEP e telefones aparecem com máscara e vão só com os dígitos; o CNPJ
+// aceita letra nas 12 primeiras posições (alfanumérico, ADR 0001) e vai em maiúsculas, sem a pontuação da máscara.
 // Quem decide formato e obrigatório é o banco; a tela só confere antes o dígito do CNPJ e a estrutura do e-mail (§16.6),
 // para responder na hora.
 const t = textos.perfil;
 const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"] as const;
 
 const MASCARA: Partial<Record<CampoDaEmpresa, (v: string) => string>> = {
-  cnpj: mascararCnpj,
+  cnpj: formatarCnpj,
   address_cep: mascararCep,
   phone: mascararTelefone,
   clinic_whatsapp: mascararTelefone,
 };
-const SO_DIGITOS = new Set<CampoDaEmpresa>(["cnpj", "address_cep", "phone", "clinic_whatsapp"]);
+const SO_DIGITOS = new Set<CampoDaEmpresa>(["address_cep", "phone", "clinic_whatsapp"]);
+// a forma que vai ao servidor: a mesma que o banco grava (api.clinic_profile_set normaliza o CNPJ como o normalizarCnpj)
+const normalizar = (campo: CampoDaEmpresa, texto: string) =>
+  campo === "cnpj" ? normalizarCnpj(texto) : SO_DIGITOS.has(campo) ? soDigitos(texto) : texto.trim();
 // só o 1º preenchimento; depois, só leitura (PDD §10.4.3: a alteração do CNPJ é ação protegida; contrato do TL, ADR 0001)
 const PROTEGIDOS = new Set<CampoDaEmpresa>(["cnpj", "legal_name"]);
 
@@ -73,7 +77,7 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
   }
 
   function salvar(texto: string, confirmado = false) {
-    const normal = SO_DIGITOS.has(campo) ? soDigitos(texto) : texto.trim();
+    const normal = normalizar(campo, texto);
     if (normal === salvoAte || normal === enviando.current) return setErro(null);
     if (campo === "cnpj" && normal && !cnpjValido(normal)) return setErro(t.erros.cnpj);
     if (campo === "commercial_email" && normal && !emailValido(normal)) return setErro(t.erros.email);
@@ -81,8 +85,14 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
     setSalvoEm(null);
     enviando.current = normal;
     executar(async () => {
-      const r = await salvarCampoDoPerfil({ campo, valor: normal || null });
-      enviando.current = null;
+      let r: Awaited<ReturnType<typeof salvarCampoDoPerfil>>;
+      try {
+        r = await salvarCampoDoPerfil({ campo, valor: normal || null });
+      } catch {
+        r = falha("INDISPONIVEL", "");
+      } finally {
+        enviando.current = null; // a falha de rede não prende o campo: o mesmo valor pode ir de novo (nota do Frontend 2)
+      }
       if (!r.ok) return setErro(mensagem(r.error, campo));
       setErro(null);
       setSalvoAte(normal);
@@ -128,6 +138,9 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
           ref={entrada}
           type={campo === "commercial_email" ? "email" : "text"}
           inputMode={SO_DIGITOS.has(campo) ? "numeric" : campo === "commercial_email" ? "email" : undefined}
+          // CNPJ alfanumérico: teclado de texto, com maiúsculas no celular e sem corretor
+          autoCapitalize={campo === "cnpj" ? "characters" : undefined}
+          spellCheck={campo === "cnpj" ? false : undefined}
           autoComplete="off"
           value={rascunho}
           onChange={(e) => setRascunho(mascara ? mascara(e.target.value) : e.target.value)}

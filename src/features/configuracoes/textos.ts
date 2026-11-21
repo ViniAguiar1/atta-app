@@ -118,6 +118,7 @@ export const textos = {
       manager: "Gestor da clínica",
       technical_lead: "Responsável Técnico",
     } as Record<string, string>, // PDD §10.4.1 e decisão do CTO (R35)
+    faltandoOutro: "Outro dado obrigatório do Perfil", // provisório (código que a tela ainda não conhece; nota do Tech Lead Frontend)
     // CNPJ e Razão social: só o 1º preenchimento; depois, a troca é ação protegida (PDD §10.4.3; contrato do TL, ADR 0001)
     protegido: "Para trocar, peça ao suporte ATTA: a alteração passa por conferência.", // provisório (textos-para-a-po.md)
     // confirmação no 1º preenchimento do CNPJ e da Razão social, que travam depois de gravados (decisão do CTO, R43)
