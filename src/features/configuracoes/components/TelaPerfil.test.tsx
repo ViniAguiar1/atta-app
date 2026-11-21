@@ -10,6 +10,14 @@ vi.mock("../actions", () => ({ salvarCampoDoPerfil: (e: unknown) => salvar(e) })
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 const { TelaPerfil } = await import("./TelaPerfil");
 
+// o jsdom não tem o <dialog> modal: o mínimo para abrir e fechar (o foco preso e o fundo inerte são do navegador)
+HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+  this.setAttribute("open", "");
+};
+HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+  this.removeAttribute("open");
+};
+
 const PERFIL: PerfilDaClinica = {
   desde: "2026-03-01T12:00:00Z",
   fuso: "America/Sao_Paulo",
@@ -53,15 +61,37 @@ describe("Perfil da Clínica (MIG-42, captura 42)", () => {
     expect(await violacoesDoAxe(container)).toEqual([]);
   });
 
-  it("salva o campo ao sair dele, com os dígitos do CNPJ, e mostra o salvo", async () => {
+  it("salva o campo ao sair dele e mostra o salvo, aqui e no topo", async () => {
     salvar.mockResolvedValue(ok({ salvoEm: "2026-11-21T14:05:00Z" }));
     render(<TelaPerfil resultado={ok(PERFIL)} />);
-    const razao = screen.getByLabelText("Razão social");
-    await userEvent.type(razao, "Clínica Fictícia Ltda.");
+    await userEvent.type(screen.getByLabelText("Inscrição estadual/municipal (opcional)"), "123456");
     await userEvent.tab();
-    expect(salvar).toHaveBeenCalledWith({ campo: "legal_name", valor: "Clínica Fictícia Ltda." });
+    expect(salvar).toHaveBeenCalledWith({ campo: "tax_registration", valor: "123456" });
     expect(await screen.findByText("Salvo às 11:05.")).toBeInTheDocument();
     expect(screen.getByText("Último salvamento às 11:05.")).toBeInTheDocument();
+  });
+
+  it("1º preenchimento da Razão social pede confirmação mostrando o valor (R43); confirmar salva e trava o campo", async () => {
+    salvar.mockResolvedValue(ok({ salvoEm: "2026-11-21T14:05:00Z" }));
+    render(<TelaPerfil resultado={ok(PERFIL)} />);
+    await userEvent.type(screen.getByLabelText("Razão social"), "Clínica Fictícia Ltda.{Enter}");
+    expect(salvar).not.toHaveBeenCalled();
+    const dialogo = screen.getByRole("dialog", { name: "Confirmar Razão social?" });
+    expect(dialogo).toHaveTextContent("Clínica Fictícia Ltda.");
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar e salvar" }));
+    expect(salvar).toHaveBeenCalledWith({ campo: "legal_name", valor: "Clínica Fictícia Ltda." });
+    expect(await screen.findByText("Salvo às 11:05.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Razão social")).toHaveAttribute("readonly");
+  });
+
+  it("voltar na confirmação não salva e devolve o foco ao campo", async () => {
+    render(<TelaPerfil resultado={ok(PERFIL)} />);
+    const razao = screen.getByLabelText("Razão social");
+    await userEvent.type(razao, "Outra Razão Ltda.{Enter}");
+    await userEvent.click(screen.getByRole("button", { name: "Voltar e corrigir" }));
+    expect(salvar).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(razao).toHaveFocus();
   });
 
   it("CNPJ e Razão social já informados ficam só para leitura, com o caminho da troca (PDD §10.4.3)", () => {
