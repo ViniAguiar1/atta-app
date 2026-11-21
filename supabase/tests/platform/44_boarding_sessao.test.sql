@@ -11,9 +11,9 @@ values ('00000000-0000-4000-8000-0000000024e1', 'Paciente Civil Fictícia', 'Pac
 insert into network.person_tenant_link (tenant_id, person_id)
 values ('00000000-0000-4000-8000-0000000024a0', '00000000-0000-4000-8000-0000000024e1');
 insert into platform.professional (id, display_name, council, council_uf, council_number, cpf_hmac, cpf_masked, cpf_enc,
-                                   email_enc, dek_wrapped, kek_version)
+                                   email_enc, dek_wrapped, kek_version, council_status, council_verified_at)
 values ('00000000-0000-4000-8000-0000000024f1', 'Dra. Fictícia Sessão', 'cro', 'SP', '24001', sha256('cpf-24f1'::bytea),
-        '···.···.000-01', '\x01', '\x01', '\x01', 1);
+        '···.···.000-01', '\x01', '\x01', '\x01', 1, 'regularizado', now());   -- só regularizado recebe agenda (#282)
 insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
                                                envelope_id, dek_wrapped, kek_version, propass_completed_at)
 values ('00000000-0000-4000-8000-0000000024d1', '00000000-0000-4000-8000-0000000024a0', '00000000-0000-4000-8000-0000000024f1',
