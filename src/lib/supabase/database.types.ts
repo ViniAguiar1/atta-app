@@ -79,9 +79,17 @@ export type Database = {
               "next_due_date": string,"next_invoice_url": string,"next_value_cents": number,"overdue_count": number,"status": string,"value_cents": number
             }[]
                            },
+"boarding_complete":
+{ Args: { "p_session_hash": string }; Returns: string
+                           },
 "boarding_confirm_pin":
 { Args: { "p_link_hash": string,"p_pin_mac": string,"p_session_hash": string }; Returns: {
               "locked_until": string,"status": string
+            }[]
+                           },
+"boarding_open":
+{ Args: { "p_session_hash": string }; Returns: {
+              "absent_count": number,"appointment_type": string,"attended_count": number,"clinic_name": string,"patient_age": number,"patient_name": string,"starts_at_local": string,"status": string
             }[]
                            },
 "boarding_pin_subject":
