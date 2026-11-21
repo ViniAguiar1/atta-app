@@ -9,6 +9,7 @@
 #           (supabase stop --project-id; os dados ficam, o próximo start volta igual);
 #         - next dev: aberto há mais de 1 h e sem conexão na porta agora (kill);
 #         - playwright test: rodando há mais de 1 h, o que é sempre travado (kill).
+#       Só processos do node numa worktree do ViniAguiar1/atta-app; sem sigla, aparece mas nunca é desligado.
 # MAQUINA_PARADO_SEG muda o limite (padrão 3600). Os testes usam MAQUINA_AGORA e MAQUINA_KILL.
 set -eu
 
@@ -35,6 +36,16 @@ tempo() { s="$1"; printf '%dh%02dmin' $((s / 3600)) $((s % 3600 / 60)); }
 slot_da_sigla() { i=0; for s in $siglas; do i=$((i + 1)); [ "$s" = "$1" ] && { echo "$i"; return; }; done; echo 0; }
 sigla_do_slot() { i=0; for s in $siglas; do i=$((i + 1)); [ "$i" = "$1" ] && { echo "$s"; return; }; done; echo "?"; }
 conexoes() { lsof -nP -iTCP:"$1" -sTCP:ESTABLISHED 2>/dev/null | awk 'NR > 1' | wc -l | tr -d ' '; }
+# diretório de trabalho de um processo (Mac: lsof; Linux: /proc), só para conferir o repo; nunca é impresso
+cwd_do() {
+  lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1 || true
+  [ -r "/proc/$1/cwd" ] && readlink "/proc/$1/cwd" 2>/dev/null || true
+}
+# o processo roda numa worktree do atta-app (remote origin = ViniAguiar1/atta-app)?
+do_atta_app() {
+  d="$(cwd_do "$1" | head -1)"
+  [ -n "$d" ] && git -C "$d" remote get-url origin 2>/dev/null | grep -q -E '[:/]ViniAguiar1/atta-app(\.git)?$'
+}
 linha() { printf '%-6s %-15s %-9s %-6s %s\n' "$1" "$2" "$3" "$4" "$5"; }
 
 linha SIGLA PROCESSO TEMPO PORTA ESTADO
@@ -57,14 +68,17 @@ for proj in $(docker ps --filter label=com.supabase.cli.project --format '{{.Lab
   linha "$sigla" "supabase" "$(tempo "$seg")" "$api" "$estado"; ligados=$((ligados + 1))
 done
 
-# --- next dev e playwright test ---------------------------------------------------------------------------------------
+# --- next dev e playwright test, só do atta-app -----------------------------------------------------------------------
+# Só processos do node (o primeiro item do comando é o binário node) e só numa worktree do ViniAguiar1/atta-app: os de
+# outros projetos do Mac (Gestiva, Chattie...) nem aparecem (revisão do TL e da Segurança no #270).
 ps -axo pid=,etime=,command= 2>/dev/null | while read -r pid etime cmd; do
+  case "${cmd%% *}" in node | */node) ;; *) continue ;; esac
   case "$cmd" in
-    *"next dev"*) tipo="next dev" ;;
+    *"/next dev"* | *" next dev"*) tipo="next dev" ;;
     *"playwright test"* | *"playwright/cli.js test"*) tipo="playwright test" ;;
     *) continue ;;
   esac
-  case "$cmd" in *grep*) continue ;; esac
+  do_atta_app "$pid" || continue
   seg="$(etime_seg "$etime")"
   if [ "$tipo" = "next dev" ]; then
     porta="$(echo "$cmd" | sed -n -E 's/.*(--port[ =]|-p )([0-9]+).*/\2/p')"; porta="${porta:-3000}"
@@ -77,7 +91,9 @@ ps -axo pid=,etime=,command= 2>/dev/null | while read -r pid etime cmd; do
       grep -o -E 'ATTA_SIGLA=[A-Z0-9]+' | head -1 | cut -d= -f2)"; sigla="${sigla:-?}"
     estado="rodando"; [ "$seg" -gt "$limite" ] && estado="parado (travado)"
   fi
-  if [ "$parar" = 1 ] && [ "${estado%% *}" = parado ]; then $matar "$pid" 2>/dev/null && estado="$estado → desligado"; fi
+  # sem sigla não se sabe de quem é: só aparece, nunca é desligado
+  if [ "$sigla" = "?" ] && [ "${estado%% *}" = parado ]; then estado="$estado, sem sigla: não desligo"
+  elif [ "$parar" = 1 ] && [ "${estado%% *}" = parado ]; then $matar "$pid" 2>/dev/null && estado="$estado → desligado"; fi
   linha "$sigla" "$tipo" "$(tempo "$seg")" "$porta" "$estado"
 done
 
