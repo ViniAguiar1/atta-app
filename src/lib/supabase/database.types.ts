@@ -159,7 +159,7 @@ export type Database = {
                            },
 "propass_resolve":
 { Args: { "p_secret_hash": string }; Returns: {
-              "expires_at": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"invited_at": string,"link_id": string,"step": string,"tenant_id": string,"tenant_name": string
+              "expires_at": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"invited_at": string,"link_id": string,"step": string,"tenant_id": string,"tenant_name": string,"tenant_timezone": string
             }[]
                            },
 "propass_submit":

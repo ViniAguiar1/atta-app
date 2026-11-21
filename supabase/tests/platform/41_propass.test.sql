@@ -1,12 +1,13 @@
 -- MIG-14b (1): PROpass pelo link do convite (PDD v206 §10.4.3; ADR 0004 §3). Dados fictícios: bytes e nomes inventados.
 begin;
-select plan(53);
+select plan(54);
 
 insert into platform.tenant (id, name, legal_name, cnpj) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A', 'Clínica Fictícia A Ltda', '00000000004101'),
   ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B', 'Clínica Fictícia B Ltda', '00000000004102'),
   ('00000000-0000-4000-8000-00000000000c', 'Clínica Fictícia C', 'Clínica Fictícia C Ltda', '00000000004103'),
   ('00000000-0000-4000-8000-00000000000d', 'Clínica Fictícia D', 'Clínica Fictícia D Ltda', '00000000004104');
+update platform.tenant set timezone = 'America/Manaus' where id = '00000000-0000-4000-8000-00000000000a';
 
 create function pg_temp.entrar(p_tenant uuid, p_role text) returns void language plpgsql as $$
 declare
@@ -160,6 +161,8 @@ select ok((select tenant_name = 'Clínica Fictícia A' and invite_email_enc is n
                   and invited_at is not null and expires_at = invited_at + interval '7 days'
            from api.propass_resolve(sha256('link-a1'::bytea))),
           'traz a clínica, o e-mail do convite para mostrar travado e a data do convite (7 dias até vencer)');
+select is((select tenant_timezone from api.propass_resolve(sha256('link-a1'::bytea))), 'America/Manaus',
+          'traz o fuso da clínica, para a data do convite na tela');
 select is(pg_temp.vivos('00000000-0000-4000-8000-0000000000c1'), 1, 'abrir não consome o link');
 
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
