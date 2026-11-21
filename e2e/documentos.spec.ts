@@ -20,7 +20,8 @@ test.describe("gestora da Clínica Alfa", () => {
     test(`em ${largura} px: subaba, cartões, estado vazio e axe sem violação`, async ({ page }) => {
       await page.setViewportSize({ width: largura, height: 900 });
       await page.goto("/painel/documentos");
-      await expect(page.getByText("Modelos de documento", { exact: true })).toBeVisible();
+      const subabas = page.getByRole("navigation", { name: "Seções de Termos & Docs" });
+      await expect(subabas.getByRole("link")).toHaveText(["Modelos de documento", "Formulários de Saúde", "Banco de Perguntas"]);
       const cards = page.getByRole("region", { name: "Resumo dos modelos" });
       await expect(cards).toContainText("Termos ativos");
       await expect(cards).toContainText("— vencido(s) para reassinar");
@@ -29,4 +30,13 @@ test.describe("gestora da Clínica Alfa", () => {
       expect((await axe(page)).violations).toEqual([]);
     });
   }
+
+  test("Formulários de Saúde e Banco de Perguntas abrem no estado vazio, com axe sem violação", async ({ page }) => {
+    for (const [rota, vazio] of [["formularios", "Nenhum formulário de saúde ainda"], ["perguntas", "Nenhuma pergunta no banco ainda"]] as const) {
+      await page.goto(`/painel/documentos/${rota}`);
+      await expect(page.getByText(vazio)).toBeVisible();
+      await expect(page.getByRole("navigation", { name: "Seções de Termos & Docs" }).getByRole("link", { name: /Formulários|Banco/ }).first()).toBeVisible();
+      expect((await axe(page)).violations).toEqual([]);
+    }
+  });
 });
