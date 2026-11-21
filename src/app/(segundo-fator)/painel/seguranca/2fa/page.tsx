@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import { TelaDoSite } from "@/features/entrar/components/TelaDoSite";
-import { destinoSeguro } from "@/lib/auth/rotas";
-import { criarClienteServidor } from "@/lib/supabase/server";
-import { SegundoFator } from "./SegundoFator";
+import { Passo } from "./passo";
 
 export const metadata: Metadata = { title: "Código do autenticador · ATTA" };
 
@@ -24,17 +21,4 @@ export default function Pagina({ searchParams }: { searchParams: Busca }) {
       </div>
     </TelaDoSite>
   );
-}
-
-async function Passo({ searchParams }: { searchParams: Busca }) {
-  await connection();
-  const volta = destinoSeguro((await searchParams).volta);
-  const supabase = await criarClienteServidor();
-  const [{ data: nivel }, { data: fatores }] = await Promise.all([
-    supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-    supabase.auth.mfa.listFactors(),
-  ]);
-  if (nivel?.currentLevel === "aal2") return <SegundoFator passo={{ tipo: "ativo" }} volta={volta} />;
-  const verificado = fatores?.totp.find((f) => f.status === "verified");
-  return <SegundoFator passo={verificado ? { tipo: "confirmar", factorId: verificado.id } : { tipo: "ativar" }} volta={volta} />;
 }
