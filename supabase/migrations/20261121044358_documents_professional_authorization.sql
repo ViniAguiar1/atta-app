@@ -121,6 +121,10 @@ begin
   if private.authorization_template_ready(p_tenant_id) then
     return;
   end if;
+  -- escrita de sistema: a trava do kind (#188) deixa passar só com esta marca, ligada aqui dentro (função do dono) e
+  -- desligada no fim. O navegador não alcança set_config (o PostgREST não expõe pg_catalog). Sem a marca, a clínica
+  -- criada numa sessão com usuário (onboarding, backoffice) teria o seed recusado e a criação inteira voltaria.
+  perform pg_catalog.set_config('atta.system_template_seed', 'on', true);
   insert into documents.template (id, tenant_id, kind, title, frequency, required, draft_body, created_by)
   values (v_template, p_tenant_id, 'termo_de_autorizacao', 'Termo de Autorização de Uso de Imagem de Assinatura Digital',
           'unica', true, v_body, private.atta_system_user_id());
@@ -129,9 +133,32 @@ begin
   values (p_tenant_id, v_template, 1, 'termo_de_autorizacao', 'Termo de Autorização de Uso de Imagem de Assinatura Digital',
           'unica', true, v_body, encode(sha256(convert_to(v_body, 'UTF8')), 'hex'), private.atta_system_user_id());
   update documents.template set status = 'ativo', current_version = 1 where id = v_template;
+  perform pg_catalog.set_config('atta.system_template_seed', 'off', true);
 end;
 $$;
 revoke all on function private.seed_authorization_template(uuid) from public, anon, authenticated, service_role;
+
+-- a trava do kind de sistema (#188, Backend 6) ganha só a exceção do seed: com a marca ligada E dentro de função do
+-- dono. As duas condições dela continuam (Tech Lead no #192).
+create or replace function private.template_system_kind_guard()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if pg_catalog.current_setting('atta.system_template_seed', true) = 'on' and current_user = 'postgres' then
+    return new;
+  end if;
+  -- Recusa quando há usuário no token (qualquer caminho: tabela ou função SECURITY DEFINER, dentro da qual o
+  -- current_user já é o dono) ou quando quem escreve não é o dono. O seed por migration e os jobs sem token passam.
+  if (current_user <> 'postgres' or (select auth.uid()) is not null)
+     and (new.kind = 'termo_de_autorizacao' or (tg_op = 'UPDATE' and old.kind = 'termo_de_autorizacao')) then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'kind';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function private.template_system_kind_guard() from public, anon, authenticated, service_role;
 
 select private.seed_authorization_template(t.id) from platform.tenant t;
 
