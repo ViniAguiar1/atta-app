@@ -5,7 +5,7 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
     environment: "node",
-    include: ["scripts/seed-nuvem/rodar.seed.ts"],
+    include: ["scripts/seed-nuvem/*.seed.ts"],
     alias: { "server-only": new URL("../../vitest.server-only.ts", import.meta.url).pathname },
   },
 });
