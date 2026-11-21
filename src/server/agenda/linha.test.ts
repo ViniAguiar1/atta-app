@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { linhaSchema } from "@/lib/agenda/linha";
-import { lerLinhas, linhaDoBanco, linhaDaTela } from "./linha";
+import { z } from "zod";
+import { lerLinhas, linhaDoBanco, linhaDoBancoBase, linhaDaTela, umIdDoPaciente } from "./linha";
 
 // Parser comum da linha da agenda (agenda_day, agenda_range e patient_folder_appointments).
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -32,5 +33,13 @@ describe("linha da agenda (servidor)", () => {
   it("lerLinhas descarta só a linha fora do formato", () => {
     const linhas = lerLinhas([bruta(), bruta({ id: id(2), status: "liberado" }), { qualquer: "coisa" }]);
     expect(linhas.map((l) => l.id)).toEqual([id(1)]);
+  });
+
+  it("o base estende com os campos da Pasta, e a regra dos dois ids se reaplica (Zod 4: refine não aceita extend)", () => {
+    const daPasta = linhaDoBancoBase.extend({ terms_count: z.number().int().nonnegative() }).refine(umIdDoPaciente);
+    expect(daPasta.parse({ ...bruta(), terms_count: 2 }).terms_count).toBe(2);
+    const doisIds = { ...bruta(), terms_count: 0, patient: { ...bruta().patient, provisional_patient_id: id(401) } };
+    expect(daPasta.safeParse(doisIds).success).toBe(false);
+    expect(linhaDoBanco.safeParse(doisIds).success).toBe(false);
   });
 });

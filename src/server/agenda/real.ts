@@ -23,8 +23,7 @@ import type { PortaAgenda } from "./porta";
 // tipo da tela; erro do banco sai por falhaDoBanco, com o reason (ADR 0001 §5). Busca: nome em p_search; CPF inteiro
 // vira HMAC no servidor (p_cpf_hmac, bytea em hex com \x), nunca em claro, na URL ou no log.
 
-// --- Formato do banco (snake_case) ------------------------------------------------------------------------------------
-
+// --- Formato do banco (snake_case): o dia, o período e os cards; a linha fica em ./linha.ts -----------------------
 const diaDoBanco = z.object({
   local_date: z.iso.date(),
   today_local_date: z.iso.date(),
@@ -56,7 +55,6 @@ const resumoDoBanco = z.object({
   no_document: contagem,
 });
 
-
 // --- Cliente mínimo ---------------------------------------------------------------------------------------------------
 // Os argumentos são conferidos contra os tipos gerados (database.types.ts, #130). O cliente em si entra por esta interface
 // mínima, que o teste substitui: a assinatura genérica do rpc do supabase-js não encaixa nela sem o cast lá embaixo.
@@ -78,7 +76,6 @@ function foraDoFormato(evento: string) {
 }
 
 export type Hmac = (cpf: string) => Buffer;
-
 
 /** Resposta do agenda_range no tipo da tela; fora do formato, INTERNO com o evento no log. */
 function listaDoRange(data: unknown) {
