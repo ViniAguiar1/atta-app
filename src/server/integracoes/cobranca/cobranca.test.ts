@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConfiguracaoAusente } from "../mensageria/montagem";
-import { AmbienteAsaasRecusado, BASE_SANDBOX, GatewayAsaas, linkDoAsaas } from "./asaas";
+import { AmbienteAsaasRecusado, BASE_SANDBOX, GatewayAsaas, LINK_DO_ASAAS_NO_BANCO, linkDoAsaas } from "./asaas";
 import { montarGatewayCobranca } from "./montagem";
 import { SimuladorCobranca } from "./simulador";
 
@@ -333,15 +333,46 @@ describe("Asaas: busca da cobrança e link", () => {
 
   it("link de fatura só do Asaas, em https", () => {
     for (const ok of ["https://www.asaas.com/i/abc", "https://sandbox.asaas.com/i/abc", "https://asaas.com/c/x"])
-      expect(linkDoAsaas(ok), ok).toBe(true);
+      expect(linkDoAsaas(ok), ok).toBe(ok);
     for (const ruim of [
       "http://www.asaas.com/i/abc",
       "https://asaas.com.golpe.test/i/abc",
       "https://golpe-asaas.com/i/abc",
       "https://user:senha@www.asaas.com/i/abc",
       "https://www.asaas.com:8443/i/abc",
+      "https://a_b.asaas.com/i/abc",
+      "https://asaas.com./i/abc",
+      `https://www.asaas.com/i/${"a".repeat(290)}`,
       "não é url",
     ])
-      expect(linkDoAsaas(ruim), ruim).toBe(false);
+      expect(linkDoAsaas(ruim), ruim).toBeNull();
+  });
+
+  it("normaliza o link para o formato que o CHECK do banco aceita", () => {
+    const casos: [string, string][] = [
+      ["https://WWW.ASAAS.COM/i/AbC", "https://www.asaas.com/i/AbC"],
+      ["https://Sandbox.Asaas.com:443/i/abc", "https://sandbox.asaas.com/i/abc"],
+      ["HTTPS://asaas.com", "https://asaas.com/"],
+      ["https://www.asaas.com/i/a b", "https://www.asaas.com/i/a%20b"],
+    ];
+    for (const [entrada, esperado] of casos) {
+      const link = linkDoAsaas(entrada);
+      expect(link, entrada).toBe(esperado);
+      expect(LINK_DO_ASAAS_NO_BANCO.test(link ?? ""), entrada).toBe(true);
+    }
+  });
+
+  it("a busca da cobrança entrega o link já normalizado", async () => {
+    const pagamento = {
+      id: "pay_1",
+      subscription: "sub_ficticia",
+      dueDate: "2026-12-21",
+      value: 399,
+      status: "PENDING",
+      invoiceUrl: "https://SANDBOX.asaas.com:443/i/ficticio",
+    };
+    const g = new GatewayAsaas({ ...CONFIG, fetch: respostas([200, pagamento]) });
+    const r = await g.buscarCobranca("pay_1");
+    expect(r.ok && r.valor?.cobranca.linkPagamento).toBe("https://sandbox.asaas.com/i/ficticio");
   });
 });
