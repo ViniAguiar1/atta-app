@@ -155,11 +155,12 @@ select pg_temp.entrar('00000000-0000-4000-8000-0000000000f1', 'ADMIN', 'aal1');
 select throws_ok($$ select * from api.atta_in_template_list() $$, '42501', 'ATTA-AUTH-0004',
                  'ADMIN sem 2º fator não lista');
 select pg_temp.entrar('00000000-0000-4000-8000-0000000000f2', 'ADMIN');
-select is((select count(*)::int from api.atta_in_template_list()), 0, 'outra clínica não vê os modelos');
+-- o Termo de Autorização de sistema (seed em toda clínica, MIG-21c) fica fora destas contagens
+select is((select count(*)::int from api.atta_in_template_list() where title <> 'Termo de Autorização de Uso de Imagem de Assinatura Digital'), 0, 'outra clínica não vê os modelos');
 select throws_ok($$ select * from api.atta_in_template_publish(current_setting('teste.modelo')::uuid) $$,
                  'P0002', 'ATTA-CORE-0005', 'outra clínica publicando: "não encontrado", antes de olhar o vínculo');
 select pg_temp.entrar('00000000-0000-4000-8000-0000000000f1', 'COLABORADOR');
-select is((select count(*)::int from api.atta_in_template_list()), 2, 'Colaborador com Termos & Docs lista');
+select is((select count(*)::int from api.atta_in_template_list() where title <> 'Termo de Autorização de Uso de Imagem de Assinatura Digital'), 2, 'Colaborador com Termos & Docs lista');
 
 select * from finish();
 rollback;
