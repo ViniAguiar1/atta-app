@@ -43,6 +43,20 @@ describe("regras do tema no ESLint", { timeout: 60_000 }, () => {
     expect((await mensagens(codigo, "src/features/exemplo/f.test.ts")).join(" ")).toMatch(/HTML cru/);
   });
 
+  it("tamanho de texto solto vira aviso (warn), com o token no lugar; token, cor e testes não avisam", async () => {
+    const avisos = async (codigo: string, arquivo = "src/features/exemplo/Tela.tsx") => {
+      const [resultado] = await eslint.lintText(codigo, { filePath: join(RAIZ, arquivo) });
+      return (resultado?.messages ?? []).filter((m) => m.ruleId === "tema/tamanho-de-texto");
+    };
+    for (const classe of ["text-[0.8125rem]", "text-[13px]", "hover:text-[0.6875rem]"]) {
+      const [aviso] = await avisos(tela(classe));
+      expect(aviso?.severity, classe).toBe(1);
+      expect(aviso?.message).toMatch(/text-corpo \(13 px\)/);
+    }
+    expect(await avisos(tela("text-corpo text-rotulo text-numero text-xs text-sm"))).toEqual([]);
+    expect(await avisos(tela("text-[0.8125rem]"), "src/features/exemplo/Tela.test.tsx")).toEqual([]);
+  });
+
   it("nos testes, cor e breakpoint não são cobrados", async () => {
     expect(await mensagens(tela("bg-[#fff] md:flex"), "src/features/exemplo/Tela.test.tsx")).toEqual([]);
   });

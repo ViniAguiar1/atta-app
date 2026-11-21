@@ -4,6 +4,7 @@ import nextTs from "eslint-config-next/typescript";
 import { seletoresDeBreakpoint } from "./eslint-rules/breakpoints.mjs";
 import { seletoresDeCor } from "./eslint-rules/cores.mjs";
 import { fronteiras } from "./eslint-rules/fronteiras.mjs";
+import { pluginDoTema } from "./eslint-rules/tamanho-de-texto.mjs";
 
 // A secret key passa por cima da RLS: só entra onde o código roda no servidor e confere o papel (ADR 0001 §4).
 const SO_SERVIDOR = {
@@ -53,6 +54,14 @@ export default defineConfig([
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/**/*.test.{ts,tsx}"],
     rules: { "no-restricted-syntax": ["error", ...HTML_CRU, ...seletoresDeCor, ...seletoresDeBreakpoint] },
+  },
+  // Tamanho de texto só por token (ADR 0001 §6): aviso para text-[…] solto, regra própria para não disputar o
+  // no-restricted-syntax de cima. Nos testes, não se cobra.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}"],
+    plugins: { tema: pluginDoTema },
+    rules: { "tema/tamanho-de-texto": "warn" },
   },
   // o único lugar com console.*: o logger, que escreve JSON sem dado pessoal (ADR 0001 §5)
   { files: ["src/lib/logger.ts"], rules: { "no-console": "off" } },

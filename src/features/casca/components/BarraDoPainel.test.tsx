@@ -48,11 +48,11 @@ describe("barra do painel (MIG-40)", () => {
     render(<BarraDoPainel sessao={sessao} />);
     const atta = modulos().getByRole("link", { name: "ATTA" }).className;
     expect(atta).toMatch(/\bfont-atta\b/);
-    expect(atta).toContain("text-[0.75rem]");
-    expect(atta).not.toContain("text-[0.875rem]"); // um tamanho só: duas classes de fonte disputariam pela ordem do CSS
-    expect(modulos().getByRole("link", { name: "Pacientes" }).className).toContain("text-[0.875rem]");
+    expect(atta).toMatch(/\btext-xs\b/);
+    expect(atta).not.toMatch(/\btext-sm\b/); // um tamanho só: duas classes de fonte disputariam pela ordem do CSS
+    expect(modulos().getByRole("link", { name: "Pacientes" }).className).toMatch(/\btext-sm\b/);
     expect(screen.getByText("Clínica Fictícia").className).toMatch(/\bfont-title\b.*\btext-base\b/);
-    expect(screen.getByText("Ana Exemplo").className).toContain("text-[0.8125rem]");
+    expect(screen.getByText("Ana Exemplo").className).toMatch(/\btext-corpo\b/);
   });
 
   it("no celular, a linha das abas rola até a aba atual sem rolar a página", () => {
