@@ -83,6 +83,12 @@ describe("porta real de Pacientes (MIG-43)", () => {
     expect(r.ok && r.data.itens[0]?.selo).toBe("com_selo");
   });
 
+  it("selo vencido (verified_until no passado, is_verified falso) vira o chip Selo expirado", async () => {
+    rpc.mockResolvedValue({ data: [await linha({ is_verified: false, verified_until: "2026-06-01T00:00:00Z" })], error: null });
+    const r = await porta.listar();
+    expect(r.ok && r.data.itens[0]?.selo).toBe("selo_expirado");
+  });
+
   it("a busca devolve a mesma linha da lista, com o contato mascarado", async () => {
     rpc.mockResolvedValue({ data: [await linha()], error: null });
     const r = await porta.buscar("juli");
