@@ -108,6 +108,16 @@ create function pg_temp.propass_link3() returns void language sql security defin
           '00000000-0000-4000-8000-0000000000f3', sha256('dr3@a.test'::bytea), '\x01', gen_random_uuid(), '\x01', 1, now(),
           'v1', now());
 $$;
+create function pg_temp.linha(p_id uuid) returns table (status text, reopened_at timestamptz)
+language sql security definer as $$
+  select status, reopened_at from atta_in.appointment where id = p_id
+$$;
+create function pg_temp.ultima_transicao(p_id uuid) returns table (reason text) language sql security definer as $$
+  select reason from atta_in.appointment_transition where appointment_id = p_id order by at desc, id desc limit 1
+$$;
+create function pg_temp.checkin(p_id uuid) returns void language sql security definer as $$
+  select atta_in.apply_transition(p_id, '00000000-0000-4000-8000-00000000000a', 'em_preenchimento');
+$$;
 create function pg_temp.status(p_id uuid) returns text language sql security definer as $$
   select status from atta_in.appointment where id = p_id
 $$;
@@ -208,11 +218,25 @@ select is(pg_temp.status('00000000-0000-4000-8000-00000000a003'), 'cancelado', '
 select ok(pg_temp.eventos('appointment.create') = 3 and pg_temp.eventos('appointment.transition') = 2,
           'cada agendamento e cada transição vão para a auditoria');
 
--- reabrir preenchimento (Ausente → Em preenchimento) e edição só em Agendado
-select lives_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a001', 'em_preenchimento') $$,
-                'Reabrir preenchimento de um Ausente (§10.2.2)');
-select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a002', 'em_preenchimento') $$,
+-- reabrir preenchimento (Ausente → Agendado, §10.2.2): motivo da lista fechada, só de Ausente; edição só em Agendado
+select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a001', 'agendado') $$,
+                 'P0001', 'ATTA-IN-0001', 'reabrir sem motivo: recusado');
+select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a001', 'agendado',
+                                                         'paciente pediu') $$,
+                 'P0001', 'ATTA-IN-0001', 'motivo fora da lista fechada da PO: recusado');
+select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a001', 'em_preenchimento') $$,
+                 'P0001', 'ATTA-IN-0003', 'a recepção não leva a Em preenchimento: isso é do check-in');
+select lives_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a001', 'agendado',
+                                                        'paciente_chegou_atrasado') $$,
+                'Reabrir preenchimento de um Ausente, com motivo da lista (§10.2.2)');
+select ok((select status = 'agendado' and reopened_at is not null from pg_temp.linha('00000000-0000-4000-8000-00000000a001'))
+          and (select reason = 'paciente_chegou_atrasado' from pg_temp.ultima_transicao('00000000-0000-4000-8000-00000000a001')),
+          'volta para Agendado, marcado como reaberto, com o motivo na transição');
+select throws_ok($$ select atta_in.transition_appointment('00000000-0000-4000-8000-00000000a002', 'agendado',
+                                                         'ausente_por_engano') $$,
                  'P0001', 'ATTA-IN-0003', 'reabrir só vale para Ausente');
+-- o paciente retoma o check-in (Em preenchimento vem do check-in, MIG-13)
+select pg_temp.checkin('00000000-0000-4000-8000-00000000a001');
 select throws_ok($$ update atta_in.appointment set starts_at = starts_at + interval '1 hour', ends_at = ends_at + interval '1 hour'
                     where id = '00000000-0000-4000-8000-00000000a001' $$,
                  'P0001', 'ATTA-IN-0003', 'fora de Agendado não remarca');
