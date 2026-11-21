@@ -53,6 +53,22 @@ export type Database = {
 "audit_auth_event":
 { Args: { "p_action": string,"p_details"?: Json,"p_user_id"?: string }; Returns: string
                            },
+"billing_apply_event":
+{ Args: { "p_due_date"?: string,"p_event_id": string,"p_event_type": string,"p_invoice_url"?: string,"p_payment_external_id"?: string,"p_payment_status"?: string,"p_provider": string,"p_subscription_external_id": string,"p_subscription_removed"?: boolean,"p_value_cents"?: number }; Returns: string
+                           },
+"billing_subscription_get":
+{ Args: { "p_tenant_id": string }; Returns: {
+              "customer_external_id": string,"id": string,"provider": string,"status": string,"subscription_external_id": string,"value_cents": number
+            }[]
+                           },
+"billing_subscription_register":
+{ Args: { "p_customer_external_id": string,"p_provider": string,"p_subscription_external_id": string,"p_tenant_id": string,"p_value_cents": number }; Returns: string
+                           },
+"billing_subscription_status":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "next_due_date": string,"next_invoice_url": string,"next_value_cents": number,"overdue_count": number,"status": string,"value_cents": number
+            }[]
+                           },
 "delivery_apply_status":
 { Args: { "p_at": string,"p_billable"?: boolean,"p_channel": string,"p_code"?: string,"p_external_id": string,"p_state": string }; Returns: string
                            },
