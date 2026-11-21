@@ -1,19 +1,14 @@
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { Subabas } from "@/components/ui/Subabas";
-import { sessaoDoPainel } from "@/features/casca/sessao";
-import { arquivarPaciente, maisAgendamentosDaPasta } from "@/features/pacientes/actions";
 import { EstadoDaPasta } from "@/features/pacientes/components/EstadoDaPasta";
-import { PastaDoPaciente } from "@/features/pacientes/components/PastaDoPaciente";
-import { abrirAgendamentos, abrirPasta } from "@/features/pacientes/pasta";
 import { SUBABAS_DE_PACIENTES } from "@/features/pacientes/subabas";
 import { textos } from "@/features/pacientes/textos";
 
-// Pasta do Paciente (Simulador ATTA-in, capturas 09 e 12; PDD v206 §10: o nome na lista abre a Pasta). O paciente vem
-// em ?paciente=<id> (só o id, nunca nome ou CPF): a rota fica fixa, como as outras do painel. Sem paciente, o estado
-// vazio. Paciente de outra clínica, id qualquer ou id inválido dão o mesmo "não encontrado", sem dizer se a pessoa existe
-// na rede. Sem 404: as abas do painel aparecem sempre (decisão do dono, 20/11).
+// Pasta do Paciente sem paciente escolhido (subaba do Simulador ATTA-in, captura 09): o estado vazio, com a volta à lista.
+// A Pasta de um paciente fica em /painel/pacientes/pasta/<id>; o endereço antigo ?paciente=<id> leva para lá.
 type Props = { searchParams: Promise<{ paciente?: string | string[] }> };
 
 export default function Page({ searchParams }: Props) {
@@ -30,24 +25,10 @@ export default function Page({ searchParams }: Props) {
 }
 
 async function Conteudo({ searchParams }: Props) {
-  await connection(); // por requisição: a ficha é da clínica da sessão, e cada abertura fica na Auditoria
+  await connection();
   const { paciente } = await searchParams;
-  if (paciente === undefined) return <EstadoDaPasta tipo="vazio" titulo={textos.pasta.vazioTitulo} texto={textos.pasta.vazioTexto} />;
-  // a ficha, a sessão e os agendamentos em paralelo; a seção de agendamentos não segura a ficha (cada uma com o seu estado)
-  const [ficha, sessao, agendamentos] = await Promise.all([abrirPasta(paciente), sessaoDoPainel(), abrirAgendamentos(paciente)]);
-  // só o gestor arquiva (PLANO, decisão do dono de 20/11); o banco confere o papel de novo
-  if (ficha.ok) {
-    return (
-      <PastaDoPaciente
-        ficha={ficha.data}
-        arquivar={sessao?.papel === "ADMIN" ? arquivarPaciente : null}
-        agendamentos={agendamentos}
-        mais={maisAgendamentosDaPasta}
-      />
-    );
-  }
-  if (ficha.error.code === "NAO_ENCONTRADO" || ficha.error.code === "VALIDACAO") return <EstadoDaPasta tipo="vazio" titulo={textos.pasta.naoEncontrado} />;
-  return <EstadoDaPasta tipo="erro" codigo={ficha.error.code} />;
+  if (typeof paciente === "string" && paciente) redirect(`/painel/pacientes/pasta/${encodeURIComponent(paciente)}`);
+  return <EstadoDaPasta tipo="vazio" titulo={textos.pasta.vazioTitulo} texto={textos.pasta.vazioTexto} />;
 }
 
 function Carregando() {
