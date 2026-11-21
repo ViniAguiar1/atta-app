@@ -12,7 +12,7 @@ type Busca = Promise<{ volta?: string }>;
 
 // Segundo fator (TOTP). Obrigatório para o ADMIN, opcional para o COLABORADOR (PDD omisso; decisão do dono, 20/11).
 // O passo (ativar ou confirmar) sai do servidor, que tem a sessão; a tela só envia o código. Mesma moldura do site da
-// tela de entrar (pedido do dono, 20/11): a casca do painel não desenha a barra aqui (painel/layout.tsx).
+// tela de entrar (pedido do dono, 20/11): a rota fica no grupo (segundo-fator), fora do painel/layout.tsx, sem a casca.
 export default function Pagina({ searchParams }: { searchParams: Busca }) {
   return (
     <TelaDoSite>
