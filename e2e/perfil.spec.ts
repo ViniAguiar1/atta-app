@@ -15,7 +15,7 @@ test.describe("Perfil da Clínica da gestora", () => {
     await expect(page).toHaveURL(/\/painel\/configuracoes\/perfil$/);
     const main = page.getByRole("main");
     await expect(main.getByRole("note")).toContainText("Sem botão de salvar.");
-    await expect(main.getByLabel("CNPJ")).toHaveValue("11.222.333/0001-81");
+    await expect(main.getByLabel("CNPJ")).toHaveValue("48.309.271/0001-50");
     await main.getByLabel("Inscrição estadual/municipal (opcional)").fill("123456");
     await main.getByLabel("Inscrição estadual/municipal (opcional)").press("Enter");
     await expect(main.getByText(/^Salvo às \d{2}:\d{2}\.$/)).toBeVisible();

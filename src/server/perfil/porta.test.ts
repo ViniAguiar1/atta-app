@@ -16,10 +16,12 @@ describe("porta do Perfil da Clínica (MIG-42)", () => {
     }
   });
 
-  it("a simulada recusa CNPJ inválido como o banco e devolve o saved_at no válido", async () => {
+  it("a simulada recusa trocar CNPJ e Razão social já informados (protected_field) e devolve o saved_at nos outros", async () => {
     const porta = escolherPortaPerfil("preview");
-    expect(await porta.salvarCampo("cnpj", "11222333000182")).toMatchObject({ ok: false, error: { code: "VALIDACAO" } });
-    const r = await porta.salvarCampo("cnpj", "11222333000181");
+    for (const campo of ["cnpj", "legal_name"] as const) {
+      expect(await porta.salvarCampo(campo, "x")).toMatchObject({ ok: false, error: { code: "CONFLITO", reason: "ATTA-IN-0003:protected_field" } });
+    }
+    const r = await porta.salvarCampo("tax_registration", "123456");
     expect(r.ok && typeof r.data.salvoEm).toBe("string");
   });
 });
