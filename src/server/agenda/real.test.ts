@@ -221,6 +221,32 @@ describe("porta real da agenda: Todos e Concluídos (agenda_range)", () => {
   });
 });
 
+describe("porta real da agenda: ações", () => {
+  it("confirmar chama atta_in.confirm_appointment; marcar ausente, o transition para ausente", async () => {
+    const schema = vi.fn();
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    schema.mockReturnValue({ rpc });
+    const porta = criarPortaAgendaReal(async () => ({ schema }) as unknown as ClienteDaAgenda);
+    expect(await porta.acao({ acao: "confirmar", id: id(1) })).toEqual({ ok: true, data: null });
+    expect(schema).toHaveBeenLastCalledWith("atta_in");
+    expect(rpc).toHaveBeenLastCalledWith("confirm_appointment", { p_id: id(1) });
+    await porta.acao({ acao: "marcar_ausente", id: id(2) });
+    expect(rpc).toHaveBeenLastCalledWith("transition_appointment", { p_id: id(2), p_to: "ausente" });
+  });
+
+  it("recusa do banco sai por falhaDoBanco com o reason; entrada fora do contrato nem chega ao banco", async () => {
+    const { porta } = clienteFalso({ data: null, error: { code: "P0001", message: "ATTA-IN-0003", details: "status", hint: null } });
+    expect(await porta.acao({ acao: "marcar_ausente", id: id(1) })).toMatchObject({
+      ok: false,
+      error: { code: "CONFLITO", reason: "ATTA-IN-0003:status" },
+    });
+    const { rpc, porta: outra } = clienteFalso({ data: null, error: null });
+    // @ts-expect-error ação sem destino não está no contrato
+    expect(await outra.acao({ acao: "remarcar", id: id(1) })).toMatchObject({ ok: false, error: { code: "VALIDACAO" } });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
 describe("porta real da agenda: resumo", () => {
   it("resumo vem de api.agenda_summary, no contrato da tela", async () => {
     const banco = {

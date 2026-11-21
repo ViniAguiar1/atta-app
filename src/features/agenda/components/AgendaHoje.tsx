@@ -2,10 +2,13 @@
 
 import { useEffect, useId, useState } from "react";
 import { DataState, type EstadoDeDados } from "@/components/ui/DataState";
+import type { Acao } from "@/lib/agenda/linha";
 import type { Resultado } from "@/lib/errors";
 import {
   termoPronto,
   type DiaDaAgenda,
+  type EntradaDaAcao,
+  type LinhaDaAgenda,
   type FiltroDoDia,
   type FiltroDoPeriodo,
   type FiltroDosConcluidos,
@@ -34,6 +37,8 @@ type Props = {
   buscarPeriodo: (filtro: FiltroDoPeriodo) => Promise<Resultado<ListaDaAgenda>>;
   buscarConcluidos: (filtro: FiltroDosConcluidos) => Promise<Resultado<ListaDaAgenda>>;
   resumir: () => Promise<Resultado<ResumoDaAgenda>>;
+  /** grava uma ação da linha (server action); sem ela, a coluna Ações não aparece */
+  executar?: (entrada: EntradaDaAcao) => Promise<Resultado<null>>;
 };
 
 /** O filtro dos cards como texto estável, para o efeito da busca depender de um valor simples. */
@@ -45,7 +50,9 @@ function argumentosDoFiltro(chave: string): FiltroDoDia {
 
 const ESPERA_DA_BUSCA_MS = 300;
 
-export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, buscarConcluidos, resumir }: Props) {
+export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, buscarConcluidos, resumir, executar }: Props) {
+  const [acionando, setAcionando] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const [visao, setVisao] = useState<Visao>("hoje");
   // Concluídos abre em "Esta semana"; "Este mês" e "Todo o período" vêm no painel Filtros (captura 37, PR dos filtros)
   const periodo: PeriodoConcluidos = "semana";
@@ -104,6 +111,23 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
   const recarregarResumo = async () => {
     setResumo(null);
     setResumo(await resumir());
+  };
+  // Ação da linha (PDD §10.2.2): grava pela server action, anuncia o resultado e relê a lista e os cards. O texto do
+  // erro vem do code/reason traduzido no textos.ts, nunca a message do servidor.
+  const acionar = async (linha: LinhaDaAgenda, acao: Acao) => {
+    if (!executar || (acao !== "confirmar" && acao !== "marcar_ausente")) return;
+    setAcionando(linha.id);
+    setAviso(null);
+    const r = await executar({ acao, id: linha.id });
+    setAcionando(null);
+    if (!r.ok) {
+      setAviso({ tipo: "erro", texto: textos.acoes.erro(r.error.reason ?? r.error.code) });
+      return;
+    }
+    setAviso({ tipo: "ok", texto: textos.acoes.feito[acao] });
+    setTocado(true);
+    setTentativa((n) => n + 1);
+    void recarregarResumo();
   };
   const estado = estadoDe({
     dia,
@@ -196,6 +220,16 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
         </div>
       </div>
 
+      {/* resultado da ação: status educado no sucesso, alerta no erro (sempre no DOM, para o leitor anunciar) */}
+      <p role="status" className="sr-only">
+        {aviso?.tipo === "ok" ? aviso.texto : ""}
+      </p>
+      {aviso?.tipo === "erro" && (
+        <p role="alert" className="rounded-md border border-status-negative bg-status-negative/10 px-4 py-2 text-corpo text-status-negative">
+          {aviso.texto}
+        </p>
+      )}
+
       <DataState
         estado={estado}
         rotulo={textos.rotuloDaLista}
@@ -211,6 +245,8 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
             hojeLocal={dia.hojeLocal}
             ausenteComoNaoRealizado={visao === "concluidos"}
             ordem={visao === "concluidos" ? "descending" : "ascending"}
+            aoAcionar={executar ? (linha, acao) => void acionar(linha, acao) : undefined}
+            acionando={acionando}
           />
         )}
         {dia && visao !== "hoje" && dia.linhas.length > 0 && (

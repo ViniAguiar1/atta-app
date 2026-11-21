@@ -6,6 +6,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { cpfHmac, normalizeCpf } from "@/server/crypto/cpf";
 import {
+  entradaDaAcaoSchema,
   filtroDoDiaSchema,
   filtroDoPeriodoSchema,
   filtroDosConcluidosSchema,
@@ -62,10 +63,16 @@ type FuncoesDaApi = Database["api"]["Functions"];
 type ArgsDoDia = FuncoesDaApi["agenda_day"]["Args"];
 type ArgsDoResumo = FuncoesDaApi["agenda_summary"]["Args"];
 type ArgsDoRange = FuncoesDaApi["agenda_range"]["Args"];
+type FuncoesDaAgenda = Database["atta_in"]["Functions"];
+type ArgsDoConfirmar = FuncoesDaAgenda["confirm_appointment"]["Args"];
+type ArgsDaTransicao = FuncoesDaAgenda["transition_appointment"]["Args"];
 type RespostaDoBanco = PromiseLike<{ data: unknown; error: ErroDoBanco | null }>;
 export type ClienteDaAgenda = {
-  schema(nome: "api"): {
-    rpc(fn: "agenda_day" | "agenda_summary" | "agenda_range", args: ArgsDoDia | ArgsDoResumo | ArgsDoRange): RespostaDoBanco;
+  schema(nome: "api" | "atta_in"): {
+    rpc(
+      fn: "agenda_day" | "agenda_summary" | "agenda_range" | "confirm_appointment" | "transition_appointment",
+      args: ArgsDoDia | ArgsDoResumo | ArgsDoRange | ArgsDoConfirmar | ArgsDaTransicao,
+    ): RespostaDoBanco;
   };
 };
 
@@ -112,7 +119,7 @@ export function argumentosDaBusca(
 
 /** O que já tem leitura real no banco: o dia e os cards (MIG-11c) e as visões Todos e Concluídos (#183). Os avisos
  *  (agenda_alerts) vêm com o MIG-13. */
-export type PortaAgendaReal = Pick<PortaAgenda, "dia" | "resumo" | "periodo" | "concluidos">;
+export type PortaAgendaReal = Pick<PortaAgenda, "dia" | "resumo" | "periodo" | "concluidos" | "acao">;
 
 export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>, hmac: Hmac = cpfHmac): PortaAgendaReal {
   return {
@@ -209,6 +216,24 @@ export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>, hm
       const { data, error } = await (await cliente()).schema("api").rpc("agenda_range", args);
       if (error) return falhaDoBanco(error);
       return listaDoRange(data);
+    },
+
+    // Ações que gravam (contrato aprovado pelo Tech Lead): a sessão do usuário, as funções do schema atta_in (que
+    // conferem permissão e estado) e o erro por falhaDoBanco com o reason. O log leva só a ação e o code.
+    async acao(entrada) {
+      const lida = entradaDaAcaoSchema.safeParse(entrada);
+      if (!lida.success) return falha("VALIDACAO", MENSAGENS.VALIDACAO, [{ campo: "acao", code: "VALIDACAO" }]);
+      const banco = (await cliente()).schema("atta_in");
+      const { error } =
+        lida.data.acao === "confirmar"
+          ? await banco.rpc("confirm_appointment", { p_id: lida.data.id } satisfies ArgsDoConfirmar)
+          : await banco.rpc("transition_appointment", { p_id: lida.data.id, p_to: "ausente" } satisfies ArgsDaTransicao);
+      if (error) {
+        const r = falhaDoBanco(error);
+        logger.warn("agenda.acao_recusada", { acao: lida.data.acao, code: r.ok ? undefined : r.error.code });
+        return r;
+      }
+      return ok(null);
     },
   };
 }

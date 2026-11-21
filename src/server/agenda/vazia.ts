@@ -1,5 +1,5 @@
 import "server-only";
-import { falhaDeValidacao, ok } from "@/lib/errors";
+import { falha, falhaDeValidacao, MENSAGENS, ok } from "@/lib/errors";
 import { filtroDoDiaSchema, filtroDoPeriodoSchema, filtroDosConcluidosSchema } from "@/features/agenda/schema";
 import type { PortaAgenda } from "./porta";
 
@@ -38,6 +38,9 @@ export const portaAgendaVazia: PortaAgenda = {
     const lido = filtroDosConcluidosSchema.safeParse(filtro);
     if (!lido.success) return falhaDeValidacao(lido.error.issues);
     return ok({ hojeLocal: hojeNaClinica(), fuso: FUSO, linhas: [], proximoCursor: null });
+  },
+  async acao() {
+    return falha("INDISPONIVEL", MENSAGENS.INDISPONIVEL); // nunca usada: a escolha da porta põe a real nas ações
   },
   async avisos() {
     return ok([]);

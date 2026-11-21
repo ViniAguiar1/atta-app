@@ -234,4 +234,61 @@ describe("Agenda › Hoje", () => {
     expect(screen.getByRole("heading", { name: "Check-in" })).toBeDefined();
     expect(screen.getByText(/registros? · atendimentos mais antigos ficam na Pasta do Paciente/)).toBeDefined();
   });
+
+  it("o menu ⋮ só mostra as ações com destino; Confirmar grava pela action e relê a lista e os cards", async () => {
+    const dia = await diaSimulado();
+    const buscar = vi.fn().mockResolvedValue(ok(dia));
+    const resumir = vi.fn().mockResolvedValue(RESUMO);
+    const executar = vi.fn().mockResolvedValue(ok(null));
+    render(
+      <AgendaHoje
+        inicial={ok(dia)}
+        resumoInicial={RESUMO}
+        resumir={resumir}
+        buscar={buscar}
+        buscarPeriodo={vi.fn()}
+        buscarConcluidos={vi.fn()}
+        executar={executar}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ações de Eduardo Lima" }));
+    // o simulado manda editar, remarcar, fluxos, detalhes e cancelar também: sem destino ainda, não viram botão
+    expect(screen.queryByRole("button", { name: "Remarcar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Detalhes" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar agendamento" }));
+    await act(async () => {}); // a gravação responde; só então a releitura é agendada
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    const eduardo = dia.linhas.find((l) => l.paciente.nomeExibicao === "Eduardo Lima");
+    expect(executar).toHaveBeenCalledWith({ acao: "confirmar", id: eduardo?.id });
+    expect(buscar).toHaveBeenCalled();
+    expect(resumir).toHaveBeenCalled();
+    expect(screen.getByText("Agendamento confirmado.")).toBeDefined();
+  });
+
+  it("erro da ação aparece como alerta, com o texto do reason, nunca a message do servidor", async () => {
+    const dia = await diaSimulado();
+    const executar = vi.fn().mockResolvedValue({
+      ok: false,
+      error: { code: "CONFLITO", message: "mensagem do servidor", reason: "ATTA-IN-0003:status" },
+    });
+    render(
+      <AgendaHoje
+        inicial={ok(dia)}
+        resumoInicial={RESUMO}
+        resumir={vi.fn()}
+        buscar={vi.fn()}
+        buscarPeriodo={vi.fn()}
+        buscarConcluidos={vi.fn()}
+        executar={executar}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ações de Mariana Costa Albuquerque" }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcar como ausente" }));
+    await act(async () => {});
+    const alerta = screen.getAllByRole("alert").find((a) => a.textContent?.includes("mudou de estado"));
+    expect(alerta).toBeDefined();
+    expect(document.body.textContent).not.toContain("mensagem do servidor");
+  });
 });

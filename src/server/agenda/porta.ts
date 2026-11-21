@@ -3,6 +3,7 @@ import type { Resultado } from "@/lib/errors";
 import type {
   AvisoDaAgenda,
   DiaDaAgenda,
+  EntradaDaAcao,
   FiltroDoDia,
   FiltroDoPeriodo,
   FiltroDosConcluidos,
@@ -29,6 +30,8 @@ export type PortaAgenda = {
   concluidos(filtro: FiltroDosConcluidos): Promise<Resultado<ListaDaAgenda>>;
   /** Avisos do topo da lista ainda não confirmados (§10.2.2). */
   avisos(): Promise<Resultado<AvisoDaAgenda[]>>;
+  /** Grava uma ação da linha (confirmar, marcar ausente…); o banco confere o estado e a permissão. */
+  acao(entrada: EntradaDaAcao): Promise<Resultado<null>>;
 };
 
 /**
@@ -44,6 +47,7 @@ export function escolherPortaAgenda(ambiente = process.env.VERCEL_ENV): PortaAge
     resumo: portaAgendaReal.resumo,
     periodo: portaAgendaReal.periodo,
     concluidos: portaAgendaReal.concluidos,
+    acao: portaAgendaReal.acao,
   };
 }
 
