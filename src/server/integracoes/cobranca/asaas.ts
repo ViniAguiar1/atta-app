@@ -68,21 +68,36 @@ interface PagamentoAsaas {
 const texto = (v: unknown): v is string => typeof v === "string" && v.length > 0;
 const paraCentavos = (reais: number) => Math.round(reais * 100);
 
-/** Link de fatura só do Asaas (asaas.com ou subdomínio), em https: outro host na tela da clínica seria phishing. */
-export function linkDoAsaas(valor: string): boolean {
-  if (valor.length > 300) return false;
+/**
+ * O mesmo CHECK de `billing.payment.invoice_url` e `billing.event.invoice_url` (migration 20261121144952). O adaptador
+ * só entrega link que passa nele: um link que o banco recusasse faria o webhook responder 503 sem fim, e 15 falhas
+ * seguidas pausam a fila do Asaas.
+ */
+export const LINK_DO_ASAAS_NO_BANCO = /^https:\/\/([a-z0-9-]+\.)*asaas\.com(\/|$)/;
+const TAMANHO_MAXIMO_DO_LINK = 300;
+
+/**
+ * Link de fatura só do Asaas (asaas.com ou subdomínio), em https: outro host na tela da clínica seria phishing.
+ * Devolve o link normalizado pelo parser de URL (host em minúsculas, sem a porta 443 explícita), ou `null`.
+ */
+export function linkDoAsaas(valor: string): string | null {
+  if (valor.length > TAMANHO_MAXIMO_DO_LINK) return null;
+  let u: URL;
   try {
-    const u = new URL(valor);
-    return (
-      u.protocol === "https:" &&
-      u.username === "" &&
-      u.password === "" &&
-      u.port === "" &&
-      (u.hostname === "asaas.com" || u.hostname.endsWith(".asaas.com"))
-    );
+    u = new URL(valor);
   } catch {
-    return false;
+    return null;
   }
+  const valido =
+    u.protocol === "https:" &&
+    u.username === "" &&
+    u.password === "" &&
+    u.port === "" &&
+    (u.hostname === "asaas.com" || u.hostname.endsWith(".asaas.com"));
+  if (!valido) return null;
+  const normalizado = u.href;
+  if (normalizado.length > TAMANHO_MAXIMO_DO_LINK || !LINK_DO_ASAAS_NO_BANCO.test(normalizado)) return null;
+  return normalizado;
 }
 
 function traduzirCobranca(evento: string, p: PagamentoAsaas): CobrancaDoEvento | null {
@@ -91,13 +106,13 @@ function traduzirCobranca(evento: string, p: PagamentoAsaas): CobrancaDoEvento |
   const status: StatusCobranca | undefined =
     evento === "PAYMENT_DELETED" || p.deleted === true ? "removida" : texto(p.status) ? STATUS[p.status] : undefined;
   if (!status) return null;
-  const link = texto(p.invoiceUrl) && linkDoAsaas(p.invoiceUrl);
+  const link = texto(p.invoiceUrl) ? linkDoAsaas(p.invoiceUrl) : null;
   return {
     idExterno: p.id,
     vencimento: p.dueDate,
     valorCentavos: paraCentavos(p.value),
     status,
-    ...(link ? { linkPagamento: p.invoiceUrl as string } : {}),
+    ...(link ? { linkPagamento: link } : {}),
   };
 }
 
