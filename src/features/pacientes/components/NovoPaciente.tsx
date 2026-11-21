@@ -19,6 +19,8 @@ type Acoes = {
   consultar: (e: { cpf: string }) => Promise<Resultado<ConsultaDeCpf>>;
   vincular: (e: { cpf: string }) => Promise<Resultado<{ id: string; situacao: "vinculado" | "ja_paciente" }>>;
   cadastrar: (e: EntradaDoCadastro) => Promise<Resultado<{ id: string; reaproveitado: boolean }>>;
+  /** cartão do paciente que já é desta clínica (captura 16), com o contato mascarado no servidor */
+  cartao: (e: { id: string }) => Promise<Resultado<CartaoDaRede>>;
 };
 
 type Situacao = { tipo: "aguardando" } | ConsultaDeCpf;
@@ -73,6 +75,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
   const [invalidos, setInvalidos] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [daClinica, setDaClinica] = useState<CartaoDaRede | null>(null);
   const [ocupado, iniciar] = useTransition();
 
   // <dialog> nativo em modo modal (showModal): prende o foco dentro dele, deixa o resto da página inerte e trata o Esc
@@ -100,10 +103,16 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
   function buscar() {
     setErro(null);
     setAviso(null);
+    setDaClinica(null);
     iniciar(async () => {
       const r = await acoes.consultar({ cpf: documento });
-      if (r.ok) setSituacao(r.data);
-      else setErro(r.error.code === "VALIDACAO" ? m.cpfInvalido : mensagemDe(r.error.code));
+      if (!r.ok) return setErro(r.error.code === "VALIDACAO" ? m.cpfInvalido : mensagemDe(r.error.code));
+      // já paciente: o cartão dele aparece acima do aviso, como na captura 16; busca antes, para os dois chegarem juntos
+      if (r.data.situacao === "ja_paciente") {
+        const c = await acoes.cartao({ id: r.data.id });
+        if (c.ok) setDaClinica(c.data);
+      }
+      setSituacao(r.data);
     });
   }
 
@@ -136,7 +145,13 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
       setAviso(m.reaproveitado);
       router.refresh();
       const nova = await acoes.consultar({ cpf: documento });
-      if (nova.ok) setSituacao(nova.data);
+      if (nova.ok) {
+        if (nova.data.situacao === "ja_paciente") {
+          const c = await acoes.cartao({ id: nova.data.id });
+          if (c.ok) setDaClinica(c.data);
+        }
+        setSituacao(nova.data);
+      }
     });
   }
 
@@ -145,7 +160,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
     aoFechar();
   }
 
-  const cartao = tipo === "na_rede" ? (situacao as { cartao: CartaoDaRede }).cartao : null;
+  const cartao = tipo === "na_rede" ? (situacao as { cartao: CartaoDaRede }).cartao : tipo === "ja_paciente" ? daClinica : null;
   const situacaoNoResumo =
     tipo === "aguardando" ? m.resumo.aguardando : tipo === "nao_encontrado" ? m.resumo.primeiraVez : m.resumo.jaExiste;
 
@@ -164,7 +179,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
           <Monograma className="size-6" />
           <div className="flex-1">
             <h2 id={idTitulo} className="font-title text-xl leading-tight">{m.titulo}</h2>
-            {clinica && <p className="text-xs text-on-brand/80">{clinica}</p>}
+            {clinica && <p className="text-[0.6875rem] text-on-brand/80">{clinica}</p>}
           </div>
           <button
             type="button"
@@ -177,8 +192,9 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
         </header>
 
         <div className="grid min-h-0 flex-1 overflow-y-auto large:grid-cols-[1fr_15rem]">
-          <div className="flex flex-col gap-3 p-3.5 text-[0.8125rem]">
-            <CartaoDeSecao titulo={m.identificacao.titulo} subtitulo={m.identificacao.subtitulo} icone="🪪" nivel={3}>
+          {/* escala do modal da captura (~11 px no corpo, ~10,5 px na ajuda), menor que a das páginas (Tech Lead Frontend, #167) */}
+          <div className="flex flex-col gap-3 p-3.5 text-[0.6875rem]">
+            <CartaoDeSecao titulo={m.identificacao.titulo} subtitulo={m.identificacao.subtitulo} icone="🪪" nivel={3} compacto>
               <label className="flex min-h-11 items-center gap-3 rounded-md border border-border-functional px-3">
                 <input
                   type="checkbox"
@@ -209,14 +225,14 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                         setSituacao({ tipo: "aguardando" } as Situacao);
                       }}
                       onKeyDown={(e) => e.key === "Enter" && !estrangeiro && buscar()}
-                      className="h-9 flex-1 rounded-md border border-border-functional px-3 font-mono text-[0.8125rem] medium:h-8"
+                      className="h-9 flex-1 rounded-md border border-border-functional px-3 font-mono text-xs medium:h-8"
                     />
                     {!estrangeiro && (
                       <button
                         type="button"
                         onClick={buscar}
                         disabled={ocupado || documento.replace(/\D/g, "").length !== 11}
-                        className="h-9 rounded-md border border-border-functional px-3 font-medium disabled:opacity-60 medium:h-8"
+                        className="h-9 rounded-md border border-border-functional px-3 text-xs font-medium disabled:opacity-60 medium:h-8"
                       >
                         {ocupado && tipo === "aguardando" ? m.buscando : m.buscar}
                       </button>
@@ -225,15 +241,16 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                 )}
               </Campo>
               {tipo === "nao_encontrado" && <p className="text-text-secondary">{m.consultaInterna}</p>}
+              {tipo === "ja_paciente" && daClinica && <CartaoDaPessoa cartao={daClinica} explicar={false} />}
               {tipo === "ja_paciente" && (
                 <div role="status" className="rounded-md border border-border border-l-4 border-l-status-negative p-3">
                   <strong>{m.jaExiste.negrito}</strong> {m.jaExiste.texto}
                 </div>
               )}
-              {cartao && <CartaoDaPessoa cartao={cartao} />}
+              {tipo === "na_rede" && cartao && <CartaoDaPessoa cartao={cartao} explicar />}
             </CartaoDeSecao>
 
-            <CartaoDeSecao titulo={m.dados.titulo} subtitulo={m.dados.subtitulo} icone="👤" nivel={3}>
+            <CartaoDeSecao titulo={m.dados.titulo} subtitulo={m.dados.subtitulo} icone="👤" nivel={3} compacto>
               {!mostraFormulario ? (
                 <p className="text-text-secondary">{m.dadosAntes}</p>
               ) : (
@@ -252,7 +269,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                             inputMode={c === "celular" || c === "nascimento" ? "numeric" : c === "email" ? "email" : "text"}
                             autoComplete="off"
                             onChange={(e) => setDados((d) => ({ ...d, [c]: e.target.value }))}
-                            className="h-9 rounded-md border border-border-functional px-3 text-[0.8125rem] aria-invalid:border-status-negative medium:h-8"
+                            className="h-9 rounded-md border border-border-functional px-3 text-xs aria-invalid:border-status-negative medium:h-8"
                           />
                         )}
                       </Campo>
@@ -263,12 +280,12 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
             </CartaoDeSecao>
           </div>
 
-          <aside className="flex flex-col gap-2.5 border-t border-border bg-surface-app p-3.5 text-[0.8125rem] large:border-t-0 large:border-l">
-            <h3 className="text-[0.6875rem] font-semibold tracking-wide uppercase">{m.resumo.titulo}</h3>
+          <aside className="flex flex-col gap-2.5 border-t border-border bg-surface-app p-3.5 text-[0.6875rem] large:border-t-0 large:border-l">
+            <h3 className="text-[0.625rem] font-semibold tracking-wide uppercase">{m.resumo.titulo}</h3>
             <Item rotulo={estrangeiro ? m.resumo.rne : m.resumo.cpf} valor={documento || null} />
             <div className="flex flex-col gap-1 border-b border-border pb-2">
-              <span className="text-[0.6875rem] font-semibold tracking-wide text-text-secondary uppercase">{m.resumo.situacao}</span>
-              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-surface-card px-2 py-0.5 text-xs">
+              <span className="text-[0.625rem] font-semibold tracking-wide text-text-secondary uppercase">{m.resumo.situacao}</span>
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-surface-card px-2 py-0.5 text-[0.625rem]">
                 <span aria-hidden="true" className={`size-1.5 rounded-full ${tipo === "aguardando" ? "bg-text-tertiary" : tipo === "nao_encontrado" ? "bg-text-primary" : "bg-status-pending"}`} />
                 {situacaoNoResumo}
               </span>
@@ -279,16 +296,16 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
             <Item rotulo={m.resumo.email} valor={cartao?.contato?.email ?? (dados.email || null)} />
             <div className="rounded-md border border-border bg-surface-raised p-3">
               <p className="font-semibold">{m.resumo.daRede.titulo}</p>
-              <p className="text-xs">{m.resumo.daRede.texto}</p>
+              <p>{m.resumo.daRede.texto}</p>
             </div>
           </aside>
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-border px-3.5 py-3">
-          <button type="button" onClick={aoFechar} className="h-9 rounded-md border border-border-functional px-4 text-[0.8125rem] font-medium">
+          <button type="button" onClick={aoFechar} className="h-9 rounded-md border border-border-functional px-4 text-xs font-medium">
             {m.cancelar}
           </button>
-          <div className="flex-1 text-right text-[0.8125rem]">
+          <div className="flex-1 text-right text-[0.6875rem]">
             <p role="status">{aviso}</p>
             <p role="alert" className="text-status-negative">{erro}</p>
           </div>
@@ -297,7 +314,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
               type="button"
               onClick={enviar}
               disabled={ocupado}
-              className="h-9 rounded-md bg-brand px-4 text-[0.8125rem] font-semibold text-on-brand disabled:opacity-60"
+              className="h-9 rounded-md bg-brand px-4 text-xs font-semibold text-on-brand disabled:opacity-60"
             >
               {ocupado ? m.enviando : m.cadastrar}
             </button>
@@ -308,22 +325,24 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
   );
 }
 
-function CartaoDaPessoa({ cartao }: { cartao: CartaoDaRede }) {
+function CartaoDaPessoa({ cartao, explicar }: { cartao: CartaoDaRede; explicar: boolean }) {
   return (
     <div className="flex flex-col gap-2">
-      <p>{m.naRede.texto}</p>
+      {explicar && <p>{m.naRede.texto}</p>}
       <div className="flex gap-3 rounded-md bg-surface-app p-3">
         <span aria-hidden="true" className="flex size-[2.125rem] shrink-0 items-center justify-center rounded-full bg-surface-card text-xs font-semibold">
           {iniciais(cartao.nome)}
         </span>
         <div className="flex flex-col gap-0.5">
           <span className="font-semibold">{cartao.nome}</span>
-          <span className="text-xs text-text-secondary">{m.naRede.linha(cartao.nomeCivil, cartao.nascimento)}</span>
+          <span className="text-text-secondary">{m.naRede.linha(cartao.nomeCivil, cartao.nascimento)}</span>
           {cartao.contato && (
-            <span className="text-xs text-text-secondary">{[cartao.contato.celular, cartao.contato.email].filter(Boolean).join(" · ")}</span>
+            <span className="text-text-secondary">{[cartao.contato.celular, cartao.contato.email].filter(Boolean).join(" · ")}</span>
           )}
-          {cartao.selo && <span className="w-fit rounded-full bg-surface-card px-2 py-0.5 text-xs">{m.naRede.selo}</span>}
-          <span className="text-xs text-text-secondary">{m.naRede.saude(cartao.respostasDeSaude)}</span>
+          {cartao.selo && <span className="w-fit rounded-full bg-surface-card px-2 py-0.5 text-[0.625rem]">{m.naRede.selo}</span>}
+          {cartao.respostasDeSaude !== null && (
+            <span className="text-text-secondary">{m.naRede.saude(cartao.respostasDeSaude)}</span>
+          )}
         </div>
       </div>
     </div>
@@ -335,9 +354,9 @@ function Campo({ rotulo, ajuda, invalido, children }: { rotulo: string; ajuda: s
   const ajudaId = `${id}-ajuda`;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-xs font-semibold">{rotulo}</label>
+      <label htmlFor={id} className="text-[0.6875rem] font-semibold">{rotulo}</label>
       {children(id, ajudaId)}
-      <p id={ajudaId} className={`text-xs ${invalido ? "text-status-negative" : "text-text-secondary"}`}>
+      <p id={ajudaId} className={`text-[0.65625rem] ${invalido ? "text-status-negative" : "text-text-secondary"}`}>
         {invalido ? `${m.erroCampo} ${ajuda}` : ajuda}
       </p>
     </div>
@@ -347,7 +366,7 @@ function Campo({ rotulo, ajuda, invalido, children }: { rotulo: string; ajuda: s
 function Item({ rotulo, valor }: { rotulo: string; valor: string | null }) {
   return (
     <div className="flex flex-col gap-1 border-b border-border pb-2">
-      <span className="text-[0.6875rem] font-semibold tracking-wide text-text-secondary uppercase">{rotulo}</span>
+      <span className="text-[0.625rem] font-semibold tracking-wide text-text-secondary uppercase">{rotulo}</span>
       <span>{valor ?? "—"}</span>
     </div>
   );
