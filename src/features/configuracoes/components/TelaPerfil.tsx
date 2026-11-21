@@ -67,7 +67,7 @@ function Perfil({ perfil }: { perfil: PerfilDaClinica }) {
           <p>{t.faltam}</p>
           <ul className="mt-1 list-disc pl-5">
             {perfil.faltando.map((f) => (
-              <li key={f}>{t.faltando[f] ?? f}</li>
+              <li key={f}>{t.faltando[f] ?? t.faltandoOutro}</li>
             ))}
           </ul>
         </div>

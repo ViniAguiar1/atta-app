@@ -131,6 +131,41 @@ describe("Perfil da Clínica (MIG-42, captura 42)", () => {
     expect(await screen.findByText("Confira este campo: o valor não foi aceito.")).toBeInTheDocument();
   });
 
+  // "12ABC34501DE35": o exemplo publicado pela Receita (IN RFB 2.229/2024), não é de ninguém
+  it("CNPJ alfanumérico: digitado em minúsculas aparece com a máscara em maiúsculas e vai sem pontuação (ADR 0001)", async () => {
+    salvar.mockResolvedValue(ok({ salvoEm: "2026-11-21T14:05:00Z" }));
+    render(<TelaPerfil resultado={ok({ ...PERFIL, campos: { ...PERFIL.campos, cnpj: null } })} />);
+    const cnpj = screen.getByLabelText("CNPJ");
+    expect(cnpj).not.toHaveAttribute("inputmode", "numeric");
+    expect(cnpj).toHaveAttribute("autocapitalize", "characters");
+    await userEvent.type(cnpj, "12abc34501de35");
+    expect(cnpj).toHaveValue("12.ABC.345/01DE-35");
+    await userEvent.keyboard("{Enter}");
+    const dialogo = screen.getByRole("dialog", { name: "Confirmar CNPJ?" });
+    expect(dialogo).toHaveTextContent("12.ABC.345/01DE-35");
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar e salvar" }));
+    expect(salvar).toHaveBeenCalledWith({ campo: "cnpj", valor: "12ABC34501DE35" });
+    expect(await screen.findByText("Salvo às 11:05.")).toBeInTheDocument();
+    expect(screen.getByLabelText("CNPJ")).toHaveAttribute("readonly");
+  });
+
+  it("falha de rede ao salvar avisa e não prende o campo: o mesmo valor pode ir de novo (nota do Frontend 2)", async () => {
+    salvar.mockRejectedValueOnce(new Error("rede")).mockResolvedValueOnce(ok({ salvoEm: "2026-11-21T14:05:00Z" }));
+    render(<TelaPerfil resultado={ok(PERFIL)} />);
+    const ie = screen.getByLabelText("Inscrição estadual/municipal (opcional)");
+    await userEvent.type(ie, "123456{Enter}");
+    expect(await screen.findByText("Não conseguimos salvar agora. Tente de novo em instantes.")).toBeInTheDocument();
+    await userEvent.type(ie, "{Enter}");
+    expect(salvar).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText("Salvo às 11:05.")).toBeInTheDocument();
+  });
+
+  it("código do que falta que a tela não conhece aparece com texto genérico, nunca o código (nota do Tech Lead Frontend)", () => {
+    render(<TelaPerfil resultado={ok({ ...PERFIL, faltando: ["legal_name", "campo_novo"] })} />);
+    expect(screen.getByText("Outro dado obrigatório do Perfil")).toBeInTheDocument();
+    expect(screen.queryByText("campo_novo")).toBeNull();
+  });
+
   it("e-mail sem estrutura válida não vai ao servidor e marca o campo (§16.6; achado do QA no #281)", async () => {
     render(<TelaPerfil resultado={ok(PERFIL)} />);
     const email = screen.getByLabelText("E-mail comercial");
