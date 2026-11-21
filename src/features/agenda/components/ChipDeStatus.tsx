@@ -7,7 +7,7 @@ import { textos } from "../textos";
 const ESTILO: Record<Status, { chip: string; ponto: string }> = {
   agendado: { chip: "bg-surface-card text-text-primary", ponto: "bg-text-secondary" },
   em_preenchimento: { chip: "bg-status-info/15 text-text-primary", ponto: "bg-status-info" },
-  pronto: { chip: "bg-status-ready text-text-primary", ponto: "bg-brand-active" },
+  pronto: { chip: "bg-status-ready text-text-primary", ponto: "bg-status-checkin" },
   em_atendimento: { chip: "bg-brand text-on-brand", ponto: "bg-on-brand" },
   concluido: { chip: "bg-status-success/15 text-text-primary", ponto: "bg-status-success" },
   ausente: { chip: "border border-border-functional text-text-primary", ponto: "bg-text-secondary" },
