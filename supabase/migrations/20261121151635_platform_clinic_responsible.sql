@@ -107,12 +107,18 @@ begin
        or (p_role = 'technical_lead' and p_field in ('same_as_manager', 'council', 'council_uf', 'council_number'))) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'field';
   end if;
-  -- cifrado e máscara andam juntos (e, no CPF, o HMAC): ou os três, ou nenhum
+  -- cifrado e máscara andam juntos (e, no CPF, o HMAC): ou os três, ou nenhum. As máscaras têm o formato que o servidor
+  -- gera, com o ponto médio (ADR 0002 §6), para nenhum valor em claro cair na coluna da máscara (Segurança e BE5, #325):
+  --   CPF ···.···.938-60 · e-mail g···@dominio · WhatsApp (11) ·····-0099
+  -- O cifrado é um contêiner do formato 1 (0x01, versão, nonce, dado, tag): pelo menos 32 bytes, começando em 0x01.
   if (p_field = 'cpf' and num_nulls(p_hmac, p_masked, p_enc) not in (0, 3))
      or (p_field in ('email', 'whatsapp') and num_nulls(p_masked, p_enc) not in (0, 2))
+     or (p_field = 'cpf' and p_hmac is not null and octet_length(p_hmac) <> 32)
+     or (p_enc is not null and (octet_length(p_enc) < 32 or get_byte(p_enc, 0) <> 1))
      or (p_field = 'cpf' and p_masked is not null and p_masked !~ '^···\.···\.[0-9]{3}-[0-9]{2}$')
-     or (p_field = 'email' and p_masked is not null and (char_length(p_masked) > 254 or p_masked !~ '@'))
-     or (p_field = 'whatsapp' and p_masked is not null and char_length(p_masked) > 30)
+     or (p_field = 'email' and p_masked is not null
+         and (char_length(p_masked) > 254 or p_masked !~ '^[^@·[:space:]]···@[^@[:space:]]+\.[^@[:space:]]+$'))
+     or (p_field = 'whatsapp' and p_masked is not null and p_masked !~ '^\([1-9][0-9]\) ·····-[0-9]{4}$')
      or (p_field = 'same_as_manager' and p_bool is null) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = p_field;
   end if;
@@ -122,11 +128,24 @@ begin
     if num_nulls(p_envelope_id, p_dek_wrapped, p_kek_version) > 0 then
       raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'envelope';
     end if;
-    insert into platform.tenant_responsible (tenant_id, role, envelope_id, dek_wrapped, kek_version)
-    values (v_tenant, p_role, p_envelope_id, p_dek_wrapped, p_kek_version)
-    returning * into r;
+    begin
+      insert into platform.tenant_responsible (tenant_id, role, envelope_id, dek_wrapped, kek_version)
+      values (v_tenant, p_role, p_envelope_id, p_dek_wrapped, p_kek_version)
+      returning * into r;
+    exception when unique_violation then
+      -- outra escrita criou a linha entre o select e o insert (1ª escrita concorrente, BE5 no #325): relê e segue,
+      -- e o envelope precisa ser o dela
+      select * into r from platform.tenant_responsible where tenant_id = v_tenant and role = p_role for update;
+      if p_envelope_id is distinct from r.envelope_id then
+        raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'envelope';
+      end if;
+    end;
   elsif p_envelope_id is not null and p_envelope_id is distinct from r.envelope_id then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'envelope';
+  end if;
+  if p_field = 'council_uf' and v_text is not null and upper(v_text) not in ('AC','AL','AP','AM','BA','CE','DF','ES','GO',
+       'MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO') then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = p_field;
   end if;
   -- RT "mesma pessoa que o gestor": o nome e o CPF são os do gestor; não se grava outro por cima
   if r.same_as_manager and p_field in ('full_name', 'cpf') then
