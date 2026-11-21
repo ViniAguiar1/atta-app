@@ -3,8 +3,9 @@ import { expect, type Page, test } from "@playwright/test";
 import { SESSAO_DA_GESTORA } from "./acesso";
 
 // MIG-44: Termos & Docs › Modelos de documento (PDD v206 §10.3.1; simulador, captura 39) na porta real, contra o
-// Supabase local com o seed fictício, que não tem modelo: a tela mostra o estado vazio, sem dado de mentira, e os
-// cartões sem fonte mostram "—" (URGENTE do Tech Lead Frontend).
+// Supabase local com o seed fictício. A clínica só tem o Termo de Autorização de sistema, que a ATTA semeia em toda
+// clínica (MIG-21c, decisão do CTO P2c): ele aparece na lista sem nenhuma ação (#188), e os cartões sem fonte mostram
+// "—" (URGENTE do Tech Lead Frontend).
 const axe = (page: Page) => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
 const PROIBIDO = /ambiente de valida|fict[ií]ci|\bdemo|demonstra[çc]|\bteste\b|exemplos?:/i;
 
@@ -17,7 +18,7 @@ test.describe("gestora da Clínica Alfa", () => {
   test.use({ storageState: SESSAO_DA_GESTORA });
 
   for (const largura of [1440, 390]) {
-    test(`em ${largura} px: subaba, cartões, estado vazio e axe sem violação`, async ({ page }) => {
+    test(`em ${largura} px: subaba, cartões, o Termo de Autorização de sistema sem ações e axe sem violação`, async ({ page }) => {
       await page.setViewportSize({ width: largura, height: 900 });
       await page.goto("/painel/documentos");
       const subabas = page.getByRole("navigation", { name: "Seções de Termos & Docs" });
@@ -25,7 +26,10 @@ test.describe("gestora da Clínica Alfa", () => {
       const cards = page.getByRole("region", { name: "Resumo dos modelos" });
       await expect(cards).toContainText("Termos ativos");
       await expect(cards).toContainText("— vencido(s) para reassinar");
-      await expect(page.getByText("Nenhum modelo de documento ainda")).toBeVisible();
+      const lista = page.getByRole("region", { name: "Modelos de documento" });
+      await expect(lista.getByRole("row").filter({ hasText: "Termo de Autorização de Uso de Imagem de Assinatura Digital" })).toHaveCount(1);
+      await expect(lista.getByRole("button")).toHaveCount(0); // modelo de sistema: só leitura (allowed_actions vazio)
+      await expect(page.getByText("Nenhum modelo de documento ainda")).toHaveCount(0);
       expect(await page.locator("body").innerText()).not.toMatch(PROIBIDO);
       expect((await axe(page)).violations).toEqual([]);
     });
