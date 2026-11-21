@@ -15,7 +15,7 @@ import { textos as t } from "../textos";
 // mascarados (dado pessoal): o campo começa vazio e serve para trocar o destino, que vai numa ação própria.
 type Props = { resultado: Resultado<AlertasDaEquipe | null> | null };
 
-// a regra vem no reason (ADR 0001 §5): ATTA-IN-0001 (formato) e ATTA-IN-0003:address (ligar canal sem destino)
+// a regra vem no reason (ADR 0001 §5): ATTA-IN-0001:address (formato) e ATTA-IN-0003:address (ligar canal sem destino)
 function mensagem(erro: Erro, campo?: "email" | "whatsapp"): string {
   if (erro.reason === "ATTA-IN-0003:address") return t.erros.semDestino;
   if (erro.code === "VALIDACAO" && campo) return campo === "email" ? t.erros.email : t.erros.numero;
@@ -23,6 +23,8 @@ function mensagem(erro: Erro, campo?: "email" | "whatsapp"): string {
 }
 
 const caixa = "size-5 shrink-0 cursor-pointer accent-brand disabled:cursor-not-allowed";
+// alvo de toque de 44 px no celular e 32 px a partir de medium em volta da caixa de 20 px, sem mudar o visual (Guia §3)
+const alvo = "inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center medium:min-h-8 medium:min-w-8";
 const chip = "inline-flex items-center gap-1.5 rounded-full bg-surface-card px-2.5 py-1 text-xs font-medium";
 const ponto = <span aria-hidden="true" className="size-1.5 rounded-full bg-text-secondary" />;
 
@@ -34,7 +36,7 @@ export function TelaNotificacoes({ resultado }: Props) {
   const estado = !resultado
     ? ({ tipo: "carregando" } as const)
     : !resultado.ok
-      ? ({ tipo: "erro", tentarDeNovo: () => router.refresh() } as const)
+      ? ({ tipo: "erro", tentarDeNovo: () => router.refresh(), codigo: resultado.error.code } as const)
       : !dados
         ? ({ tipo: "vazio" } as const)
         : ({ tipo: "pronto" } as const);
@@ -90,10 +92,10 @@ function Canais({ dados, gravar, erroEm }: Parte) {
       }
     >
       <div className="grid gap-2.5 expanded:grid-cols-3">
-        <div className="flex min-h-40 flex-col gap-3 rounded-md border border-border bg-surface-app p-3.5">
+        <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-app p-3.5">
           <div className="flex items-center justify-between gap-3">
             <h4 className="font-semibold">{t.canais.sino.nome}</h4>
-            <label className="flex items-center gap-2 text-text-secondary">
+            <label className="flex min-h-11 items-center gap-2 text-text-secondary medium:min-h-8">
               <input type="checkbox" className={caixa} checked disabled readOnly />
               {t.canais.sino.estado}
             </label>
@@ -133,10 +135,10 @@ function CartaoDoCanal({ canal, dados, gravar, erroEm }: Parte & { canal: Canal 
     gravar(`canal-${canal}`, () => ligarCanal({ canal, ativo: marcado }));
   };
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-app p-3.5">
+    <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-app p-3.5">
       <div className="flex items-center justify-between gap-3">
         <h4 className="font-semibold">{textoDoCanal.nome}</h4>
-        <label className="flex cursor-pointer items-center gap-2 text-text-secondary">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-text-secondary medium:min-h-8">
           <input
             type="checkbox"
             className={caixa}
@@ -162,7 +164,7 @@ function CartaoDoCanal({ canal, dados, gravar, erroEm }: Parte & { canal: Canal 
           onKeyDown={(e) => e.key === "Enter" && salvarDestino()}
           aria-invalid={erro ? true : undefined}
           aria-describedby={`${id}-ajuda`}
-          className="min-h-11 w-full rounded-md border border-border-functional bg-surface-raised px-3 disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-11 w-full rounded-md border border-border-functional bg-surface-raised px-3 disabled:cursor-not-allowed disabled:opacity-60 medium:min-h-9"
         />
         <p id={`${id}-ajuda`} className={`text-xs ${erro ? "text-status-negative" : "text-text-secondary"}`}>
           {erro ??
@@ -237,15 +239,17 @@ function Eventos({ dados, gravar, erroEm }: Parte) {
                     {erroEm(`evento-${e.chave}`) && <span className="block text-xs text-status-negative">{erroEm(`evento-${e.chave}`)}</span>}
                   </th>
                   {(["email", "whatsapp"] as const).map((canal) => (
-                    <td key={canal} className="px-3 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        className={caixa}
-                        checked={marca(e.chave, canal)}
-                        disabled={!dados[canal].ativo}
-                        aria-label={t.eventos.marcarFalado(t.eventos.nomes[e.chave], t.eventos.colunas[canal])}
-                        onChange={(ev) => gravar(`evento-${e.chave}`, () => marcarEvento({ chave: e.chave, canal, marcado: ev.target.checked }))}
-                      />
+                    <td key={canal} className="px-3 py-1 text-center">
+                      <label className={alvo}>
+                        <input
+                          type="checkbox"
+                          className={caixa}
+                          checked={marca(e.chave, canal)}
+                          disabled={!dados[canal].ativo}
+                          aria-label={t.eventos.marcarFalado(t.eventos.nomes[e.chave], t.eventos.colunas[canal])}
+                          onChange={(ev) => gravar(`evento-${e.chave}`, () => marcarEvento({ chave: e.chave, canal, marcado: ev.target.checked }))}
+                        />
+                      </label>
                     </td>
                   ))}
                 </tr>

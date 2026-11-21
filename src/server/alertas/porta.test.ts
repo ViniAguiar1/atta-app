@@ -1,10 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { escolherPortaAlertas } from "./porta";
-import { reiniciarAlertasSimulados } from "./simulado";
 
 // Escolha da porta e o comportamento da simulada (prévia, local e CI) e da vazia (produção) até o MIG-15.
-beforeEach(() => reiniciarAlertasSimulados());
-
 describe("escolherPortaAlertas", () => {
   it("na produção é a vazia: nada para ler e nenhuma escrita aceita (sem dado de mentira)", async () => {
     const porta = escolherPortaAlertas("production");
@@ -26,7 +23,7 @@ describe("porta simulada", () => {
   it("recusa e-mail e celular fora do formato (reason estável) e só devolve o destino mascarado", async () => {
     const recusado = await porta.alterarCanal("email", "sem-arroba");
     expect(recusado.ok).toBe(false);
-    if (!recusado.ok) expect(recusado.error.reason).toBe("ATTA-IN-0001:destino");
+    if (!recusado.ok) expect(recusado.error.reason).toBe("ATTA-IN-0001:address");
     expect((await porta.alterarCanal("whatsapp", "1234")).ok).toBe(false);
     const r = await porta.alterarCanal("whatsapp", "(48) 99876-0001");
     expect(r.ok && r.data.whatsapp.destinoMascarado).toBe("(48) ·····-0001");
@@ -41,14 +38,13 @@ describe("porta simulada", () => {
     expect(junto.ok && junto.data.whatsapp).toEqual({ ativo: true, destinoMascarado: "(48) ·····-0001" });
   });
 
-  it("ligar e desligar não mexe no destino; a marcação de um evento fica guardada com o canal desligado", async () => {
-    await porta.alterarCanal("whatsapp", "(48) 99876-0001");
-    const ligado = await porta.ligarCanal("whatsapp", true);
-    expect(ligado.ok && ligado.data.whatsapp).toEqual({ ativo: true, destinoMascarado: "(48) ·····-0001" });
-    await porta.ligarCanal("whatsapp", false);
-    await porta.marcarEvento("documento_assinado", "whatsapp", true);
-    const r = await porta.ler();
-    expect(r.ok && r.data?.whatsapp.ativo).toBe(false);
-    expect(r.ok && r.data?.eventos.find((e) => e.chave === "documento_assinado")?.whatsapp).toBe(true);
+  it("devolve a marcação com o canal desligado e não guarda nada entre chamadas (sem vazar destino entre sessões)", async () => {
+    const r = await porta.marcarEvento("documento_assinado", "whatsapp", true);
+    expect(r.ok && r.data.whatsapp.ativo).toBe(false);
+    expect(r.ok && r.data.eventos.find((e) => e.chave === "documento_assinado")?.whatsapp).toBe(true);
+    await porta.alterarCanal("email", "pessoa@clinica-exemplo.test");
+    const depois = await porta.ler();
+    expect(depois.ok && depois.data?.email.destinoMascarado).toBe("al·····@clinica-exemplo.test");
+    expect(depois.ok && depois.data?.eventos.find((e) => e.chave === "documento_assinado")?.whatsapp).toBe(false);
   });
 });
