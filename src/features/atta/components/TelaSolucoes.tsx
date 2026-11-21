@@ -17,7 +17,7 @@ export function TelaSolucoes() {
             <div className="flex flex-col gap-2.5 bg-brand px-4.5 py-5 text-on-brand">
               <p className="flex items-baseline gap-1.5 leading-none">
                 <span className="sr-only">{t.attaMe.rotuloFalado}</span>
-                <span aria-hidden="true" className="font-atta text-[1.75rem] tracking-wide">{t.attaMe.nome}</span>
+                <span aria-hidden="true" className="font-atta text-marca tracking-wide">{t.attaMe.nome}</span>
                 <span aria-hidden="true" className="font-product text-lg">{t.attaMe.sufixo}</span>
               </p>
               <p className="text-xs tracking-wider uppercase">{t.attaMe.tipo}</p>

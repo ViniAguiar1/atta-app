@@ -36,10 +36,10 @@ export function TelaPrivacidade({ clinica, resumo }: { clinica: string | null; r
         <ul className="grid gap-4 expanded:grid-cols-2">
           {categorias.map((cat) => (
             <li key={cat.titulo} className="flex flex-col gap-0.5 rounded-md border border-border px-4 py-3.5">
-              <h3 className="text-[0.9375rem] font-medium">{cat.titulo}</h3>
-              <p className="text-[0.8125rem] text-text-secondary">{cat.texto}</p>
-              <p className="mt-1 text-[0.9375rem] font-semibold">{cat.numeros}</p>
-              <p className="mt-0.5 text-[0.8125rem] text-text-secondary">{cat.base}</p>
+              <h3 className="text-titulo font-medium">{cat.titulo}</h3>
+              <p className="text-corpo text-text-secondary">{cat.texto}</p>
+              <p className="mt-1 text-titulo font-semibold">{cat.numeros}</p>
+              <p className="mt-0.5 text-corpo text-text-secondary">{cat.base}</p>
             </li>
           ))}
         </ul>
