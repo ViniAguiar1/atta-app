@@ -45,3 +45,45 @@ export function mascararCelular(valor: string): string {
 
 /** Nome: mínimo de dois termos (§16.6). */
 export const nomeValido = (v: string) => v.trim().split(/\s+/).filter((p) => p.length > 1).length >= 2;
+
+// CNPJ, CEP e telefone fixo (Perfil da Clínica, PDD §10.4.1: "CNPJ (com máscara)", "CEP", "Telefone fixo").
+function digitoDoCnpj(base: string): number {
+  const pesos = base.length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const soma = [...base].reduce((total, d, i) => total + Number(d) * pesos[i]!, 0);
+  const resto = soma % 11;
+  return resto < 2 ? 0 : 11 - resto;
+}
+
+export function cnpjValido(valor: string): boolean {
+  const cnpj = soDigitos(valor);
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+  const d1 = digitoDoCnpj(cnpj.slice(0, 12));
+  const d2 = digitoDoCnpj(cnpj.slice(0, 12) + d1);
+  return cnpj.endsWith(`${d1}${d2}`);
+}
+
+/** Máscara de digitação: 00.000.000/0000-00. */
+export function mascararCnpj(valor: string): string {
+  const d = soDigitos(valor).slice(0, 14);
+  let s = d.slice(0, 2);
+  if (d.length > 2) s += `.${d.slice(2, 5)}`;
+  if (d.length > 5) s += `.${d.slice(5, 8)}`;
+  if (d.length > 8) s += `/${d.slice(8, 12)}`;
+  if (d.length > 12) s += `-${d.slice(12)}`;
+  return s;
+}
+
+/** Máscara de digitação: 00000-000. */
+export function mascararCep(valor: string): string {
+  const d = soDigitos(valor).slice(0, 8);
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}
+
+/** Telefone fixo ou celular, com DDD: (00) 0000-0000 ou (00) 00000-0000. */
+export function mascararTelefone(valor: string): string {
+  const d = soDigitos(valor).slice(0, 11);
+  if (d.length === 11) return mascararCelular(d);
+  if (d.length <= 2) return d.length ? `(${d}` : "";
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+}

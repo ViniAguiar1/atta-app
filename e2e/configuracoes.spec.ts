@@ -10,8 +10,10 @@ test.describe("ADMIN", () => {
   test.use({ storageState: SESSAO_DA_GESTORA });
 
   test("abre em Agendamentos, com o menu lateral e os cartões, sem violação do axe", async ({ page }) => {
+    // fora da produção a primeira seção é o Perfil da Clínica (porta simulada, MIG-42); Agendamentos abre pelo endereço
     await page.goto("/painel/configuracoes");
-    await expect(page).toHaveURL(/\/painel\/configuracoes\/agendamentos$/);
+    await expect(page).toHaveURL(/\/painel\/configuracoes\/perfil$/);
+    await page.goto("/painel/configuracoes/agendamentos");
     const menu = page.getByRole("navigation", { name: "Seções de Configurações" });
     await expect(menu.getByRole("link", { name: "Agendamentos" })).toHaveAttribute("aria-current", "page");
     for (const cartao of ["Link Check-in Online", "Janela de confirmação", "Fluxo alternativo", "Ausência automática", "Envio das mensagens"])

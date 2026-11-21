@@ -71,6 +71,61 @@ export const textos = {
     texto: // simulador (README, "Envio das mensagens")
       "WhatsApp pela API oficial, com SMS como alternativa quando o WhatsApp falhar. Cada envio fica registrado com horário, canal, autor e resultado.",
   },
+  perfil: {
+    titulo: "Perfil da Clínica", // simulador, captura 42 (h2 só para leitor de tela: o menu lateral já marca a seção)
+    rotulo: "Perfil da Clínica", // leitor de tela, enquanto carrega
+    vazio: { titulo: "O perfil da clínica aparece aqui", texto: "Os dados da empresa, do gestor e do Responsável Técnico ficam nesta seção." }, // provisório
+    faixa: {
+      destaque: "Sem botão de salvar.", // simulador, captura 42
+      texto: "Cada campo é salvo sozinho. Nome fantasia, CNPJ e Responsável Técnico aparecem no selo ATTA Sign: o que você alterar vale para os documentos assinados daqui para frente. Os já assinados não mudam.", // simulador, captura 42
+    },
+    salvoEm: (hora: string) => `Último salvamento às ${hora}.`, // provisório (PDD §10.4.1: "horário do último salvamento")
+    faltam: "Para consolidar documentos, falta preencher:", // provisório (PDD §10.4.1: aviso dos obrigatórios no topo)
+    salvoAs: (hora: string) => `Salvo às ${hora}.`, // provisório
+    obrigatorio: "obrigatório", // provisório (leitor de tela)
+    empresa: {
+      titulo: "Dados da empresa", // simulador, captura 42
+      subtitulo: "Como a clínica aparece para o paciente e nos documentos", // simulador, captura 42
+      desde: (data: string) => `Clínica desde ${data}`, // simulador, captura 42
+    },
+    contato: {
+      titulo: "Endereço & Contato", // PDD §10.4.1
+      subtitulo: "Onde fica a clínica e como o paciente fala com ela", // provisório
+    },
+    campos: {
+      trade_name: { rotulo: "Nome fantasia", ajuda: "Aparece no celular do paciente e na chancela." }, // simulador, captura 42
+      legal_name: { rotulo: "Razão social", ajuda: "Como consta no CNPJ." }, // simulador, captura 42
+      cnpj: { rotulo: "CNPJ" }, // simulador, captura 42
+      tax_registration: { rotulo: "Inscrição estadual/municipal (opcional)" }, // simulador, captura 42
+      main_specialty: { rotulo: "Especialidade principal" }, // simulador, captura 42
+      address_cep: { rotulo: "CEP" }, // PDD §10.4.1
+      address_street: { rotulo: "Rua" }, // PDD §10.4.1
+      address_number: { rotulo: "Número" }, // PDD §10.4.1
+      address_complement: { rotulo: "Complemento (opcional)" }, // PDD §10.4.1
+      address_city: { rotulo: "Cidade" }, // PDD §10.4.1
+      address_uf: { rotulo: "UF" }, // PDD §10.4.1
+      phone: { rotulo: "Telefone fixo (opcional)" }, // PDD §10.4.1
+      clinic_whatsapp: { rotulo: "WhatsApp da clínica", ajuda: "O mesmo número do Aviso de Privacidade." }, // PDD §10.4.1 (RN-AVP-03, sem o código)
+      commercial_email: { rotulo: "E-mail comercial" }, // PDD §10.4.1 (obrigatório: decisão do CTO, R35)
+    },
+    // o que falta, pelo missing_required do banco (os nomes do contrato)
+    faltando: {
+      trade_name: "Nome fantasia",
+      legal_name: "Razão social",
+      cnpj: "CNPJ",
+      address: "Endereço",
+      clinic_whatsapp: "WhatsApp da clínica",
+      commercial_email: "E-mail comercial",
+      manager: "Gestor da clínica",
+      technical_lead: "Responsável Técnico",
+    } as Record<string, string>, // PDD §10.4.1 e decisão do CTO (R35)
+    erros: {
+      VALIDACAO: "Confira este campo: o valor não foi aceito.", // provisório
+      cnpj: "Confira o CNPJ: os dígitos não conferem.", // provisório
+      SEM_PERMISSAO: "Só o gestor da clínica muda o Perfil.", // provisório
+      INDISPONIVEL: "Não conseguimos salvar agora. Tente de novo em instantes.", // provisório
+    },
+  },
   salvando: "Salvando…", // provisório
   salvo: "Salvo.", // provisório
   erros: {
