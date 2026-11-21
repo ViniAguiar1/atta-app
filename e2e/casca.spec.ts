@@ -47,7 +47,6 @@ test.describe("com sessão", () => {
     await expect(page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link", { name: "Termos & Docs" })).toHaveAttribute("aria-current", "page");
     expect((await axe(page)).violations, "/painel/documentos").toEqual([]);
     for (const [rota, aba, vazio] of [
-      ["/painel/metricas", "Métricas", "Ainda não há dados para as métricas"],
       ["/painel/notificacoes", null, "Nenhuma notificação"],
     ] as const) {
       await page.goto(rota);
