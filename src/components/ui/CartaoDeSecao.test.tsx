@@ -44,8 +44,8 @@ describe("CartaoDeSecao", () => {
         <p>Corpo</p>
       </CartaoDeSecao>,
     );
-    expect(padrao.getByRole("heading", { name: "Padrão" }).className).toContain("text-[0.9375rem]");
-    expect(padrao.getByText("Sub").className).toContain("text-[0.8125rem]");
+    expect(padrao.getByRole("heading", { name: "Padrão" }).className).toContain("text-titulo");
+    expect(padrao.getByText("Sub").className).toContain("text-corpo");
     expect(padrao.container.querySelector("header")?.className).toContain("py-3.5");
     expect(padrao.getByText("Corpo").parentElement?.className).toBe("flex flex-col gap-4 p-4");
     padrao.unmount();
@@ -55,8 +55,8 @@ describe("CartaoDeSecao", () => {
         <p>Corpo</p>
       </CartaoDeSecao>,
     );
-    expect(compacto.getByRole("heading", { name: "Compacto" }).className).toContain("text-[0.8125rem]");
-    expect(compacto.getByText("Sub").className).toContain("text-[0.6875rem]");
+    expect(compacto.getByRole("heading", { name: "Compacto" }).className).toContain("text-corpo");
+    expect(compacto.getByText("Sub").className).toContain("text-rotulo");
     expect(compacto.container.querySelector("header")?.className).toMatch(/\bpy-2\.5\b.*|.*\bpx-3\.5\b/);
     expect(compacto.container.querySelector("header > span")?.className).toContain("size-7");
     expect(compacto.getByText("Corpo").parentElement?.className).toBe("flex flex-col gap-3 p-3.5");

@@ -37,11 +37,11 @@ export function CartaoDeSecao({ titulo, subtitulo, icone, acao, nivel = 2, texto
           {icone}
         </span>
         <div className="min-w-0 flex-1">
-          {/* 15 e 13 px, como no simulador (a escala do Guia não tem esses passos; rem para respeitar o zoom) */}
-          <Titulo id={id} className={`font-semibold leading-snug ${compacto ? "text-[0.8125rem]" : "text-[0.9375rem]"}`}>
+          {/* 15 e 13 px, como no simulador (15 px = text-titulo, 13 px = text-corpo, 11 px = text-rotulo) */}
+          <Titulo id={id} className={`font-semibold leading-snug ${compacto ? "text-corpo" : "text-titulo"}`}>
             {titulo}
           </Titulo>
-          {subtitulo && <p className={`text-text-secondary ${compacto ? "text-[0.6875rem]" : "text-[0.8125rem]"}`}>{subtitulo}</p>}
+          {subtitulo && <p className={`text-text-secondary ${compacto ? "text-rotulo" : "text-corpo"}`}>{subtitulo}</p>}
         </div>
         {acao && <div className="shrink-0">{acao}</div>}
       </header>
