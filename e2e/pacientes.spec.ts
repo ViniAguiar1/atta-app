@@ -107,6 +107,10 @@ test("a colaboradora da Alfa vê a mesma lista", async ({ page }) => {
   await expect(page).toHaveURL(INICIO_DO_PAINEL);
   await page.goto("/painel/pacientes");
   await expect(page.getByRole("rowheader")).toHaveCount(DA_ALFA.length);
+  // a Pasta abre para leitura; arquivar é só do gestor
+  await page.getByRole("link", { name: "Abrir a pasta de Juliana Prates" }).click();
+  await expect(page.getByRole("region", { name: "Dados cadastrais" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Arquivar paciente" })).toHaveCount(0);
 });
 
 /** CPF fictício com dígito verificador válido, novo a cada execução (nenhum real). */
@@ -179,5 +183,15 @@ test.describe("Novo paciente", () => {
     await expect(dialogo).toBeHidden();
     await expect(page.getByRole("row", { name: /Lucas Pereira/ })).toContainText("(11) ·····-5566");
     expect(page.url()).not.toContain(novo);
+
+    // Arquivar (PLANO, decisão do dono de 20/11): a gestora arquiva o paciente recém-criado, sem agendamento, e desarquiva
+    await page.getByRole("link", { name: "Abrir a pasta de Lucas Pereira" }).click();
+    await page.getByRole("button", { name: "Arquivar paciente" }).click();
+    const confirmar = page.getByRole("dialog", { name: "Arquivar paciente?" });
+    expect((await new AxeBuilder({ page }).include("dialog").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+    await confirmar.getByRole("button", { name: "Arquivar" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Paciente arquivado em" })).toBeVisible();
+    await page.getByRole("button", { name: "Desarquivar" }).click();
+    await expect(page.getByRole("button", { name: "Arquivar paciente" })).toBeVisible();
   });
 });

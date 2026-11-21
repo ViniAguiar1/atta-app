@@ -2,6 +2,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { Subabas } from "@/components/ui/Subabas";
+import { sessaoDoPainel } from "@/features/casca/sessao";
+import { arquivarPaciente } from "@/features/pacientes/actions";
 import { EstadoDaPasta } from "@/features/pacientes/components/EstadoDaPasta";
 import { PastaDoPaciente } from "@/features/pacientes/components/PastaDoPaciente";
 import { abrirPasta } from "@/features/pacientes/pasta";
@@ -31,8 +33,9 @@ async function Conteudo({ searchParams }: Props) {
   await connection(); // por requisição: a ficha é da clínica da sessão, e cada abertura fica na Auditoria
   const { paciente } = await searchParams;
   if (paciente === undefined) return <EstadoDaPasta tipo="vazio" titulo={textos.pasta.vazioTitulo} texto={textos.pasta.vazioTexto} />;
-  const ficha = await abrirPasta(paciente);
-  if (ficha.ok) return <PastaDoPaciente ficha={ficha.data} />;
+  const [ficha, sessao] = await Promise.all([abrirPasta(paciente), sessaoDoPainel()]);
+  // só o gestor arquiva (PLANO, decisão do dono de 20/11); o banco confere o papel de novo
+  if (ficha.ok) return <PastaDoPaciente ficha={ficha.data} arquivar={sessao?.papel === "ADMIN" ? arquivarPaciente : null} />;
   if (ficha.error.code === "NAO_ENCONTRADO" || ficha.error.code === "VALIDACAO") return <EstadoDaPasta tipo="vazio" titulo={textos.pasta.naoEncontrado} />;
   return <EstadoDaPasta tipo="erro" codigo={ficha.error.code} />;
 }

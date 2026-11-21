@@ -154,6 +154,14 @@ describe("porta real de Pacientes (MIG-43)", () => {
     expect(r.ok && r.data).toMatchObject({ nascimento: "1990-09-17", selo: { validoAte: "2027-06-30T00:00:00Z" }, seloExpirouEm: null, origem: "atta_me", acessoARede: "proprio" });
   });
 
+  it("arquivar chama patient_set_archived; agendamento em aberto volta como CONFLITO com o reason", async () => {
+    rpc.mockResolvedValueOnce({ data: { person_id: ID, archived: true }, error: null });
+    expect(await porta.arquivar(ID, true)).toEqual({ ok: true, data: { arquivado: true } });
+    expect(rpc).toHaveBeenLastCalledWith("patient_set_archived", { p_person_id: ID, p_archived: true });
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "ATTA-IN-0003", details: "appointments", hint: null } });
+    expect(await porta.arquivar(ID, true)).toMatchObject({ ok: false, error: { code: "CONFLITO", reason: "ATTA-IN-0003:appointments" } });
+  });
+
   it("selo vencido não vale, mas a Pasta recebe a data em que expirou (RN-PAC-06)", async () => {
     rpc.mockResolvedValue({
       data: [{
@@ -163,7 +171,7 @@ describe("porta real de Pacientes (MIG-43)", () => {
       error: null,
     });
     const r = await porta.obter(ID);
-    expect(r.ok && r.data).toMatchObject({ selo: null, seloExpirouEm: "2026-06-01T00:00:00Z" });
+    expect(r.ok && r.data).toMatchObject({ selo: null, seloExpirouEm: "2026-06-01T00:00:00Z", arquivadoEm: null });
   });
 
   it("celular e e-mail: formato e máscara (só DDD, 4 finais, 2 letras e domínio)", () => {
