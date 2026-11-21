@@ -24,6 +24,8 @@ export const TETO_DO_PNG = 512 * 1024;
 const PNG_ASSINATURA = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const HEX_SHA256 = /^[0-9a-f]{64}$/;
+/** A parte que assina este termo (o profissional): a mesma no payload, no traço e no contexto da cifra. */
+const PARTE = "p1";
 
 /**
  * "CRO-SP 11111": a forma do registro no payload e no texto do termo. O banco recalcula a mesma forma a partir de
@@ -109,10 +111,12 @@ export async function assinarTermoDeAutorizacao(dados: DadosDoTermo, deps: Depen
   const cofre = deps.cofre ?? getCofre("documents");
   if (agora < dados.assinatura.rolagemCompletaEm) throw new Error("assinatura antes da leitura até o fim");
 
-  // 1. PNG cifrado: DEK própria por objeto, envelopada pelo Cofre; a AAD prende o conteúdo ao documento e à clínica
+  // 1. PNG cifrado: DEK própria por objeto, envelopada pelo Cofre. Contexto pela chave natural do objeto (ADR 0002,
+  //    "PDF e objeto do Storage"; Tech Lead no #220): (tenant, documents.stored_object, signature_stroke:<parte>,
+  //    documento). A mesma AAD vai no valor; dois traços do mesmo documento nunca dividem contexto.
   const png = dados.assinatura.png;
   const strokeSha256 = sha256(png);
-  const contexto = { tenant_id: dados.tenantId, table: "documents.stored_object", column: "signature_stroke", id: documentoId };
+  const contexto = { tenant_id: dados.tenantId, table: "documents.stored_object", column: `signature_stroke:${PARTE}`, id: documentoId };
   const { plaintext: dek, wrapped } = await cofre.generateDataKey(contexto);
   let cifrado: Buffer;
   try {
@@ -138,7 +142,7 @@ export async function assinarTermoDeAutorizacao(dados: DadosDoTermo, deps: Depen
     tenant: { legal_name: dados.clinica.razaoSocial, trade_name: dados.clinica.nomeFantasia, cnpj: dados.clinica.cnpj },
     parties: [
       {
-        ref: "p1",
+        ref: PARTE,
         role: "professional",
         capacity: "titular",
         acting_for: null,
@@ -147,7 +151,7 @@ export async function assinarTermoDeAutorizacao(dados: DadosDoTermo, deps: Depen
       },
     ],
     signature: {
-      signer: "p1",
+      signer: PARTE,
       level: "atta_sign",
       signed_at: assinadoEm,
       stroke_sha256: strokeSha256,
