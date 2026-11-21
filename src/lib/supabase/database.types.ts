@@ -80,7 +80,7 @@ export type Database = {
                            },
 "patient_get":
 { Args: { "p_person_id": string }; Returns: {
-              "birth_date": string,"cpf_masked": string,"dek_wrapped": string,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"foreign_doc_type": string,"full_name": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"linked_at": string,"network_access": string,"origin": string,"person_id": string,"phone_enc": string,"social_name": string,"verified_until": string
+              "archived_at": string,"birth_date": string,"cpf_masked": string,"dek_wrapped": string,"email_enc": string,"envelope_id": string,"foreign_doc_masked": string,"foreign_doc_type": string,"full_name": string,"is_incomplete": boolean,"is_verified": boolean,"kek_version": number,"linked_at": string,"network_access": string,"origin": string,"person_id": string,"phone_enc": string,"social_name": string,"verified_until": string
             }[]
                            },
 "patient_link_by_cpf":
