@@ -61,7 +61,6 @@ export const textosDaImportacao = {
     confirmar: (n: number) => (n === 1 ? "Importar 1 paciente" : `Importar ${n} pacientes`), // provisório
     nenhumaValida: "Nenhuma linha pode ser importada. Corrija a planilha e envie de novo.", // provisório
     outraPlanilha: "Escolher outra planilha", // provisório
-    cancelar: "Cancelar", // simulador (padrão dos modais)
     enviado: (ate: string) => `Importação recebida. O processamento leva até 3 dias úteis (até ${ate}).`, // PDD §10.1 (provisório na forma)
     concluir: "Fechar", // provisório
   },

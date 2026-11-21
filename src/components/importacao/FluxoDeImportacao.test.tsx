@@ -27,8 +27,8 @@ const acoesFalsas = (mais: Partial<AcoesDaImportacao> = {}) => {
 };
 const planilha = (nome = "pacientes.xlsx", tamanho = 10) => new File([new Uint8Array(tamanho)], nome, { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 
-async function abrir(acoes: AcoesDaImportacao, enviar = vi.fn(async () => true)) {
-  render(<FluxoDeImportacao acoes={acoes} enviarArquivo={enviar} />);
+async function abrir(acoes: AcoesDaImportacao, enviar = vi.fn(async () => true), fuso = "America/Sao_Paulo") {
+  render(<FluxoDeImportacao acoes={acoes} fuso={fuso} enviarArquivo={enviar} />);
   await userEvent.click(screen.getByRole("button", { name: "Importar base de pacientes" }));
   return { dialogo: screen.getByRole("dialog", { name: "Importar base de pacientes" }), enviar };
 }
@@ -64,6 +64,15 @@ describe("Importar base de pacientes (PDD §10.1; PLANO MIG-34)", () => {
     const msg = await within(dialogo).findByRole("status");
     expect(msg).toHaveTextContent("Importação recebida. O processamento leva até 3 dias úteis (até 26/11/2026).");
     await waitFor(() => expect(msg).toHaveFocus());
+  });
+
+  it("o prazo sai no fuso da clínica: 26/11 01:30 UTC é 25/11 em São Paulo e 26/11 em Tóquio", async () => {
+    const acoes = acoesFalsas({ confirmar: vi.fn(async () => ok({ status: "processando" as const, due_at: "2026-11-26T01:30:00Z" })) });
+    const { dialogo } = await abrir(acoes, vi.fn(async () => true), "Asia/Tokyo");
+    await userEvent.click(within(dialogo).getByRole("checkbox"));
+    await userEvent.upload(within(dialogo).getByLabelText("Escolher a planilha (.xlsx)"), planilha());
+    await userEvent.click(await within(dialogo).findByRole("button", { name: "Importar 2 pacientes" }));
+    expect(await within(dialogo).findByRole("status")).toHaveTextContent("(até 26/11/2026)");
   });
 
   it("fora do modelo é recusado com a orientação de baixar o modelo de novo; o arquivo errado não sai da tela", async () => {

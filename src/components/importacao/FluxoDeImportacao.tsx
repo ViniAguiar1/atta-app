@@ -36,7 +36,8 @@ type Etapa =
   | { tipo: "previa"; importId: string; previa: PreviaDaImportacao }
   | { tipo: "enviado"; ate: string };
 
-const dataBr = (iso: string) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+// o prazo sai no fuso da clínica (ADR 0001 §4), que a página lê do servidor
+const dataBr = (iso: string, fuso: string) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: fuso }).format(new Date(iso));
 
 // fora do modelo: VALIDACAO no campo "arquivo" (contrato com a Integrações); nunca pela message, que é texto livre
 function mensagemDoErro(r: Exclude<Resultado<unknown>, { ok: true }>) {
@@ -46,7 +47,19 @@ function mensagemDoErro(r: Exclude<Resultado<unknown>, { ok: true }>) {
   return t.erro.outro;
 }
 
-export function FluxoDeImportacao({ acoes, enviarArquivo = enviarPorPut, aoConcluir }: { acoes: AcoesDaImportacao; enviarArquivo?: EnviarArquivo; aoConcluir?: () => void }) {
+export function FluxoDeImportacao({
+  acoes,
+  fuso,
+  enviarArquivo = enviarPorPut,
+  aoConcluir,
+}: {
+  acoes: AcoesDaImportacao;
+  /** fuso da clínica (platform.tenant.timezone) */
+  fuso: string;
+  enviarArquivo?: EnviarArquivo;
+  /** depois de uma importação recebida, ao fechar (ex.: router.refresh(), para a cota não ficar velha) */
+  aoConcluir?: () => void;
+}) {
   const [aberto, setAberto] = useState(false);
   const gatilho = useRef<HTMLButtonElement>(null);
   const jaAbriu = useRef(false);
@@ -67,6 +80,7 @@ export function FluxoDeImportacao({ acoes, enviarArquivo = enviarPorPut, aoConcl
       {aberto && (
         <Caixa
           acoes={acoes}
+          fuso={fuso}
           enviarArquivo={enviarArquivo}
           aoFechar={(concluiu) => {
             setAberto(false);
@@ -78,7 +92,7 @@ export function FluxoDeImportacao({ acoes, enviarArquivo = enviarPorPut, aoConcl
   );
 }
 
-function Caixa({ acoes, enviarArquivo, aoFechar }: { acoes: AcoesDaImportacao; enviarArquivo: EnviarArquivo; aoFechar: (concluiu: boolean) => void }) {
+function Caixa({ acoes, fuso, enviarArquivo, aoFechar }: { acoes: AcoesDaImportacao; fuso: string; enviarArquivo: EnviarArquivo; aoFechar: (concluiu: boolean) => void }) {
   const caixa = useRef<HTMLDialogElement>(null);
   const titulo = useId();
   const idDaDeclaracao = useId();
@@ -103,7 +117,14 @@ function Caixa({ acoes, enviarArquivo, aoFechar }: { acoes: AcoesDaImportacao; e
     iniciar(async () => {
       const r = await acoes.urlDoModelo();
       if (!r.ok) return setErro(mensagemDoErro(r));
-      window.location.assign(r.data.url);
+      // baixa por um link com download, sem sair do painel no meio do fluxo (nota do Frontend)
+      const link = document.createElement("a");
+      link.href = r.data.url;
+      link.download = "";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     });
 
   const escolher = (arquivo: File | undefined) => {
@@ -140,7 +161,7 @@ function Caixa({ acoes, enviarArquivo, aoFechar }: { acoes: AcoesDaImportacao; e
       const r = await acoes.confirmar({ importId });
       if (!r.ok) return setErro(mensagemDoErro(r));
       setErro(null);
-      setEtapa({ tipo: "enviado", ate: dataBr(r.data.due_at) });
+      setEtapa({ tipo: "enviado", ate: dataBr(r.data.due_at, fuso) });
     });
 
   const fechar = () => aoFechar(concluiu);
@@ -218,7 +239,10 @@ function Caixa({ acoes, enviarArquivo, aoFechar }: { acoes: AcoesDaImportacao; e
           <section className="flex flex-col gap-2">
             <h3 className="font-semibold">{t.fluxo.passoArquivo}</h3>
             {!declarou && <p className="text-xs text-text-secondary">{t.fluxo.arquivoTexto}</p>}
-            <label className={`${botaoSecundario} flex w-fit cursor-pointer items-center ${!declarou || ocupado ? "pointer-events-none opacity-60" : ""}`}>
+            {/* o input fica escondido dentro do rótulo: o anel de foco vai no rótulo (WCAG 2.4.7, nota do Frontend) */}
+            <label
+              className={`${botaoSecundario} flex w-fit cursor-pointer items-center has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus-ring ${!declarou || ocupado ? "pointer-events-none opacity-60" : ""}`}
+            >
               {etapa.tipo === "lendo" ? t.fluxo.lendo : t.fluxo.escolherArquivo}
               <input
                 ref={entrada}
@@ -275,9 +299,9 @@ function Previa({
           </ul>
         </div>
       )}
-      <p className="text-xs text-text-secondary">
-        {t.fluxo.prazo} {t.fluxo.semVolta}
-      </p>
+      <p className="text-xs text-text-secondary">{t.fluxo.prazo}</p>
+      {/* o aviso de que não tem volta fica à vista, logo acima do botão que não se desfaz (nota do Frontend) */}
+      <p className="text-corpo font-medium text-text-primary">{t.fluxo.semVolta}</p>
       {previa.valid === 0 && <p className="text-xs">{t.fluxo.nenhumaValida}</p>}
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={aoTrocar} disabled={ocupado} className={botaoSecundario}>
