@@ -32,6 +32,13 @@ export const formatarCpf = (v: string) =>
 export function NovoPaciente({ clinica, acoes }: { clinica: string | null; acoes: Acoes }) {
   const [aberto, setAberto] = useState(false);
   const gatilho = useRef<HTMLButtonElement>(null);
+  const jaAbriu = useRef(false);
+  // o foco volta ao botão só depois que o <dialog> saiu da tela: enquanto ele é modal, a página atrás está inerte e o
+  // focus() no botão não pega (e2e do #167)
+  useEffect(() => {
+    if (aberto) jaAbriu.current = true;
+    else if (jaAbriu.current) gatilho.current?.focus();
+  }, [aberto]);
   return (
     <>
       <button
@@ -46,10 +53,7 @@ export function NovoPaciente({ clinica, acoes }: { clinica: string | null; acoes
         <Modal
           clinica={clinica}
           acoes={acoes}
-          aoFechar={() => {
-            setAberto(false);
-            gatilho.current?.focus();
-          }}
+          aoFechar={() => setAberto(false)}
         />
       )}
     </>
