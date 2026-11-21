@@ -9,6 +9,7 @@ import {
   cartaoDoPacienteDaClinica,
   consultarCpfNaRede,
   listarPacientes,
+  reportarDivergenciaDaRede,
   vincularPacienteDaRede,
 } from "@/features/pacientes/actions";
 import { CardsDePacientes } from "@/features/pacientes/components/CardsDePacientes";
@@ -39,7 +40,7 @@ async function Conteudo() {
   const novo = (
     <NovoPaciente
       clinica={sessao?.clinica ?? null}
-      acoes={{ consultar: consultarCpfNaRede, vincular: vincularPacienteDaRede, cadastrar: cadastrarPaciente, cartao: cartaoDoPacienteDaClinica }}
+      acoes={{ consultar: consultarCpfNaRede, vincular: vincularPacienteDaRede, cadastrar: cadastrarPaciente, cartao: cartaoDoPacienteDaClinica, reportar: reportarDivergenciaDaRede }}
     />
   );
   // espaçamento da captura 09: ~37 px das subabas aos cards (gap da página + mt-3), ~16 px dos cards à busca

@@ -172,6 +172,11 @@ export function criarPortaSimulada(pacientes: readonly Simulado[] = PACIENTES_SI
       if (!justificativa.trim()) return falha("VALIDACAO", "Justificativa obrigatória.", [{ campo: "justificativa", code: "VALIDACAO" }]);
       return ok({ salvoEm: new Date().toISOString() });
     },
+    async reportarDivergenciaPorCpf(cpf) {
+      const normal = normalizeCpf(cpf);
+      if (!normal || !isValidCpf(normal)) return falha("VALIDACAO", "CPF inválido.", [{ campo: "cpf", code: "VALIDACAO" }]);
+      return ok({ recebido: true as const });
+    },
     async reportarDivergencia(id) {
       if (!existe(id)) return falha("NAO_ENCONTRADO", "Paciente não encontrado.");
       return ok({ protocolo: crypto.randomUUID() });

@@ -3,7 +3,7 @@
 import { falhaDeValidacao, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
-import { portaPacientes, type CartaoDaRede, type ConsultaDeCpf, type LinhaDePaciente, type PaginaDePacientes } from "@/server/pacientes/porta";
+import { MOTIVOS_DE_DIVERGENCIA, portaPacientes, type CartaoDaRede, type ConsultaDeCpf, type LinhaDePaciente, type PaginaDePacientes } from "@/server/pacientes/porta";
 import { celularMascarado, emailMascarado } from "@/server/pacientes/real";
 import { buscaSchema, cadastroSchema, cpfDaBuscaSchema, cursorSchema } from "./schema";
 
@@ -92,4 +92,13 @@ export async function cartaoDoPacienteDaClinica(entrada: unknown): Promise<Resul
       respostasDeSaude: null,
     },
   };
+}
+
+/** "Algum dado não confere? Reportar à ATTA" do Novo paciente (RN-PAC-08): motivo da lista fechada, pelo CPF buscado. */
+export async function reportarDivergenciaDaRede(entrada: unknown): Promise<Resultado<{ recebido: true }>> {
+  const dados = cpfDaBuscaSchema.extend({ motivo: z.enum(MOTIVOS_DE_DIVERGENCIA) }).strict().safeParse(entrada);
+  if (!dados.success) return falhaDeValidacao(dados.error.issues);
+  const resultado = await portaPacientes.reportarDivergenciaPorCpf(dados.data.cpf, dados.data.motivo);
+  logger.info("pacientes.reporte_enviado", { ok: resultado.ok, code: resultado.ok ? undefined : resultado.error.code });
+  return resultado;
 }

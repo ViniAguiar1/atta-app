@@ -138,6 +138,12 @@ test.describe("Novo paciente", () => {
     expect(await page.content()).not.toContain("98877-6655");
     expect((await new AxeBuilder({ page }).include("dialog").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
 
+    // Reportar à ATTA (RN-PAC-08; captura 17): motivo da lista fechada, sem vincular nem revelar nada
+    await dialogo.getByRole("button", { name: "Algum dado não confere? Reportar à ATTA" }).click();
+    await dialogo.getByLabel("Nome não confere").check();
+    await dialogo.getByRole("button", { name: "Enviar à ATTA" }).click();
+    await expect(dialogo.getByText("Reporte enviado ao time ATTA. O atendimento segue normalmente.")).toBeVisible();
+
     const novo = cpfGerado(); // CPF gerado a cada execução: a nova tentativa do CI não encontra o da anterior
     await cpf.fill(novo);
     await buscar.click();
