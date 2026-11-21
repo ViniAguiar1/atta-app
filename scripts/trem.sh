@@ -55,8 +55,10 @@ apelidos() {
     "Frontend" | FE) echo "Frontend|FE" ;; "Frontend 2" | FE2) echo "Frontend 2|FE2" ;;
     "Frontend 3" | FE3) echo "Frontend 3|FE3" ;; "Frontend 4" | FE4) echo "Frontend 4|FE4" ;;
     "Frontend 5" | FE5) echo "Frontend 5|FE5" ;; "Frontend 6" | FE6) echo "Frontend 6|FE6" ;;
-    "Tech Lead" | TL) echo "Tech Lead|TL" ;; "Tech Lead Frontend" | TLF) echo "Tech Lead Frontend|TLF" ;;
-    "Security Engineer" | SEC | "Segurança") echo "Security Engineer|SEC|Segurança" ;; "QA 2" | QA2) echo "QA 2|QA2" ;;
+    "Tech Lead" | TL) echo "Tech Lead|TL" ;;
+    "Tech Lead Frontend" | TLF | "TL Frontend") echo "Tech Lead Frontend|TLF|TL Frontend" ;;
+    "Security Engineer" | SEC | "Segurança" | Security) echo "Security Engineer|SEC|Segurança|Security" ;;
+    "QA 2" | QA2) echo "QA 2|QA2" ;;
     QA) echo "QA" ;; DevEx | DEVEX) echo "DevEx|DEVEX" ;;
     *) echo "$1" ;;
   esac
@@ -119,11 +121,25 @@ head_aprovado() {
 # idênticas às do head atual (git patch-id --verbatim: espaço e indentação contam, porque mudam YAML e strings; regras do
 # Tech Lead e do Security Engineer). Rebase limpo mantém o ✅; conflito resolvido
 # ou commit novo pede ✅ de novo.
+# último ✅/❌ do revisor (só pelos apelidos fixos, sem variação livre), em JSON, ou null
+veredito() {
+  jq -c --arg nomes "$(apelidos "$2")" '
+    [ .comments[] | select(.body | test("^(✅ APROVADO|❌ AJUSTES) \\((" + $nomes + ")\\)")) ] | sort_by(.createdAt) | last' <<<"$1"
+}
+
+# assinaturas de ✅/❌ do PR que não são de nenhum apelido conhecido (para a mensagem mostrar o nome que achou)
+assinaturas_sem_dono() {
+  local a
+  jq -r '.comments[].body | capture("^(✅ APROVADO|❌ AJUSTES) \\((?<s>[^)]+)\\)").s' <<<"$1" | awk '!v[$0]++' |
+    while IFS= read -r a; do
+      case "$(apelidos "$a")" in *"|"* | QA) ;; *) printf '%s\n' "$a" ;; esac
+    done | paste -s -d ',' - | sed 's/,/, /g'
+}
+
 aprovado_por() {
   local json="$1" quem="$2" n head ultimo corpo quando ha
   n="$(jq -r .number <<<"$json")"; head="$(jq -r .headRefOid <<<"$json")"
-  ultimo="$(jq -c --arg nomes "$(apelidos "$quem")" '
-    [ .comments[] | select(.body | test("^(✅ APROVADO|❌ AJUSTES) \\((" + $nomes + ")\\)")) ] | sort_by(.createdAt) | last' <<<"$json")"
+  ultimo="$(veredito "$json" "$quem")"
   [ "$ultimo" != null ] || { echo nao; return; }
   corpo="$(jq -r .body <<<"$ultimo")"; quando="$(jq -r .createdAt <<<"$ultimo")"
   case "$corpo" in "❌"*) echo ajustes; return ;; esac
@@ -148,7 +164,7 @@ pronto() {
 
 # só as aprovações no head atual: devolve "ok" ou o motivo
 aprovacoes() {
-  local json="$1" n quem r faltam="" aut
+  local json="$1" n quem r faltam="" aut sem_dono
   n="$(jq -r .number <<<"$json")"
   quem="$(revisores "$json")"
   [ -n "$quem" ] || { echo "sem a linha 'Revisor:' no corpo do PR"; return; }
@@ -163,7 +179,9 @@ aprovacoes() {
     r="$(aprovado_por "$json" "$rev")"
     [ "$r" = sim ] || faltam="$faltam ${rev}($r)"
   done <<<"$quem"
-  [ -z "$faltam" ] && echo ok || echo "aprovação faltando ou vencida:$faltam (#$n)"
+  if [ -z "$faltam" ]; then echo ok; return; fi
+  sem_dono="$(assinaturas_sem_dono "$json")"
+  echo "aprovação faltando ou vencida:$faltam (#$n)${sem_dono:+; assinatura que não é de nenhum revisor conhecido: $sem_dono}"
 }
 
 # 'verde', 'vermelha' ou 'pendente' (último CI de push da main que não foi cancelado)
@@ -228,6 +246,9 @@ espera_ci() {
     sleep 20
   done
 }
+
+# os testes (scripts/trem.test.sh) carregam só as funções
+if [ "${TREM_SO_FUNCOES:-}" = 1 ]; then return 0; fi
 
 # --- principal ------------------------------------------------------------------------------------------------------
 
