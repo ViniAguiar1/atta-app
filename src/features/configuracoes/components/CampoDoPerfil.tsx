@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { cnpjValido, emailValido, mascararCep, mascararCnpj, mascararTelefone, soDigitos } from "@/lib/brasil/documentos";
 import type { Erro } from "@/lib/errors";
 import type { CampoDaEmpresa } from "@/server/perfil/porta";
@@ -51,12 +51,29 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
   const [salvando, executar] = useTransition();
   const { rotulo, ajuda } = t.campos[campo] as { rotulo: string; ajuda?: string };
   const somenteLeitura = PROTEGIDOS.has(campo) && Boolean(salvoAte);
+  // 1º preenchimento de um campo que trava depois de gravado: o valor a confirmar antes de salvar (R43)
+  const [aConfirmar, setAConfirmar] = useState<string | null>(null);
+  const caixa = useRef<HTMLDialogElement>(null);
+  const entrada = useRef<HTMLInputElement>(null);
+  const idDoTitulo = useId();
 
-  function salvar(texto: string) {
+  useEffect(() => {
+    const d = caixa.current;
+    if (aConfirmar !== null && d && !d.open) d.showModal();
+  }, [aConfirmar]);
+
+  function fecharConfirmacao() {
+    caixa.current?.close(); // fecha antes do foco voltar: com o dialog modal aberto, a página está inerte (#167)
+    setAConfirmar(null);
+    entrada.current?.focus();
+  }
+
+  function salvar(texto: string, confirmado = false) {
     const normal = SO_DIGITOS.has(campo) ? soDigitos(texto) : texto.trim();
     if (normal === salvoAte) return setErro(null);
     if (campo === "cnpj" && normal && !cnpjValido(normal)) return setErro(t.erros.cnpj);
     if (campo === "commercial_email" && normal && !emailValido(normal)) return setErro(t.erros.email);
+    if (PROTEGIDOS.has(campo) && !salvoAte && normal && !confirmado) return setAConfirmar(normal);
     setSalvoEm(null);
     executar(async () => {
       const r = await salvarCampoDoPerfil({ campo, valor: normal || null });
@@ -102,6 +119,7 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
       ) : (
         <input
           {...comum}
+          ref={entrada}
           type={campo === "commercial_email" ? "email" : "text"}
           inputMode={SO_DIGITOS.has(campo) ? "numeric" : campo === "commercial_email" ? "email" : undefined}
           autoComplete="off"
@@ -112,6 +130,40 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
             if (e.key === "Enter") salvar(rascunho);
           }}
         />
+      )}
+      {aConfirmar !== null && (
+        <dialog
+          ref={caixa}
+          aria-labelledby={idDoTitulo}
+          onCancel={(e) => {
+            e.preventDefault();
+            fecharConfirmacao();
+          }}
+          className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-md border border-border bg-surface-raised p-5 text-corpo text-text-primary backdrop:bg-text-primary/40"
+        >
+          <h2 id={idDoTitulo} className="text-titulo font-semibold">
+            {t.confirmar.titulo(rotulo)}
+          </h2>
+          <p className="mt-3 font-codigo text-sm">{mascara ? mascara(aConfirmar) : aConfirmar}</p>
+          <p className="mt-2 text-text-secondary">{t.confirmar.texto}</p>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={fecharConfirmacao} className="min-h-11 rounded-md border border-border-functional px-4 font-medium medium:min-h-9">
+              {t.confirmar.voltar}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const valorConfirmado = aConfirmar;
+                caixa.current?.close();
+                setAConfirmar(null);
+                salvar(valorConfirmado, true);
+              }}
+              className="min-h-11 rounded-md bg-brand px-4 font-medium text-on-brand medium:min-h-9"
+            >
+              {t.confirmar.salvar}
+            </button>
+          </div>
+        </dialog>
       )}
       <p id={`${id}-situacao`} aria-live="polite" className={`text-xs ${erro ? "text-status-negative" : "text-text-secondary"}`}>
         {erro ?? (salvando ? textos.salvando : salvoEm ? t.salvoAs(hora(salvoEm, fuso)) : somenteLeitura ? t.protegido : (ajuda ?? ""))}
