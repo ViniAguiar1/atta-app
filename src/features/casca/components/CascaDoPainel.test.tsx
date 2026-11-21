@@ -18,6 +18,9 @@ describe("casca do painel (MIG-40)", () => {
     expect(main.className).toMatch(/\bpt-4\b/);
     expect(main.className).toContain("medium:px-5");
     expect(main.className).toContain("has-[[data-subabas]]:pt-0");
+    // a linha das subabas sai da borda esquerda; a primeira subaba fica alinhada ao conteúdo
+    expect(main.className).toContain("medium:[&_[data-subabas]]:-ml-5");
+    expect(main.className).toContain("medium:[&_[data-subabas]]:pl-5");
     expect(screen.getByRole("navigation", { name: "Seções" })).toHaveAttribute("data-subabas");
   });
 
