@@ -1,8 +1,8 @@
 import type { Subaba } from "@/components/ui/Subabas";
 import { textos as t } from "./textos";
 
-// Subabas do Módulo ATTA, na ordem do simulador (capturas 19 a 23). Subaba sem tela não aparece (Tech Lead Frontend,
-// 20/11): cada PR do MIG-48 acrescenta a sua. A primeira da lista é a que /painel/atta abre.
+// Subabas do Módulo ATTA, as 5 do simulador e na ordem dele (capturas 19 a 23). Todas aparecem (régua do Tech Lead
+// Frontend, 20/11): a que ainda não tem tela abre no estado vazio do design. A primeira é a que /painel/atta abre.
 export const ROTA_ATTA = "/painel/atta";
 
 const TODAS = {
@@ -13,5 +13,11 @@ const TODAS = {
   solucoes: { rotulo: t.subabas.solucoes, href: `${ROTA_ATTA}/solucoes` },
 } satisfies Record<string, Subaba>;
 
-export const SUBABAS_ATTA: readonly Subaba[] = [TODAS.privacidade, TODAS.solucoes];
-export const HREF = { privacidade: TODAS.privacidade.href, solucoes: TODAS.solucoes.href };
+export const SUBABAS_ATTA: readonly Subaba[] = [TODAS.ajuda, TODAS.suporte, TODAS.privacidade, TODAS.cocriacao, TODAS.solucoes];
+export const HREF = {
+  ajuda: TODAS.ajuda.href,
+  suporte: TODAS.suporte.href,
+  privacidade: TODAS.privacidade.href,
+  cocriacao: TODAS.cocriacao.href,
+  solucoes: TODAS.solucoes.href,
+};
