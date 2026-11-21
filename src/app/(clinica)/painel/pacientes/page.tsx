@@ -46,7 +46,7 @@ async function Conteudo() {
   // espaçamento da captura 09: ~37 px das subabas aos cards (gap da página + mt-3), ~16 px dos cards à busca
   return (
     <div className="flex flex-col gap-4">
-      <CardsDePacientes total={inicial.ok ? inicial.data.total : null} />
+      <CardsDePacientes total={inicial.ok ? inicial.data.total : null} hoje={inicial.ok ? (inicial.data.contadores?.atendimento_hoje ?? null) : null} />
       <ListaDePacientes
         // depois de um cadastro, o router.refresh() traz a lista nova: a key recomeça o estado da lista com ela
         key={inicial.ok ? `${inicial.data.total}:${inicial.data.itens.map((p) => p.id).join(",")}` : "erro"}

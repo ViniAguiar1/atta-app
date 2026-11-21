@@ -29,7 +29,7 @@ async function linha(extra: Record<string, unknown> = {}) {
     person_id: ID, display_name: "Juliana Prates", display_is_social: false, cpf_masked: "···.···.247-25",
     foreign_doc_masked: null, birth_date: "1990-09-17", is_incomplete: false, is_verified: false, verified_until: null,
     ...contato, envelope_id: ID, network_access: "owner", linked_at: "2026-11-20T12:00:00Z", last_appointment: null,
-    documents: [], total_active: 5, ...extra,
+    documents: [], total_active: 5, count_other_clinic: 1, count_today: 2, count_archived: 0, ...extra,
   };
 }
 
@@ -53,6 +53,7 @@ describe("porta real de Pacientes (MIG-43)", () => {
         }],
         proxima: null,
         total: 5,
+        contadores: { outra_clinica: 1, atendimento_hoje: 2, arquivados: 0 },
       },
     });
   });
@@ -251,5 +252,26 @@ describe("porta real de Pacientes: agendamentos da Pasta (api.patient_folder_app
     expect(await porta.agendamentosDaPasta(ID)).toMatchObject({ ok: false, error: { code: "SEM_PERMISSAO" } });
     rpc.mockResolvedValueOnce({ data: null, error: { code: "P0002", message: "ATTA-CORE-0005", details: "person_id", hint: null } });
     expect(await porta.agendamentosDaPasta(ID)).toMatchObject({ ok: false, error: { code: "NAO_ENCONTRADO" } });
+  });
+});
+
+describe("porta real de Pacientes: filtros da lista (captura 11, #158)", () => {
+  it("o filtro vai em p_filter na lista e na busca; os contadores vêm da primeira linha, contados antes do filtro", async () => {
+    rpc.mockResolvedValueOnce({ data: [await linha()], error: null });
+    const r = await porta.listar(undefined, "atendimento_hoje");
+    expect(rpc).toHaveBeenLastCalledWith("patient_list", { p_limit: 50, p_filter: "atendimento_hoje" });
+    expect(r.ok && r.data.contadores).toEqual({ outra_clinica: 1, atendimento_hoje: 2, arquivados: 0 });
+    rpc.mockResolvedValueOnce({ data: [], error: null });
+    const vazia = await porta.listar(undefined, "arquivados");
+    expect(vazia.ok && vazia.data.contadores).toBeNull(); // sem linha, a tela guarda os contadores que já tinha
+    rpc.mockResolvedValueOnce({ data: [await linha()], error: null });
+    await porta.buscar("juli", "outra_clinica");
+    expect(rpc).toHaveBeenLastCalledWith("patient_search", { p_name: "juli", p_filter: "outra_clinica" });
+  });
+
+  it("a lista do filtro do cliente (schema.ts) é a mesma da porta", async () => {
+    const { FILTROS } = await import("@/features/pacientes/schema");
+    const { FILTROS_DA_LISTA } = await import("./porta");
+    expect([...FILTROS]).toEqual([...FILTROS_DA_LISTA]);
   });
 });

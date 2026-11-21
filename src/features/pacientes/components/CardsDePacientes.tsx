@@ -3,14 +3,15 @@ import { Monograma } from "@/components/ui/Monograma";
 import { textos } from "../textos";
 
 // Os 4 cards do topo de Pacientes, como o Simulador ATTA-in (captura 09): PACIENTES, RETORNO, FREQUÊNCIA MÉDIA e CSAT DO
-// CHECK-IN. Só o total de pacientes ativos já vem do banco (total_active); os outros mostram "—" até a API trazer o número
-// (retorno e frequência dependem da agenda, MIG-11; o CSAT, do check-in, MIG-13). Nada de número inventado.
+// CHECK-IN. O total de pacientes ativos (total_active) e os "com atendimento hoje" (count_today, #158) já vêm do banco;
+// os outros mostram "—" até a API trazer o número (retorno e frequência dependem da agenda; o CSAT, do check-in, MIG-13).
+// Nada de número inventado.
 
-export function CardsDePacientes({ total }: { total: number | null }) {
+export function CardsDePacientes({ total, hoje = null }: { total: number | null; hoje?: number | null }) {
   const c = textos.cards;
   return (
     <section aria-label={c.rotulo} className="mt-3 grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-4">
-      <CardDeResumo valor={total} rotulo={c.pacientes} icone={<IconePessoa />} />
+      <CardDeResumo valor={total} rotulo={c.pacientes} icone={<IconePessoa />} legenda={hoje === null ? undefined : c.comAtendimentoHoje(hoje)} />
       <CardDeResumo valor={null} rotulo={c.retorno} icone={<IconeBarras />} />
       <CardDeResumo valor={null} rotulo={c.frequencia} icone={<IconeCalendario />} />
       <CardDeResumo valor={null} rotulo={c.csat} icone={<Monograma className="size-4" />} />
