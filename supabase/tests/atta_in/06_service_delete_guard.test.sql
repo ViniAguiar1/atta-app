@@ -85,6 +85,7 @@ select pg_temp.novo('personalizado', 'Rascunho fictício', 'unica', array['00000
 select pg_temp.novo('personalizado', 'Inativo fictício', 'unica', array['00000000-0000-4000-8000-00000000d004']::uuid[], true);
 select api.template_deactivate(pg_temp.modelo('Inativo fictício'));
 select set_config('role', 'postgres', true);   -- Termo de Autorização: modelo de sistema, só pelo seed do dono (P2c)
+select set_config('request.jwt.claims', '', true);   -- o seed roda sem usuário no token
 insert into documents.template (tenant_id, kind, title, frequency, required, draft_body)
 values ('00000000-0000-4000-8000-0000000000a6', 'termo_de_autorizacao', 'Termo de Autorização fictício', 'unica', true, 'Texto fictício da autorização.');
 insert into documents.template_version (tenant_id, template_id, version, kind, title, frequency, required, body,
