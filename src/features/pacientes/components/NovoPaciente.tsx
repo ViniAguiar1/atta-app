@@ -260,7 +260,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                         setSituacao({ tipo: "aguardando" } as Situacao);
                       }}
                       onKeyDown={(e) => e.key === "Enter" && !estrangeiro && buscar()}
-                      className="h-9 flex-1 rounded-md border border-border-functional px-3 font-mono text-xs medium:h-8"
+                      className="h-9 flex-1 rounded-md border border-border-functional px-3 font-codigo text-xs medium:h-8"
                     />
                     {!estrangeiro && (
                       <button

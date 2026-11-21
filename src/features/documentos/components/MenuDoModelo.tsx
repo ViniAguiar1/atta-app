@@ -140,7 +140,7 @@ export function MenuDoModelo({ modelo }: Props) {
         ref={lista}
         hidden={!aberto}
         style={posicao}
-        className="fixed z-20 flex min-w-60 flex-col rounded-xl border border-border bg-surface-raised py-2 shadow-lg"
+        className="fixed z-20 flex min-w-60 flex-col rounded-lg border border-border bg-surface-raised py-2 shadow-lg"
       >
         {comuns.map((a) => {
           const motivo = a.motivoDesabilitado ? (textos.motivos[a.motivoDesabilitado] ?? textos.falhou) : null;
