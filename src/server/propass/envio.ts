@@ -116,6 +116,9 @@ export type EntradaDoEnvio = {
   pin?: string | null;
   leitura: { abertoEm: Date; rolagemCompletaEm: Date };
   origem: Origem;
+  /** Versão do Aviso de Privacidade do Profissional que ele confirmou ter lido; null enquanto o passo estiver desligado
+   *  (P2b, decisão do CTO). Quem exige ou não é a action (Frontend 6); aqui só se repassa ao banco. */
+  avisoDePrivacidade?: string | null;
 };
 
 /** 'ok' traz o Código ATTA do Termo de Autorização gravado; 'recusado' é a recusa genérica de identidade. */
@@ -206,6 +209,7 @@ export async function enviarPropass(
     p_council_status: estado,
     p_pin_mac: mac ? bytea(mac) : null,
     p_pin_mac_version: mac ? PIN_MAC_VERSION : null,
+    p_privacy_notice_version: e.avisoDePrivacidade ?? null,
     ...pacote,
   });
   if (error) return erroDoBanco(error);
