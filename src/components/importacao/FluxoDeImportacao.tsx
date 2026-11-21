@@ -52,6 +52,7 @@ export function FluxoDeImportacao({
   fuso,
   enviarArquivo = enviarPorPut,
   aoConcluir,
+  variante = "primario",
 }: {
   acoes: AcoesDaImportacao;
   /** fuso da clínica (platform.tenant.timezone) */
@@ -59,6 +60,8 @@ export function FluxoDeImportacao({
   enviarArquivo?: EnviarArquivo;
   /** depois de uma importação recebida, ao fechar (ex.: router.refresh(), para a cota não ficar velha) */
   aoConcluir?: () => void;
+  /** o botão que abre: escuro em Configurações (captura 48); secundário no módulo Pacientes, ao lado do "+ Novo paciente" */
+  variante?: "primario" | "secundario";
 }) {
   const [aberto, setAberto] = useState(false);
   const gatilho = useRef<HTMLButtonElement>(null);
@@ -73,7 +76,9 @@ export function FluxoDeImportacao({
         ref={gatilho}
         type="button"
         onClick={() => setAberto(true)}
-        className="min-h-11 w-fit rounded-md bg-text-primary px-3.5 text-corpo font-semibold text-on-brand medium:min-h-8"
+        className={`min-h-11 w-fit rounded-md px-3.5 text-corpo font-semibold medium:min-h-8 ${
+          variante === "primario" ? "bg-text-primary text-on-brand" : "border border-border-functional bg-surface-raised text-text-primary hover:bg-surface-card"
+        }`}
       >
         {t.importar}
       </button>

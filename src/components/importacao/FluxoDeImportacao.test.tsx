@@ -123,4 +123,13 @@ describe("Importar base de pacientes (PDD §10.1; PLANO MIG-34)", () => {
     await within(dialogo).findByText("Prévia da importação", { selector: "h3" });
     expect(await violacoesDoAxe(dialogo)).toEqual([]);
   });
+
+  it("a variante secundária (módulo Pacientes) só muda o botão que abre; o fluxo é o mesmo", async () => {
+    render(<FluxoDeImportacao acoes={acoesFalsas()} fuso="America/Sao_Paulo" variante="secundario" />);
+    const botao = screen.getByRole("button", { name: "Importar base de pacientes" });
+    expect(botao.className).toContain("border-border-functional");
+    expect(botao.className).not.toContain("bg-text-primary");
+    await userEvent.click(botao);
+    expect(screen.getByRole("dialog", { name: "Importar base de pacientes" })).toBeInTheDocument();
+  });
 });
