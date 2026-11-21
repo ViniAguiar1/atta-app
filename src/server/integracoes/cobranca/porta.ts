@@ -63,6 +63,15 @@ export interface GatewayCobranca {
   criarAssinatura(nova: NovaAssinatura): Promise<ResultadoProvedor<{ readonly idAssinatura: string }>>;
   consultarAssinatura(idAssinatura: string): Promise<ResultadoProvedor<SituacaoAssinatura>>;
   /**
+   * A cobrança como o gateway a vê agora. O webhook é só gatilho: status, valor, vencimento e link vêm daqui, não do
+   * corpo (um token vazado não ativa assinatura). `null` = cobrança que não é de assinatura ou em estado sem efeito.
+   */
+  buscarCobranca(
+    idCobranca: string,
+  ): Promise<ResultadoProvedor<{ readonly idAssinaturaExterna: string; readonly cobranca: CobrancaDoEvento } | null>>;
+  /** Confere só o cabeçalho de autenticação, antes de a rota ler o corpo. */
+  autenticarWebhook(cabecalhos: RequisicaoWebhook["cabecalhos"]): boolean;
+  /**
    * Confere a autenticação do webhook e traduz. `null` = evento que não muda a assinatura (a rota responde 200 e
    * segue). Autenticação inválida = falha `assinatura_invalida`.
    */
