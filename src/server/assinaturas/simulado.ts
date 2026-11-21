@@ -13,6 +13,7 @@ const inicial = (): ConfiguracaoDeAssinatura => ({
     cnpj: "11.222.333/0001-81",
     rt: { nome: "Dra. Ana Exemplo", conselho: "CRM", uf: "SP", numero: "000000" },
   },
+  rtCompleto: true,
 });
 
 export const portaAssinaturasSimulada: PortaAssinaturas = {
