@@ -9,8 +9,10 @@ import { AURORA } from "./profissionais";
 // não recebe o convite, então o link vai para um arquivo do QA, nunca para a clínica. Travas (Tech Lead e Backend 1):
 //   - só na clínica fictícia Aurora e só com e-mail @exemplo.test (o código recusa outra coisa);
 //   - nenhum e-mail sai e nenhuma conta de pessoa é usada: o SQL roda como dono do banco (Backend 1, psql), cria o
-//     vínculo e emite o link pela private.propass_issue, a mesma do convite do painel, com a validade e o uso único da
-//     política do grant (7 dias; consumido no envio), sem estender nada. A trilha registra o convite como do sistema;
+//     vínculo e emite o link pela private.propass_issue, a mesma do convite do painel, com o uso único da política do
+//     grant (consumido no envio). A validade cai para 24 h (o "pouco tempo" do CTO, porque o arquivo do QA é legível por
+//     todos os agentes; Tech Lead no #255): rodar no dia do envio. Nada é estendido. A trilha registra o convite como do
+//     sistema;
 //   - o banco recebe só o sha256 do segredo; o link sai daqui só para o arquivo do QA (modo 600), nunca para o stdout;
 //   - idempotente: o mesmo número reemite o link (a private.propass_issue revoga o anterior); convite já concluído é
 //     recusado, e roda-se com outro número.
@@ -52,6 +54,8 @@ export async function gerarConvite(entrada: {
 -- segredo: nenhuma chave, nenhum link. Rodar como dono do banco, numa transação, e apagar o arquivo em seguida.
 begin;
 do $$
+declare
+  v_grant uuid;
 begin
   if exists (select 1 from platform.professional_tenant_link l
              where l.id = '${vinculo}' and l.professional_id is not null) then
@@ -65,7 +69,9 @@ begin
     envelope_id = excluded.envelope_id, dek_wrapped = excluded.dek_wrapped, kek_version = excluded.kek_version,
     deleted_at = null, updated_at = now()
   where platform.professional_tenant_link.professional_id is null;
-  perform private.propass_issue('${clinica}', '${vinculo}', ${bytea(`\\x${hash.toString("hex")}`)});
+  v_grant := private.propass_issue('${clinica}', '${vinculo}', ${bytea(`\\x${hash.toString("hex")}`)});
+  -- 24 h, no máximo: nunca estende a validade da política (7 dias), só encurta
+  update platform.access_grant g set expires_at = least(g.expires_at, now() + interval '24 hours') where g.id = v_grant;
   perform audit.record_event('professional.invite', 'platform.professional_tenant_link', '${vinculo}',
     '{"via": "seed_teste"}', null, null, '${clinica}');
 end $$;
