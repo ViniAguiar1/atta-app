@@ -1,6 +1,6 @@
 -- MIG-14b (1): PROpass pelo link do convite (PDD v206 §10.4.3; ADR 0004 §3). Dados fictícios: bytes e nomes inventados.
 begin;
-select plan(64);
+select plan(67);
 
 insert into platform.tenant (id, name, legal_name, cnpj) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A', 'Clínica Fictícia A Ltda', '00000000410179'),
@@ -320,16 +320,28 @@ select is(pg_temp.enviar('link-d4', 'dr7@clinica-ficticia.test', 'cpf-7', '7007'
           'outro envio, outro grant');
 select pg_temp.envelhecer_download('dl-d4', interval '31 minutes');
 select is(pg_temp.usar('dl-d4', 1), 0, 'depois de 30 minutos, o download não vale (sem renovar por uso)');
+select pg_temp.servidor();
+select throws_ok($$ select api.grant_issue('propass_download', sha256('dl-generico'::bytea), '00000000-0000-4000-8000-00000000000d',
+                                           gen_random_uuid(), null, '00000000-0000-4000-8000-0000000000c6') $$,
+                 'P0001', 'ATTA-IN-0001', 'o emissor genérico não emite o grant do download (só o envio do PROpass)');
+select pg_temp.entrar('00000000-0000-4000-8000-00000000000d', 'ADMIN');
+select pg_temp.convidar('00000000-0000-4000-8000-0000000000c8', 'dr8@clinica-ficticia.test', 'link-d5');
+select pg_temp.servidor();
+select from pg_temp.enviar('link-d5', 'dr8@clinica-ficticia.test', 'cpf-8b', '8008', p_download => 'dl-d5');  -- sem imprimir o 'ok' (o pg_prove o leria como teste)
+select throws_ok($$ select * from api.grant_resolve(sha256('dl-d5'::bytea), 'propass_download') $$, '42501', 'ATTA-AUTH-0004',
+                 'o leitor genérico não abre um download válido sem contar o uso');
+select is(pg_temp.usar('dl-d5', 1), 1, 'e o mesmo grant segue valendo pelo private.grant_use');
+select set_config('role', 'postgres', true);
 select ok(not has_function_privilege('service_role', 'private.grant_use(uuid, text)', 'EXECUTE')
           and not has_function_privilege('authenticated', 'private.grant_use(uuid, text)', 'EXECUTE'),
           'contar uso só por dentro das funções do banco');
 
 -- auditoria
 select set_config('role', 'postgres', true);
-select is(pg_temp.eventos('propass.submit'), 5, 'cada PROpass gravado vai para audit');
+select is(pg_temp.eventos('propass.submit'), 6, 'cada PROpass gravado vai para audit');
 select ok(pg_temp.eventos('grant.revoke') >= 1 and pg_temp.eventos('propass.open') >= 1,
           'o reenvio e a abertura vão para audit');
-select is(pg_temp.eventos('professional.pin_set'), 4, 'cada PIN criado vai para audit (sem o pin_mac)');
+select is(pg_temp.eventos('professional.pin_set'), 5, 'cada PIN criado vai para audit (sem o pin_mac)');
 
 select * from finish();
 rollback;
