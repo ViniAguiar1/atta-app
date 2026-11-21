@@ -162,12 +162,20 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
             </p>
           )}
         </div>
-        <div ref={caixaDoFiltro} className="relative flex items-center gap-2" onKeyDown={(e) => {
-          if (e.key === "Escape" && menuAberto) {
-            setMenuAberto(false);
-            botaoDoFiltro.current?.focus();
-          }
-        }}>
+        <div
+          ref={caixaDoFiltro}
+          className="relative flex items-center gap-2"
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && menuAberto) {
+              setMenuAberto(false);
+              botaoDoFiltro.current?.focus();
+            }
+          }}
+          // o Tab que sai do botão e do menu fecha o menu, como no menu da pessoa
+          onBlur={(e) => {
+            if (menuAberto && !e.currentTarget.contains(e.relatedTarget as Node | null)) setMenuAberto(false);
+          }}
+        >
           {/* captura 11: o botão do funil ao lado da busca, com o menu dos três filtros e os contadores */}
           <button
             ref={botaoDoFiltro}
