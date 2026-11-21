@@ -177,7 +177,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
         </header>
 
         <div className="grid min-h-0 flex-1 overflow-y-auto large:grid-cols-[1fr_15rem]">
-          <div className="flex flex-col gap-4 p-4 text-[0.8125rem]">
+          <div className="flex flex-col gap-3 p-3.5 text-[0.8125rem]">
             <CartaoDeSecao titulo={m.identificacao.titulo} subtitulo={m.identificacao.subtitulo} icone="🪪" nivel={3}>
               <label className="flex min-h-11 items-center gap-3 rounded-md border border-border-functional px-3">
                 <input
@@ -239,7 +239,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
               ) : (
                 <>
                   <p>{m.dadosNovo}</p>
-                  <div ref={formulario} className="grid gap-4 medium:grid-cols-2">
+                  <div ref={formulario} className="grid gap-x-4 gap-y-3 medium:grid-cols-2">
                     {(["nomeCivil", "nomeSocial", "nascimento", "celular", "email"] as const).map((c) => (
                       <Campo key={c} rotulo={m.campos[c].rotulo} ajuda={m.campos[c].ajuda} invalido={invalidos.includes(c)}>
                         {(id, ajudaId) => (
@@ -263,7 +263,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
             </CartaoDeSecao>
           </div>
 
-          <aside className="flex flex-col gap-3 border-t border-border bg-surface-app p-4 text-[0.8125rem] large:border-t-0 large:border-l">
+          <aside className="flex flex-col gap-2.5 border-t border-border bg-surface-app p-3.5 text-[0.8125rem] large:border-t-0 large:border-l">
             <h3 className="text-[0.6875rem] font-semibold tracking-wide uppercase">{m.resumo.titulo}</h3>
             <Item rotulo={estrangeiro ? m.resumo.rne : m.resumo.cpf} valor={documento || null} />
             <div className="flex flex-col gap-1 border-b border-border pb-2">
@@ -284,7 +284,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
           </aside>
         </div>
 
-        <footer className="flex items-center justify-between gap-3 border-t border-border p-4">
+        <footer className="flex items-center justify-between gap-3 border-t border-border px-3.5 py-3">
           <button type="button" onClick={aoFechar} className="h-9 rounded-md border border-border-functional px-4 text-[0.8125rem] font-medium">
             {m.cancelar}
           </button>
@@ -335,7 +335,7 @@ function Campo({ rotulo, ajuda, invalido, children }: { rotulo: string; ajuda: s
   const ajudaId = `${id}-ajuda`;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="font-medium">{rotulo}</label>
+      <label htmlFor={id} className="text-xs font-semibold">{rotulo}</label>
       {children(id, ajudaId)}
       <p id={ajudaId} className={`text-xs ${invalido ? "text-status-negative" : "text-text-secondary"}`}>
         {invalido ? `${m.erroCampo} ${ajuda}` : ajuda}
