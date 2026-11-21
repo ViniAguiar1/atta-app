@@ -6,7 +6,7 @@ import { CartaoDeSecao } from "@/components/ui/CartaoDeSecao";
 import { Monograma } from "@/components/ui/Monograma";
 import type { Resultado } from "@/lib/errors";
 import { iniciais } from "@/lib/texto/iniciais";
-import type { CartaoDaRede, ConsultaDeCpf } from "@/server/pacientes/porta";
+import type { CartaoDaRede, ConsultaDeCpf, MotivoDeDivergencia } from "@/server/pacientes/porta";
 import { cadastroSchema, type EntradaDoCadastro } from "../schema";
 import { textos } from "../textos";
 
@@ -21,10 +21,15 @@ type Acoes = {
   cadastrar: (e: EntradaDoCadastro) => Promise<Resultado<{ id: string; reaproveitado: boolean }>>;
   /** cartão do paciente que já é desta clínica (captura 16), com o contato mascarado no servidor */
   cartao: (e: { id: string }) => Promise<Resultado<CartaoDaRede>>;
+  /** "Reportar à ATTA" (RN-PAC-08): motivo da lista fechada, pelo CPF buscado, sem vincular */
+  reportar: (e: { cpf: string; motivo: MotivoDeDivergencia }) => Promise<Resultado<{ recebido: true }>>;
 };
 
 type Situacao = { tipo: "aguardando" } | ConsultaDeCpf;
 const m = textos.modal;
+// a lista fechada vem das chaves dos textos (o mesmo conjunto de MOTIVOS_DE_DIVERGENCIA da porta): este componente roda
+// no navegador e não pode importar valores de src/server
+const MOTIVOS = Object.keys(m.reportar.motivos) as MotivoDeDivergencia[];
 const VAZIO = { nomeCivil: "", nomeSocial: "", nascimento: "", celular: "", email: "" };
 
 /** "52998224725" → "529.982.247-25", enquanto digita. */
@@ -76,6 +81,9 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [daClinica, setDaClinica] = useState<CartaoDaRede | null>(null);
+  const [reportando, setReportando] = useState(false);
+  const [motivo, setMotivo] = useState<MotivoDeDivergencia | null>(null);
+  const [reportado, setReportado] = useState(false);
   const [ocupado, iniciar] = useTransition();
 
   // <dialog> nativo em modo modal (showModal): prende o foco dentro dele, deixa o resto da página inerte e trata o Esc
@@ -104,6 +112,9 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
     setErro(null);
     setAviso(null);
     setDaClinica(null);
+    setReportando(false);
+    setMotivo(null);
+    setReportado(false);
     iniciar(async () => {
       const r = await acoes.consultar({ cpf: documento });
       if (!r.ok) return setErro(r.error.code === "VALIDACAO" ? m.cpfInvalido : mensagemDe(r.error.code));
@@ -152,6 +163,17 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
         }
         setSituacao(nova.data);
       }
+    });
+  }
+
+  function reportar() {
+    if (!motivo) return;
+    setErro(null);
+    iniciar(async () => {
+      const r = await acoes.reportar({ cpf: documento, motivo });
+      if (!r.ok) return setErro(mensagemDe(r.error.code));
+      setReportado(true);
+      setReportando(false);
     });
   }
 
@@ -248,6 +270,43 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                 </div>
               )}
               {tipo === "na_rede" && cartao && <CartaoDaPessoa cartao={cartao} explicar />}
+              {/* "Algum dado não confere? Reportar à ATTA" (captura 17; RN-PAC-08): a clínica só reporta, não decide nem
+                  bloqueia. Motivo em lista fechada, sem texto livre nem anexo (decisão do dono de 20/11) */}
+              {!estrangeiro && tipo !== "aguardando" && (
+                <div className="flex flex-col gap-2">
+                  {cartao && <p className="text-text-secondary">{m.reportar.explicacao}</p>}
+                  {reportado ? (
+                    <p role="status">{m.reportar.enviado}</p>
+                  ) : !reportando ? (
+                    <button type="button" onClick={() => setReportando(true)} className="w-fit font-medium underline underline-offset-2">
+                      {m.reportar.link}
+                    </button>
+                  ) : (
+                    <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
+                      <legend className="px-1 text-[0.6875rem] font-semibold">{m.reportar.pergunta}</legend>
+                      {MOTIVOS.map((valor) => (
+                        <label key={valor} className="flex min-h-8 items-center gap-2">
+                          <input type="radio" name="motivo" value={valor} checked={motivo === valor} onChange={() => setMotivo(valor)} className="size-4" />
+                          {m.reportar.motivos[valor]}
+                        </label>
+                      ))}
+                      <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setReportando(false)} className="h-8 rounded-md border border-border-functional px-3 text-xs font-medium">
+                          {m.cancelar}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={reportar}
+                          disabled={!motivo || ocupado}
+                          className="h-8 rounded-md bg-brand px-3 text-xs font-semibold text-on-brand disabled:opacity-60"
+                        >
+                          {m.reportar.enviar}
+                        </button>
+                      </div>
+                    </fieldset>
+                  )}
+                </div>
+              )}
             </CartaoDeSecao>
 
             <CartaoDeSecao titulo={m.dados.titulo} subtitulo={m.dados.subtitulo} icone="👤" nivel={3} compacto>

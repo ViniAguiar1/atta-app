@@ -154,6 +154,11 @@ export type PortaPacientes = {
   atualizar(id: string, mudanca: MudancaDoCadastro, justificativa: string): Promise<Resultado<{ salvoEm: string }>>;
   /** A clínica só reporta; quem investiga é a ATTA, e nada bloqueia o atendimento (RN-PAC-08). */
   reportarDivergencia(id: string, motivo: MotivoDeDivergencia): Promise<Resultado<{ protocolo: string }>>;
+  /**
+   * O mesmo reporte, pelo CPF buscado no Novo paciente, antes de qualquer vínculo (RN-PAC-08; simulador, captura 17).
+   * Não diz se achou o CPF nem devolve nada da pessoa; não vincula. LIMITE: o mesmo limite da consulta.
+   */
+  reportarDivergenciaPorCpf(cpf: string, motivo: MotivoDeDivergencia): Promise<Resultado<{ recebido: true }>>;
 };
 
 export const portaPacientes: PortaPacientes = portaPacientesReal;

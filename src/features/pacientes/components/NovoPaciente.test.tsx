@@ -34,6 +34,7 @@ function montar(consulta: Awaited<ReturnType<Parameters<typeof NovoPaciente>[0][
     vincular: vi.fn(async () => ok({ id: cartao.id, situacao: "vinculado" as const })),
     cadastrar: vi.fn(async () => ok({ id: "5a5a0000-0000-4000-8000-000000000123", reaproveitado: false })),
     cartao: vi.fn(async () => ok({ ...cartao, nome: "Juliana Prates", nomeCivil: "Juliana Prates", respostasDeSaude: null })),
+    reportar: vi.fn(async () => ok({ recebido: true as const })),
   };
   render(<NovoPaciente clinica="Clínica Alfa Estética" acoes={acoes} />);
   return acoes;
@@ -164,5 +165,26 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     await within(dialogo).findByText("Consulta interna: este CPF ainda não existe na base ATTA.");
     await userEvent.click(within(dialogo).getByRole("button", { name: "Cadastrar paciente" }));
     await waitFor(() => expect(within(dialogo).getByLabelText("Nome civil")).toHaveFocus());
+  });
+
+  it("Reportar à ATTA: motivo da lista fechada (sem texto livre), envia pelo CPF buscado e confirma, sem vincular", async () => {
+    const acoes = montar(ok({ situacao: "na_rede", cartao }));
+    const dialogo = await abrir();
+    await buscarCpf(dialogo);
+    await within(dialogo).findByText(/não decide nem bloqueia sozinha/);
+    expect(dialogo).not.toHaveTextContent(/RN-PAC/);
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Algum dado não confere? Reportar à ATTA" }));
+    const grupo = within(dialogo).getByRole("group", { name: "O que não confere?" });
+    expect(within(grupo).getAllByRole("radio").map((r) => r.parentElement?.textContent)).toEqual([
+      "Nome não confere", "Data de nascimento não confere", "Paciente diz que o CPF não é dele", "Outro (sem detalhes)",
+    ]);
+    expect(within(dialogo).queryByRole("textbox", { name: /não confere/ })).toBeNull();
+    const enviar = within(grupo).getByRole("button", { name: "Enviar à ATTA" });
+    expect(enviar).toBeDisabled();
+    await userEvent.click(within(grupo).getByLabelText("Nome não confere"));
+    await userEvent.click(enviar);
+    await waitFor(() => expect(acoes.reportar).toHaveBeenCalledWith({ cpf: "112.223.330-23", motivo: "nome_nao_confere" }));
+    expect(await within(dialogo).findByText("Reporte enviado ao time ATTA. O atendimento segue normalmente.")).toBeInTheDocument();
+    expect(acoes.vincular).not.toHaveBeenCalled();
   });
 });
