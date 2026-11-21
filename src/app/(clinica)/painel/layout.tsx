@@ -10,8 +10,8 @@ import { sair } from "../login/actions";
 // Casca do painel da clínica (MIG-40): a barra de módulos colada no topo, de ponta a ponta, e a tela logo abaixo, direto no
 // fundo da página (pedido do dono, 20/11: sem moldura, sem margem externa, sem cantos nem borda no contêiner). O espaçamento
 // interno do conteúdo fica o de sempre. A sessão é por requisição: a barra fica no Suspense (cacheComponents). Sem sessão,
-// a tela de entrar (o proxy já desvia; aqui é a segunda trava). Em /painel/seguranca (2º fator) a casca sai da frente e a
-// tela usa a moldura do site (CascaDoPainel).
+// a tela de entrar (o proxy já desvia; aqui é a segunda trava). A tela do 2º fator (/painel/seguranca/2fa) fica fora desta
+// árvore, no grupo (segundo-fator), com a moldura do site e sem a casca.
 export default function LayoutDoPainel({ children }: { children: React.ReactNode }) {
   return (
     <CascaDoPainel

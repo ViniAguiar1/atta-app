@@ -1,15 +1,7 @@
-"use client";
-
-import { usePathname } from "next/navigation";
-
-// Casca do painel: a barra no topo e a tela logo abaixo. Em /painel/seguranca (2º fator) a tela usa a moldura do site,
-// como a de entrar (pedido do dono, 20/11), então a casca não desenha a barra nem o <main> dela. A rota continua a mesma
-// (a guarda do proxy leva o ADMIN sem 2º fator para lá).
-export const SEM_CASCA = ["/painel/seguranca"];
-
+// Casca do painel: a barra no topo e a tela logo abaixo. Não lê a rota: com cacheComponents, usePathname fora de Suspense
+// quebra o build de toda rota dinâmica do painel (/painel/…/[id]). A tela do 2º fator, que fica sem a casca, mora noutro
+// grupo de rota, app/(segundo-fator)/painel/seguranca, com a mesma URL (Tech Lead Frontend, depois do #199).
 export function CascaDoPainel({ barra, children }: { barra: React.ReactNode; children: React.ReactNode }) {
-  const caminho = usePathname();
-  if (SEM_CASCA.some((p) => caminho === p || caminho.startsWith(`${p}/`))) return children;
   return (
     <div className="min-h-dvh bg-surface-app">
       {barra}
