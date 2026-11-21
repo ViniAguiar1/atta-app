@@ -1,6 +1,6 @@
 -- MIG-12: filtros e contadores da lista de Pacientes (captura 11) e o selo vencido ("Selo expirado"). Dados fictícios.
 begin;
-select plan(24);
+select plan(27);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -52,6 +52,9 @@ create function pg_temp.agendar(p_id uuid, p_person uuid, p_inicio timestamptz) 
 $$;
 create function pg_temp.eventos(p_action text) returns int language sql security definer as $$
   select count(*)::int from audit.event where action = p_action and tenant_id = '00000000-0000-4000-8000-00000000000a'
+$$;
+create function pg_temp.iniciar(p_id uuid) returns void language sql security definer as $$
+  select atta_in.apply_transition(p_id, '00000000-0000-4000-8000-00000000000a', 'em_preenchimento')
 $$;
 create function pg_temp.cancelar(p_id uuid) returns void language sql security definer as $$
   select atta_in.apply_transition(p_id, '00000000-0000-4000-8000-00000000000a', 'cancelado', 'cancelado_pelo_paciente')
@@ -115,6 +118,17 @@ select ok((select not is_verified and verified_until is null from api.patient_li
 select ok((select not is_verified and verified_until is null
            from api.patient_search(p_doc_hmac => sha256('39053344705'::bytea))),
           'pending na busca por CPF: nada da rede');
+
+-- R26: não arquiva com agendamento em aberto (Agendado futuro ou atendimento começado); o Agendado vencido não trava
+select pg_temp.agendar('00000000-0000-4000-8000-0000000000a4', '00000000-0000-4000-8000-0000000000e1', now() + interval '2 days');
+select throws_ok($$ select api.patient_set_archived('00000000-0000-4000-8000-0000000000e1', true) $$, 'P0001',
+                 'ATTA-IN-0003', 'com Agendado futuro: não arquiva (cancele ou conclua antes)');
+select pg_temp.cancelar('00000000-0000-4000-8000-0000000000a4');
+select pg_temp.iniciar('00000000-0000-4000-8000-0000000000a1');
+select throws_ok($$ select api.patient_set_archived('00000000-0000-4000-8000-0000000000e1', true) $$, 'P0001',
+                 'ATTA-IN-0003', 'com atendimento já começado (Em preenchimento): não arquiva');
+select ok((select count(*) = 0 from api.patient_list(p_filter => 'arquivados')),
+          'nada foi arquivado nas recusas (o Bruno, abaixo, arquiva com um Agendado de ontem: vencido não trava)');
 
 -- arquivar (decisão do dono, R26): só o gestor, só nesta clínica, some da lista padrão e não é agendado
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
