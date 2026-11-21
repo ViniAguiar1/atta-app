@@ -101,6 +101,14 @@ export type Database = {
 "clinic_profile_set":
 { Args: { "p_field": string,"p_value": string }; Returns: string
                            },
+"clinic_responsible_envelope":
+{ Args: { "p_role": string }; Returns: {
+              "dek_wrapped": string,"envelope_id": string,"kek_version": number
+            }[]
+                           },
+"clinic_responsible_set":
+{ Args: { "p_bool"?: boolean,"p_dek_wrapped"?: string,"p_enc"?: string,"p_envelope_id"?: string,"p_field": string,"p_hmac"?: string,"p_kek_version"?: number,"p_masked"?: string,"p_role": string,"p_text"?: string }; Returns: string
+                           },
 "delivery_apply_status":
 { Args: { "p_at": string,"p_billable"?: boolean,"p_channel": string,"p_code"?: string,"p_external_id": string,"p_state": string }; Returns: string
                            },
