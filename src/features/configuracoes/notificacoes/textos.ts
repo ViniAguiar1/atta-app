@@ -41,7 +41,7 @@ export const textos = {
     marcarFalado: (evento: string, canal: string) => `${evento} por ${canal}`, // provisório (nome acessível de cada caixa)
     categorias: {
       checkin_atendimentos: "Check-in & Atendimentos", // PDD §10.4.6
-      documentos_biblioteca: "Documentos & Modelos", // PDD §10.4.6
+      documentos_modelos: "Documentos & Modelos", // PDD §10.4.6
       sistema_conta: "Sistema & Conta", // PDD §10.4.6
     } satisfies Record<CategoriaDeEvento, string>,
     nomes: {

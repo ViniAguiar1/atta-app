@@ -3,7 +3,7 @@
 // Os 10 eventos e as 3 categorias são os do PDD (decisão do CTO, 21/11; os outros 26 do simulador foram à PO, R33).
 // As chaves são as do contrato do MIG-15 proposto pelo Backend 4 (desenho/mig-15-notificacoes-contrato.md).
 
-export const CATEGORIAS = ["checkin_atendimentos", "documentos_biblioteca", "sistema_conta"] as const;
+export const CATEGORIAS = ["checkin_atendimentos", "documentos_modelos", "sistema_conta"] as const;
 export type CategoriaDeEvento = (typeof CATEGORIAS)[number];
 
 export const EVENTOS = [
@@ -12,9 +12,9 @@ export const EVENTOS = [
   { chave: "documento_assinado", categoria: "checkin_atendimentos" },
   { chave: "paciente_atrasado", categoria: "checkin_atendimentos" },
   { chave: "atendimento_sem_documento", categoria: "checkin_atendimentos" },
-  { chave: "novo_modelo", categoria: "documentos_biblioteca" },
-  { chave: "documento_vencendo", categoria: "documentos_biblioteca" },
-  { chave: "documentos_procedimento_atualizados", categoria: "documentos_biblioteca" },
+  { chave: "novo_modelo", categoria: "documentos_modelos" },
+  { chave: "documento_vencendo", categoria: "documentos_modelos" },
+  { chave: "documentos_procedimento_atualizados", categoria: "documentos_modelos" },
   { chave: "membro_convidado", categoria: "sistema_conta" },
   { chave: "limite_documentos_90", categoria: "sistema_conta" },
 ] as const satisfies readonly { chave: string; categoria: CategoriaDeEvento }[];
