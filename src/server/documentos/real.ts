@@ -24,6 +24,10 @@ const linhaSchema = z.object({
   clinic_services: z.array(z.object({ id: z.uuid(), name: z.string().min(1) })), // só os vivos, por nome; nunca nulo
   current_version_published_at: z.string().nullable(), // nulo em Rascunho
   signed_count: z.number().int().nonnegative(), // Assinado definitivo ou Substituído
+  // regra da versão publicada (#188), nula em Rascunho: vale em Ativo e Inativo
+  current_required: z.boolean().nullable(),
+  current_frequency: z.enum(["por_procedimento", "unica"]).nullable(),
+  current_validity_months: z.union([z.literal(3), z.literal(6), z.literal(12)]).nullable(),
 });
 
 // Os contadores de validade (vencendo e vencidos) vêm nulos até a PO decidir a validade do "Única" (R17).
@@ -39,21 +43,25 @@ const resumoSchema = z.object({
 
 const conhecida = (a: string): a is (typeof ACOES_DE_MODELO)[number] => (ACOES_DE_MODELO as readonly string[]).includes(a);
 
-export const paraModelo = (r: z.infer<typeof linhaSchema>): ModeloDeDocumento => ({
-  id: r.id,
-  tipo: r.kind,
-  titulo: r.title,
-  estado: r.status,
-  versaoAtual: r.current_version,
-  frequencia: r.frequency,
-  validadeMeses: r.validity_months,
-  obrigatorio: r.required,
-  procedimentos: r.clinic_services.map((s) => ({ id: s.id, nome: s.name })),
-  publicadoEm: r.current_version_published_at,
-  assinados: r.signed_count,
-  atualizadoEm: r.updated_at,
-  acoes: r.allowed_actions.flatMap((a) => (conhecida(a.action) ? [{ acao: a.action, motivoDesabilitado: a.disabled_reason ?? null }] : [])),
-});
+export const paraModelo = (r: z.infer<typeof linhaSchema>): ModeloDeDocumento => {
+  // Recusa impede?, frequência e validade: a versão publicada em Ativo e Inativo; o rascunho só em Rascunho (#188).
+  const publicada = r.status !== "rascunho";
+  return {
+    id: r.id,
+    tipo: r.kind,
+    titulo: r.title,
+    estado: r.status,
+    versaoAtual: r.current_version,
+    frequencia: publicada ? r.current_frequency : r.frequency,
+    validadeMeses: publicada ? r.current_validity_months : r.validity_months,
+    obrigatorio: publicada ? r.current_required : r.required,
+    procedimentos: r.clinic_services.map((s) => ({ id: s.id, nome: s.name })),
+    publicadoEm: r.current_version_published_at,
+    assinados: r.signed_count,
+    atualizadoEm: r.updated_at,
+    acoes: r.allowed_actions.flatMap((a) => (conhecida(a.action) ? [{ acao: a.action, motivoDesabilitado: a.disabled_reason ?? null }] : [])),
+  };
+};
 
 /** Cartões do topo, prontos do banco. "100% com ATTA Sign" = signed_atta_sign_count / signed_count; sem assinado, "—". */
 export function paraResumo(r: z.infer<typeof resumoSchema>): ResumoDosModelos {

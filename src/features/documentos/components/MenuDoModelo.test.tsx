@@ -26,16 +26,26 @@ describe("menu ⋮ do modelo", () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(cleanup);
 
-  it("mostra só as ações do servidor com destino, sem editar; o publicar desabilitado mostra o motivo", async () => {
+  it("só as ações do servidor com destino, sem editar; publicar sem condição continua no Tab e lê o motivo", async () => {
     render(<MenuDoModelo modelo={rascunho} />);
-    await userEvent.click(screen.getByRole("button", { name: "Ações de Política de cancelamento" }));
+    const menu = screen.getByRole("button", { name: "Ações de Política de cancelamento" });
+    expect(menu).not.toHaveAttribute("aria-haspopup");
+    expect(menu).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(menu);
+    expect(menu).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById(menu.getAttribute("aria-controls")!)).toBeVisible();
     expect(screen.queryByRole("button", { name: /Editar/ })).toBeNull();
-    const publicar = screen.getByRole("button", { name: /Publicar/ });
-    expect(publicar).toBeDisabled();
-    expect(publicar).toHaveAccessibleDescription("Vincule ao menos um procedimento para publicar.");
     expect(screen.getByRole("button", { name: "Vincular procedimentos" })).toHaveFocus();
+    await userEvent.tab();
+    const publicar = screen.getByRole("button", { name: /Publicar/ });
+    expect(publicar).toHaveFocus(); // aria-disabled, não disabled: o motivo é lido
+    expect(publicar).toHaveAttribute("aria-disabled", "true");
+    expect(publicar).toHaveAccessibleDescription("Vincule ao menos um procedimento para publicar.");
+    await userEvent.click(publicar);
+    expect(acoes.publicarModelo).not.toHaveBeenCalled();
     await userEvent.keyboard("{Escape}");
-    expect(screen.getByRole("button", { name: "Ações de Política de cancelamento" })).toHaveFocus();
+    expect(menu).toHaveFocus();
+    expect(menu).toHaveAttribute("aria-expanded", "false");
   });
 
   it("modelo inativo não tem ação: não mostra o ⋮", () => {
@@ -69,6 +79,7 @@ describe("menu ⋮ do modelo", () => {
     await userEvent.click(within(dialogo).getByRole("button", { name: "Inativar modelo" }));
     expect(acoes.inativarModelo).toHaveBeenCalledWith(ativo.id);
     expect(roteador.refresh).toHaveBeenCalled();
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: /Ações de TCLE/ })).toHaveFocus()); // o foco volta ao ⋮
   });
 
   it("vincular lista os Serviços (inativo marcado), parte dos já vinculados e salva o conjunto inteiro", async () => {
@@ -83,5 +94,15 @@ describe("menu ⋮ do modelo", () => {
     await userEvent.click(within(dialogo).getByRole("checkbox", { name: "Preenchimento labial" }));
     await userEvent.click(within(dialogo).getByRole("button", { name: "Salvar procedimentos" }));
     expect(acoes.vincularProcedimentos).toHaveBeenCalledWith({ modeloId: ativo.id, servicoIds: ["cccc0000-0000-4000-8000-000000000001"] });
+  });
+
+  it("cancelar um diálogo devolve o foco ao ⋮", async () => {
+    acoes.listarServicos.mockResolvedValue({ ok: true, data: SERVICOS_SIMULADOS });
+    render(<MenuDoModelo modelo={ativo} />);
+    await userEvent.click(screen.getByRole("button", { name: /Ações de TCLE/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Vincular procedimentos" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: /Ações de TCLE/ })).toHaveFocus());
   });
 });

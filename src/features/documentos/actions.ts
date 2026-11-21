@@ -28,7 +28,8 @@ export async function inativarModelo(entrada: unknown): Promise<Resultado<void>>
 }
 
 export async function vincularProcedimentos(entrada: unknown): Promise<Resultado<void>> {
-  const dados = z.object({ modeloId: id, servicoIds: z.array(id).max(200) }).safeParse(entrada);
+  // até 50 procedimentos: o teto do banco no template_set_services
+  const dados = z.object({ modeloId: id, servicoIds: z.array(id).max(50) }).safeParse(entrada);
   if (!dados.success) return falhaDeValidacao(dados.error.issues);
   const r = await portaDocumentos.vincular(dados.data.modeloId, [...new Set(dados.data.servicoIds)]);
   logger.info("documentos.vincular", { ok: r.ok, code: r.ok ? undefined : r.error.code });
