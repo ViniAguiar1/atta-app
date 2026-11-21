@@ -286,7 +286,7 @@ function Modal({ clinica, acoes, aoFechar }: { clinica: string | null; acoes: Ac
                 // captura 16: o paciente já é desta clínica, então a recepção abre a Pasta dele
                 <Link
                   href={`/painel/pacientes/pasta?paciente=${daClinica.id}`}
-                  className="inline-flex h-8 w-fit items-center rounded-md border border-border-functional px-3 text-xs font-medium hover:bg-surface-card"
+                  className="inline-flex min-h-11 w-fit items-center rounded-md border border-border-functional px-3 text-xs font-medium hover:bg-surface-card medium:min-h-8"
                 >
                   {m.jaExiste.abrirPasta}
                 </Link>
