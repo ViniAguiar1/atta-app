@@ -71,16 +71,29 @@ export async function selarContato(
   envelopeId: string,
   cofre: Cofre = getCofre("network"),
 ) {
+  const r = await selarColunas({ phone_enc: contato.celular, email_enc: contato.email }, lugar, envelopeId, cofre);
+  return { phone_enc: r.colunas.phone_enc ?? null, email_enc: r.colunas.email_enc ?? null, dek_wrapped: r.dek_wrapped, kek_version: r.kek_version };
+}
+
+/**
+ * Cifra várias colunas da mesma linha com uma DEK só (o envelope da linha, ADR 0002 §6): no cadastro, cpf_enc ou
+ * foreign_doc_enc junto do contato. Cada valor leva a AAD da própria coluna. Sem nenhum valor, não gera DEK.
+ */
+export async function selarColunas<C extends string>(
+  valores: Record<C, string | null>,
+  lugar: Lugar,
+  envelopeId: string,
+  cofre: Cofre = getCofre("network"),
+): Promise<{ colunas: Partial<Record<C, string>>; dek_wrapped: string | null; kek_version: number | null }> {
+  const presentes = (Object.entries(valores) as [C, string | null][]).filter((e): e is [C, string] => Boolean(e[1]));
+  if (presentes.length === 0) return { colunas: {}, dek_wrapped: null, kek_version: null };
   const { plaintext: dek, wrapped } = await cofre.generateDataKey(contextoDaDek(lugar, envelopeId));
   try {
-    const selar = (valor: string | null, coluna: "phone_enc" | "email_enc") =>
-      valor ? paraBytea(seal(Buffer.from(valor, "utf8"), dek, columnAad(lugar.tenant, lugar.tabela, coluna, envelopeId))) : null;
-    return {
-      phone_enc: selar(contato.celular, "phone_enc"),
-      email_enc: selar(contato.email, "email_enc"),
-      dek_wrapped: paraBytea(wrapped.blob),
-      kek_version: wrapped.kekVersion,
-    };
+    const colunas: Partial<Record<C, string>> = {};
+    for (const [coluna, valor] of presentes) {
+      colunas[coluna] = paraBytea(seal(Buffer.from(valor, "utf8"), dek, columnAad(lugar.tenant, lugar.tabela, coluna, envelopeId)));
+    }
+    return { colunas, dek_wrapped: paraBytea(wrapped.blob), kek_version: wrapped.kekVersion };
   } finally {
     dek.fill(0);
   }

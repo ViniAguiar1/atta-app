@@ -1,7 +1,7 @@
 import "server-only";
 import { falha, ok } from "@/lib/errors";
 import { isValidCpf, maskCpf, normalizeCpf } from "@/server/crypto/cpf";
-import type { FichaDoPaciente, LinhaDePaciente, PortaPacientes } from "./porta";
+import type { CartaoDaRede, FichaDoPaciente, LinhaDePaciente, PortaPacientes } from "./porta";
 
 // Implementação simulada da porta de Pacientes, para a tela andar antes da porta real. Só dado fictício: CPFs gerados
 // (dígito verificador válido, ninguém real), nomes, celulares e e-mails inventados. Sem estado entre requisições: o
@@ -81,6 +81,22 @@ export const PACIENTES_SIMULADOS: readonly Simulado[] = [
   }),
 ];
 
+// pessoa só da rede (de outra clínica), para o "Buscar na rede" simulado: CPF gerado, nome inventado
+const NA_REDE: Record<string, CartaoDaRede> = {
+  "11222333023": {
+    id: "5a5a0000-0000-4000-8000-000000000099",
+    nome: "Marina Costa",
+    nomeCivil: "Marina Costa",
+    nomeSocial: null,
+    nascimento: "1991-04-12",
+    identificacao: { tipo: "cpf", mascarado: maskCpf("11222333023") },
+    incompleto: false,
+    contato: { celular: "(11) ·····-5566", email: "ma···@exemplo.test" },
+    selo: null,
+    respostasDeSaude: 0,
+  },
+};
+
 const semAcento = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 const porNome = (a: Simulado, b: Simulado) => semAcento(a.nome).localeCompare(semAcento(b.nome)) || a.id.localeCompare(b.id);
 const publico = (p: Simulado): LinhaDePaciente => ({
@@ -133,6 +149,21 @@ export function criarPortaSimulada(pacientes: readonly Simulado[] = PACIENTES_SI
         vinculadoEm: "2026-11-01T12:00:00Z",
         acessoARede: p.ficha.acessoARede,
       });
+    },
+    async consultarCpf(cpf) {
+      const normal = normalizeCpf(cpf);
+      if (!normal || !isValidCpf(normal)) return falha("VALIDACAO", "CPF inválido.", [{ campo: "cpf", code: "VALIDACAO" }]);
+      const daClinica = ordenados.find((p) => p.cpf === normal);
+      if (daClinica) return ok({ situacao: "ja_paciente", id: daClinica.id });
+      const naRede = NA_REDE[normal];
+      return ok(naRede ? { situacao: "na_rede", cartao: naRede } : { situacao: "nao_encontrado" });
+    },
+    async vincularPorCpf(cpf) {
+      const normal = normalizeCpf(cpf) ?? "";
+      const daClinica = ordenados.find((p) => p.cpf === normal);
+      if (daClinica) return ok({ id: daClinica.id, situacao: "ja_paciente" });
+      const naRede = NA_REDE[normal];
+      return naRede ? ok({ id: naRede.id, situacao: "vinculado" }) : falha("NAO_ENCONTRADO", "CPF fora da rede.");
     },
     async cadastrar(dados) {
       const { documento } = dados;
