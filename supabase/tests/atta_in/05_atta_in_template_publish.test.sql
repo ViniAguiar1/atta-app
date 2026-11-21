@@ -110,12 +110,20 @@ select is((select count(*)::int from audit.event e join documents.template_versi
 select pg_temp.entrar('00000000-0000-4000-8000-0000000000f1', 'ADMIN');
 
 -- Termo de Autorização do profissional: não é de procedimento ------------------------------------------------------
-insert into documents.template (kind, title, frequency, required, draft_body)
-values ('termo_de_autorizacao', 'Termo de Autorização fictício', 'unica', true, 'Texto fictício da autorização.');
-select is(pg_temp.acoes('Termo de Autorização fictício'), 'editar,publicar',
-          'Termo de Autorização: sem vincular procedimentos e com Publicar liberado');
-select lives_ok($$ select * from api.atta_in_template_publish(pg_temp.modelo('Termo de Autorização fictício')) $$,
-                'Termo de Autorização publica sem procedimento');
+select set_config('role', 'postgres', true);   -- Termo de Autorização: modelo de sistema, só pelo seed do dono (P2c)
+insert into documents.template (tenant_id, kind, title, frequency, required, draft_body)
+values ('00000000-0000-4000-8000-0000000000f1', 'termo_de_autorizacao', 'Termo de Autorização fictício', 'unica', true, 'Texto fictício da autorização.');
+insert into documents.template_version (tenant_id, template_id, version, kind, title, frequency, required, body,
+                                        body_sha256, published_by)
+select t.tenant_id, t.id, 1, t.kind, t.title, t.frequency, t.required, t.draft_body,
+       encode(sha256(convert_to(t.draft_body, 'UTF8')), 'hex'), gen_random_uuid()
+from documents.template t where t.title = 'Termo de Autorização fictício';
+update documents.template set status = 'ativo', current_version = 1 where title = 'Termo de Autorização fictício';
+select pg_temp.entrar('00000000-0000-4000-8000-0000000000f1', 'ADMIN');
+select is(pg_temp.acoes('Termo de Autorização fictício'), null,
+          'Termo de Autorização (modelo de sistema, P2c): aparece na lista sem nenhuma ação');
+select throws_ok($$ select * from api.atta_in_template_publish(pg_temp.modelo('Termo de Autorização fictício')) $$,
+                 'P0001', 'ATTA-IN-0003', 'a clínica não publica o Termo de Autorização');
 
 -- detail como nome de campo (ADR 0001 §5) --------------------------------------------------------------------------
 select throws_like($$ update documents.template set kind = 'personalizado' where title = 'TCLE fictício A' $$,

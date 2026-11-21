@@ -97,7 +97,16 @@ select throws_ok($$ select api.template_set_services(pg_temp.modelo('TCLE fictí
 select is(pg_temp.vinculos(pg_temp.modelo('TCLE fictício de limpeza')), 'a002', 'a tentativa recusada não mexeu em nada');
 
 -- Termo de Autorização não é de procedimento ------------------------------------------------------------------------
-insert into documents.template (kind, title) values ('termo_de_autorizacao', 'Termo de Autorização fictício');
+select set_config('role', 'postgres', true);   -- Termo de Autorização: modelo de sistema, só pelo seed do dono (P2c)
+insert into documents.template (tenant_id, kind, title, frequency, required, draft_body)
+values ('00000000-0000-4000-8000-0000000000e1', 'termo_de_autorizacao', 'Termo de Autorização fictício', 'unica', true, 'Texto fictício da autorização.');
+insert into documents.template_version (tenant_id, template_id, version, kind, title, frequency, required, body,
+                                        body_sha256, published_by)
+select t.tenant_id, t.id, 1, t.kind, t.title, t.frequency, t.required, t.draft_body,
+       encode(sha256(convert_to(t.draft_body, 'UTF8')), 'hex'), gen_random_uuid()
+from documents.template t where t.title = 'Termo de Autorização fictício';
+update documents.template set status = 'ativo', current_version = 1 where title = 'Termo de Autorização fictício';
+select pg_temp.entrar('00000000-0000-4000-8000-0000000000e1', 'ADMIN');
 select throws_ok($$ select api.template_set_services(pg_temp.modelo('Termo de Autorização fictício'),
                     array['00000000-0000-4000-8000-00000000a001']::uuid[]) $$,
                  'P0001', 'ATTA-IN-0001', 'Termo de Autorização do profissional não se vincula a procedimento');
