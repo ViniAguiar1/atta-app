@@ -21,7 +21,7 @@ Node 24 (`.nvmrc`), pnpm (versão no `packageManager`), Docker e o CLI do Supaba
 
 ## Supabase local: uma instância por agente
 
-> **Mac compartilhado:** `pnpm test`, `pnpm test:e2e` e `supabase start` (pelo `scripts/supabase-local.sh`) param com "máquina cheia; use o CI ou espere" quando a carga de 1 minuto passa de 20 (`scripts/carga-ok.sh`; limite em `ATTA_CARGA_MAX`). Fora do CI, o vitest usa 2 workers (`VITEST_MAX_WORKERS` para mudar) e o Playwright, 1. Pare o seu Supabase (`pnpm db stop`) assim que terminar.
+> **Mac compartilhado:** `pnpm test`, `pnpm test:e2e` e `supabase start` (pelo `scripts/supabase-local.sh`) param com "máquina cheia; use o CI ou espere" quando a carga de 1 minuto passa de 20 (`scripts/carga-ok.sh`; limite em `ATTA_CARGA_MAX`). Fora do CI, o vitest usa 2 workers (`VITEST_MAX_WORKERS` para mudar) e o Playwright, 1. Pare o seu Supabase (`pnpm db stop`) assim que terminar. No máximo 6 Supabase do atta-app ficam ligados ao mesmo tempo (`ATTA_SUPABASE_MAX`): o 7º `start` é recusado, com as siglas de quem está ligado. `pnpm maquina` lista, por sigla, os Supabase, `next dev` e `playwright test` abertos, com o tempo e se estão em uso; `pnpm maquina --parar-parados` desliga o que está sem uso há mais de 1 h (o Supabase guarda os dados).
 Os agentes dividem a mesma máquina, e as portas padrão do Supabase (54321–54327) já são de outro projeto. Por isso,
 **cada um sobe a sua instância pelo script, com a sua sigla**. O script passa ao CLI um `project_id` e um bloco de
 portas próprios por variável de ambiente; o `supabase/config.toml` versionado não muda.
