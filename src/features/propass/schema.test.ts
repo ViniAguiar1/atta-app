@@ -13,3 +13,18 @@ describe("dadosSchema", () => {
     }
   });
 });
+
+describe("pinObvio e envioSchema", async () => {
+  const { pinObvio, envioSchema } = await import("./schema");
+  it("recusa iguais e sequências de 4, crescentes e decrescentes", () => {
+    for (const p of ["0000", "9999", "0123", "6789", "9876", "3210"]) expect(pinObvio(p)).toBe(true);
+    for (const p of ["2468", "1357", "0124", "9875", "1122"]) expect(pinObvio(p)).toBe(false);
+  });
+  it("o envio exige a leitura até o fim, um PNG e um PIN que não seja óbvio", () => {
+    const base = { dados: BASE, assinatura: "data:image/png;base64,iVBORw0KGgo=", leuAteOFim: true, pin: "2468" };
+    expect(envioSchema.safeParse(base).success).toBe(true);
+    for (const ruim of [{ leuAteOFim: false }, { pin: "1234" }, { assinatura: "data:image/jpeg;base64,AAAA" }]) {
+      expect(envioSchema.safeParse({ ...base, ...ruim }).success).toBe(false);
+    }
+  });
+});
