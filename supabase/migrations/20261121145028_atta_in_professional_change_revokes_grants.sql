@@ -1,6 +1,6 @@
 -- MIG-13 (S2 da Segurança na revisão do #304; divisão do CTO, item 2): trocar o profissional de um agendamento revoga, na
--- mesma transação, os links vivos daquele atendimento que eram do profissional anterior (professional_boarding com o
--- vínculo antigo). Sem isso, o Boarding Check do profissional que saiu continuaria abrindo o atendimento.
+-- mesma transação, os links vivos daquele atendimento que não são do profissional novo (professional_boarding de outro
+-- vínculo: o do anterior e qualquer outro que tenha sobrado). Só o profissional atual mantém o link. Sem isso, o Boarding Check do profissional que saiu continuaria abrindo o atendimento.
 --   - Gatilho depois do update do professional_link_id (a troca só existe em Agendado, pelo appointment_validate). Vale
 --     por qualquer caminho de escrita.
 --   - Cada link revogado vai para a trilha grant.revoke, com o motivo professional_change, como os outros motivos do
@@ -21,7 +21,9 @@ begin
   for r in
     update platform.access_grant g set revoked_at = now()
     where g.tenant_id = new.tenant_id and g.appointment_id = new.id and g.revoked_at is null
-      and g.purpose = 'professional_boarding' and g.professional_link_id = old.professional_link_id
+      and g.purpose = 'professional_boarding'
+      -- só o profissional atual mantém o link (Backend 4 e Segurança, revisão do #315): o do anterior e qualquer outro
+      and g.professional_link_id is distinct from new.professional_link_id
     returning g.id
   loop
     perform audit.record_event('grant.revoke', 'platform.access_grant', r.id,

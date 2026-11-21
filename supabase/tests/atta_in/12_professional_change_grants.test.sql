@@ -1,7 +1,7 @@
 -- MIG-13 (S2 da Segurança no #304): trocar o profissional revoga os links do profissional anterior naquele atendimento.
 -- Dados fictícios.
 begin;
-select plan(7);
+select plan(8);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A');
 insert into network.person (id, full_name, cpf_hmac, cpf_masked, cpf_enc, dek_wrapped, kek_version)
@@ -91,6 +91,13 @@ select ok(pg_temp.vivo('dois-a001'), 'remarcar sem trocar o profissional não re
 update atta_in.appointment set professional_link_id = '00000000-0000-4000-8000-0000000000d1'
 where id = '00000000-0000-4000-8000-00000000a001';
 select ok(not pg_temp.vivo('dois-a001') and pg_temp.revogacoes() = 2, 'voltar para a Dra. Um revoga o link do Dr. Dois');
+
+-- só o profissional atual mantém o link: um link de outro profissional que tenha sobrado também cai na troca
+select pg_temp.link_profissional('00000000-0000-4000-8000-00000000a002', '00000000-0000-4000-8000-0000000000d2', 'dois-a002');
+update atta_in.appointment set professional_link_id = '00000000-0000-4000-8000-0000000000d2'
+where id = '00000000-0000-4000-8000-00000000a002';
+select ok(not pg_temp.vivo('um-a002') and pg_temp.vivo('dois-a002'),
+          'na troca, cai todo link que não é do profissional novo; o dele continua');
 
 select * from finish();
 rollback;
