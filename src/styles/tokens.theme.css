@@ -75,7 +75,8 @@
   --text-3xl: 2rem;
   --text-4xl: 2.5rem;
   /* Escala do painel da clínica, medida nas capturas do simulador a 1440 px (Tech Lead Frontend, 21/11; ADR 0001 §6):
-     corpo (tabelas, busca, subabas e botões), rótulo (versalete dos cards e corpo dos modais) e número dos cards. Cada
+     corpo (tabelas, busca, subabas e botões), rótulo (versalete dos cards e corpo dos modais), número dos cards,
+     destaque (número grande de indicador) e número menor (blocos secundários). Cada
      um com o seu line-height. 12 px e 14 px ficam com text-xs e text-sm. */
   --text-corpo: 0.8125rem;
   --text-corpo--line-height: 1.25rem;
@@ -83,6 +84,11 @@
   --text-rotulo--line-height: 1rem;
   --text-numero: 1.625rem;
   --text-numero--line-height: 1;
+  /* número grande de indicador (36 px) e número dos blocos secundários (22 px), medidos na captura 40 */
+  --text-destaque: 2.25rem;
+  --text-destaque--line-height: 1;
+  --text-numero-menor: 1.375rem;
+  --text-numero-menor--line-height: 1;
 
   --radius-*: initial;
   --radius-sm: 6px;
