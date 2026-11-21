@@ -34,7 +34,16 @@ export const canaisSchema = z.object({
 export type Canais = z.infer<typeof canaisSchema>;
 
 /** fuso: o da clínica (platform.tenant.timezone), para o grupo e o "quando" (regra do Tech Lead: nunca o do navegador) */
-export const caixaSchema = z.object({ itens: z.array(notificacaoSchema), canais: canaisSchema, fuso: z.string().min(1) });
+const fusoValido = (fuso: string) => {
+  try {
+    new Intl.DateTimeFormat("pt-BR", { timeZone: fuso });
+    return true;
+  } catch {
+    return false;
+  }
+};
+// fuso inválido falha no schema (a porta devolve erro e a tela mostra o DataState de erro), nunca um RangeError na renderização
+export const caixaSchema = z.object({ itens: z.array(notificacaoSchema), canais: canaisSchema, fuso: z.string().min(1).refine(fusoValido) });
 export type CaixaDeNotificacoes = z.infer<typeof caixaSchema>;
 
 export const CANAIS_VAZIOS: Canais = { email: null, whatsapp: null, pausaNoturna: null, resumo: null, eventos: null };
