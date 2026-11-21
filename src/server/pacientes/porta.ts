@@ -75,6 +75,8 @@ export type FichaDoPaciente = {
   contato: Contato | null;
   /** Selo "Identidade Verificada" (§10.1, RN-PAC-05/06): só vem do ATTA me; null sem selo válido. */
   selo: { validoAte: string } | null;
+  /** Selo que venceu (vale 1 ano; RN-PAC-06): a data em que expirou, para a Pasta dizer "Selo expirado em …"; null sem. */
+  seloExpirouEm: string | null;
   origem: OrigemDoCadastro;
   vinculadoEm: string;
   /** pendente: a clínica vê só o que ela digitou, até o titular autorizar a portabilidade. */

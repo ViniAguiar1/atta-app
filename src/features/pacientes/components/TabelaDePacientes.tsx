@@ -1,29 +1,13 @@
 import { iniciais } from "@/lib/texto/iniciais";
-import type { Identificacao, LinhaDePaciente } from "@/server/pacientes/porta";
+import Link from "next/link";
+import type { LinhaDePaciente } from "@/server/pacientes/porta";
 import { textos } from "../textos";
+import { Documento } from "./Documento";
 
 // Tabela da lista de Pacientes, igual ao Simulador ATTA-in (capturas 09 e 10; decisão do dono de 20/11, PLANO "Abas e
 // fidelidade ao simulador"): Paciente (avatar, nome, asterisco do nome social e chip de situação), Identificação (documento
 // mascarado e "Nasc."), Contato e Atendimento ("Último atendimento" ou "Próximo agendamento", data em negrito e
 // "Procedimento · Profissional"). Os números e as datas vêm prontos do servidor. Quem rola de lado é o quadro da tabela.
-
-// o que fica à mostra na máscara única (ADR 0002 §6): "···.···.247-25" → "247-25"; "······A12" → "A12"
-const final = (mascarado: string) => mascarado.replace(/^[·.]+/, "");
-
-function Documento({ identificacao }: { identificacao: Identificacao }) {
-  if (identificacao.tipo === "incompleto") return <span>{textos.identificacao.semDocumento}</span>;
-  const cpf = identificacao.tipo === "cpf";
-  const falado = cpf
-    ? textos.identificacao.cpfFalado(final(identificacao.mascarado))
-    : textos.identificacao.estrangeiroFalado(final(identificacao.mascarado));
-  // o visual fica escondido do leitor de tela, que ouve o texto por extenso (padrão do painel, #29 e #44)
-  return (
-    <span>
-      <span aria-hidden="true">{cpf ? identificacao.mascarado : `${textos.identificacao.estrangeiro} ${identificacao.mascarado}`}</span>
-      <span className="sr-only">{falado}</span>
-    </span>
-  );
-}
 
 const PONTO_DO_CHIP = { incompleto: "bg-text-secondary", com_selo: "bg-text-primary", selo_expirado: "bg-status-pending" } as const;
 
@@ -73,13 +57,16 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
                   </span>
                   <span className="flex flex-wrap items-center gap-2">
                     <span>
-                      {p.nome}
-                      {p.usaNomeSocial && (
-                        <>
-                          <sup aria-hidden="true">*</sup>
-                          <span className="sr-only">, {textos.nomeSocial}</span>
-                        </>
-                      )}
+                      {/* o nome abre a Pasta do Paciente; não há botão "Abrir pasta" separado (PDD §10, Pacientes, lista) */}
+                      <Link
+                        href={`/painel/pacientes/pasta/${p.id}`}
+                        aria-label={textos.abrirPasta(p.nome)}
+                        className="underline-offset-2 hover:underline"
+                      >
+                        {p.nome}
+                        {p.usaNomeSocial && <sup aria-hidden="true">*</sup>}
+                      </Link>
+                      {p.usaNomeSocial && <span className="sr-only">, {textos.nomeSocial}</span>}
                     </span>
                     {p.selo && <Chip tipo={p.selo} />}
                     {p.incompleto && <Chip tipo="incompleto" />}
