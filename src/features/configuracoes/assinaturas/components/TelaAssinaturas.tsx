@@ -7,20 +7,28 @@ import { DataState } from "@/components/ui/DataState";
 import { FaixaInformativa } from "@/components/ui/FaixaInformativa";
 import { Monograma } from "@/components/ui/Monograma";
 import type { Resultado } from "@/lib/errors";
+import type { MeusModelos } from "@/server/documentos/tipos";
 import { type Chancela, type ConfiguracaoDeAssinatura, MODELOS, MODELOS_COM_RT, type ModeloDeAssinatura } from "@/server/assinaturas/tipos";
 import { salvarModelo } from "../actions";
 import { textos as t } from "../textos";
+import { DocumentosDoAtta } from "./DocumentosDoAtta";
+import { ValidadeDocumental } from "./ValidadeDocumental";
 
 // Configurações › Assinaturas & Validade (PDD v206 §10.4.2; captura 46). Modelo de Assinatura (3 cartões de escolha,
 // grava ao escolher; se o servidor recusar, volta ao salvo), Método (ATTA Sign, só texto) e o Preview ao vivo da
 // chancela com os dados do Perfil da Clínica. O hash do preview é calculado de verdade, no navegador, sobre o payload
-// do preview (decisão do CTO, 21/11); o Código ATTA aparece só no formato, sem QR.
-type Props = { resultado: Resultado<ConfiguracaoDeAssinatura | null> | null };
+// do preview (decisão do CTO, 21/11); o Código ATTA aparece só no formato, sem QR. Abaixo, só leitura (R46): os
+// Documentos do ATTA que o paciente assina e a Validade documental dos modelos "Única" (de Termos & Docs).
+type Props = {
+  resultado: Resultado<ConfiguracaoDeAssinatura | null> | null;
+  /** Modelos de Termos & Docs, para a Validade documental; null enquanto carrega (os dois cartões de baixo esperam). */
+  modelos?: Resultado<MeusModelos> | null;
+};
 
 const chip = "inline-flex items-center gap-1.5 rounded-full bg-surface-card px-2.5 py-1 text-xs font-medium";
 const ponto = <span aria-hidden="true" className="size-1.5 rounded-full bg-text-secondary" />;
 
-export function TelaAssinaturas({ resultado }: Props) {
+export function TelaAssinaturas({ resultado, modelos = null }: Props) {
   const router = useRouter();
   const [dados, setDados] = useState<ConfiguracaoDeAssinatura | null>(resultado?.ok ? resultado.data : null);
   const [erro, setErro] = useState<string | null>(null);
@@ -138,6 +146,12 @@ export function TelaAssinaturas({ resultado }: Props) {
           </div>
         )}
       </DataState>
+      {modelos && (
+        <div className="mt-4 flex flex-col gap-4">
+          <DocumentosDoAtta />
+          <ValidadeDocumental modelos={modelos} />
+        </div>
+      )}
     </section>
   );
 }
