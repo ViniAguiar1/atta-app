@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition, type KeyboardEvent } from "react";
 import { ChipDeStatus, SeloAtrasado } from "@/components/agenda/ChipDeStatus";
 import { CartaoDeSecao } from "@/components/ui/CartaoDeSecao";
@@ -24,10 +23,11 @@ const formatador = (fuso: string, opcoes: Intl.DateTimeFormatOptions) => new Int
 const dataDe = (iso: string, fuso: string) => formatador(fuso, { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
 const horaDe = (iso: string, fuso: string) => formatador(fuso, { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
-function ChipDePendencia({ texto }: { texto: string }) {
+// captura 13: "a regularizar" com o ponto de atenção (status-pending); "obrigatória" com o ponto vinho (status-negative)
+function ChipDePendencia({ texto, ponto }: { texto: string; ponto: "bg-status-pending" | "bg-status-negative" }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-card px-2.5 py-0.5 text-xs font-medium whitespace-nowrap text-text-primary">
-      <span aria-hidden="true" className="size-1.5 rounded-full bg-status-negative" />
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-card px-2 py-0.5 text-rotulo font-semibold whitespace-nowrap text-text-primary">
+      <span aria-hidden="true" className={`size-1.5 rounded-full ${ponto}`} />
       {texto}
     </span>
   );
@@ -41,50 +41,72 @@ function Marcos({ a, fuso }: { a: AgendamentoDaPasta; fuso: string }) {
     m.emAtendimento && `${t.marco.emAtendimento} ${horaDe(m.emAtendimento, fuso)}`,
     m.concluido && `${t.marco.concluido} ${horaDe(m.concluido, fuso)}`,
   ].filter(Boolean);
-  return <p className="text-xs text-text-secondary">{partes.length ? partes.join(" · ") : t.semMarcos}</p>;
+  return <p className="text-rotulo text-text-secondary">{partes.length ? partes.join(" · ") : t.semMarcos}</p>;
 }
 
 // captura 13: data e hora à esquerda; procedimento, profissional, chips e marcos no meio; pendência e contagens à direita
 function Agendamento({ a, fuso }: { a: AgendamentoDaPasta; fuso: string }) {
   return (
-    <li className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border border-border bg-surface-raised p-4">
-      <p className="flex w-24 shrink-0 flex-col">
+    <li className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border border-border bg-surface-raised p-3">
+      {/* em 390 px a data e a hora ficam numa linha em cima; a partir do medium, empilhadas à esquerda */}
+      <p className="flex w-full items-baseline gap-2 medium:w-24 medium:shrink-0 medium:flex-col medium:items-start medium:gap-0">
         <span className="text-xs text-text-secondary">{dataDe(a.inicio, fuso)}</span>
         <span className="font-sub text-horario">{horaDe(a.inicio, fuso)}</span>
       </p>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="text-corpo font-semibold">{a.servicos.map((s) => s.nome).join(", ")}</p>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="text-sm font-semibold">{a.servicos.map((s) => s.nome).join(", ")}</p>
         <p className="text-xs text-text-secondary">{a.profissional.nomeExibicao}</p>
         <div className="flex flex-wrap items-center gap-1.5">
-          <ChipDeStatus status={a.status} />
-          {a.atrasado && <SeloAtrasado />}
-          {a.pendencia && <ChipDePendencia texto={t.pendenciaARegularizar} />}
+          <ChipDeStatus status={a.status} compacto />
+          {a.atrasado && <SeloAtrasado compacto />}
+          {a.pendencia && <ChipDePendencia texto={t.pendenciaARegularizar} ponto="bg-status-pending" />}
         </div>
         <Marcos a={a} fuso={fuso} />
       </div>
       <div className="flex w-full flex-col items-start gap-1 medium:w-auto medium:items-end">
-        {a.pendencia?.obrigatoria && <ChipDePendencia texto={t.pendenciaObrigatoria} />}
-        <p className="text-xs text-text-secondary">{t.contagem(a.termos, a.docsClinicos)}</p>
+        {a.pendencia?.obrigatoria && <ChipDePendencia texto={t.pendenciaObrigatoria} ponto="bg-status-negative" />}
+        <p className="text-rotulo text-text-secondary">{t.contagem(a.termos, a.docsClinicos)}</p>
       </div>
     </li>
   );
 }
 
-// captura 14: um cartão por atendimento com termo obrigatório não assinado, com o "Como resolver"
+// triângulo de alerta de traço fino (Guia de Design §7), decorativo
+function Alerta() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d="M12 4 2.5 20h19L12 4ZM12 10v4M12 17h.01" />
+    </svg>
+  );
+}
+
+// captura 14: cabeçalho com o alerta, o título, a linha do atendimento e o status; o aviso em caixa e o "Como resolver"
 function Pendencia({ a, fuso }: { a: AgendamentoDaPasta; fuso: string }) {
   return (
-    <li className="flex flex-col gap-2 rounded-md border border-border border-l-4 border-l-status-negative bg-surface-raised p-4 text-corpo">
-      <p className="font-semibold">{t.termoNaoAssinado}</p>
-      <p className="text-xs text-text-secondary">
-        {a.servicos.map((s) => s.nome).join(", ")} · {dataDe(a.inicio, fuso)} às {horaDe(a.inicio, fuso)} · {a.profissional.nomeExibicao}
-      </p>
-      <div>
-        <ChipDeStatus status={a.status} />
+    <li className="overflow-hidden rounded-md border border-border border-l-4 border-l-status-negative bg-surface-raised">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-app px-4 py-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-sm border border-border bg-surface-raised text-status-pending">
+          <Alerta />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-corpo">{t.termoNaoAssinado}</p>
+          <p className="text-rotulo text-text-secondary">
+            {a.servicos.map((s) => s.nome).join(", ")} · {dataDe(a.inicio, fuso)} às {horaDe(a.inicio, fuso)} · {a.profissional.nomeExibicao}
+          </p>
+        </div>
+        <ChipDeStatus status={a.status} compacto />
       </div>
-      <p>{t.termoNaoAssinadoTexto}</p>
-      <p className="rounded-md bg-surface-app p-3 text-xs">
-        <strong>{t.comoResolver}</strong> {t.comoResolverTexto}
-      </p>
+      <div className="flex flex-col gap-3 p-4 text-xs">
+        <p className="flex items-start gap-2 rounded-md border border-border border-l-4 border-l-status-negative p-3">
+          <span className="text-status-negative">
+            <Alerta />
+          </span>
+          {t.termoNaoAssinadoTexto}
+        </p>
+        <p className="rounded-md bg-surface-app p-3">
+          <strong>{t.comoResolver}</strong> {t.comoResolverTexto}
+        </p>
+      </div>
     </li>
   );
 }
@@ -94,7 +116,6 @@ export function AgendamentosDaPasta({ id, inicial, mais }: { id: string; inicial
   const [aba, setAba] = useState<Aba>("agendamentos");
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, iniciar] = useTransition();
-  const router = useRouter();
   const base = useId();
   const botoes = useRef<Record<Aba, HTMLButtonElement | null>>({ agendamentos: null, pendencias: null });
 
@@ -119,8 +140,8 @@ export function AgendamentosDaPasta({ id, inicial, mais }: { id: string; inicial
     });
 
   return (
-    <CartaoDeSecao titulo={t.titulo} subtitulo={t.subtitulo} icone="🗂️">
-      <div role="tablist" aria-label={t.abas} onKeyDown={teclado} className="-mt-1 flex gap-0.5 overflow-x-auto border-b border-border">
+    <CartaoDeSecao titulo={t.titulo} subtitulo={t.subtitulo} icone="🗂️" compacto>
+      <div role="tablist" aria-label={t.abas} onKeyDown={teclado} className="flex gap-0.5 overflow-x-auto border-b border-border px-3">
         {ABAS.map((a) => (
           <button
             key={a}
@@ -134,7 +155,7 @@ export function AgendamentosDaPasta({ id, inicial, mais }: { id: string; inicial
             aria-controls={`${base}-${a}-painel`}
             tabIndex={aba === a ? 0 : -1}
             onClick={() => setAba(a)}
-            className={`-mb-px min-h-11 border-b-2 px-3 text-corpo whitespace-nowrap ${
+            className={`-mb-px min-h-11 border-b-2 px-3 text-xs whitespace-nowrap ${
               aba === a ? "border-brand font-semibold text-text-primary" : "border-transparent text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -142,45 +163,52 @@ export function AgendamentosDaPasta({ id, inicial, mais }: { id: string; inicial
           </button>
         ))}
       </div>
-      <div role="tabpanel" id={`${base}-${aba}-painel`} aria-labelledby={`${base}-${aba}`} className="flex flex-col gap-3">
-        {aba === "agendamentos" ? (
-          <DataState
-            estado={pagina.itens.length ? { tipo: "pronto" } : { tipo: "vazio" }}
-            rotulo={t.estado}
-            esqueleto={{ linhas: 2, alturaRem: 7 }}
-            vazio={t.vazio}
-          >
-            <ul className="flex flex-col gap-3">
-              {pagina.itens.map((a) => (
-                <Agendamento key={a.id} a={a} fuso={pagina.fuso} />
-              ))}
-            </ul>
-          </DataState>
-        ) : (
-          <DataState estado={pendentes.length ? { tipo: "pronto" } : { tipo: "vazio" }} rotulo={t.estado} esqueleto={{ linhas: 1, alturaRem: 9 }} vazio={t.semPendencia}>
-            <ul className="flex flex-col gap-3">
-              {pendentes.map((a) => (
-                <Pendencia key={a.id} a={a} fuso={pagina.fuso} />
-              ))}
-            </ul>
-          </DataState>
-        )}
-        {erro && (
-          <DataState estado={{ tipo: "erro", tentarDeNovo: () => router.refresh(), codigo: erro }} rotulo={t.estado} esqueleto={{ linhas: 1, alturaRem: 3 }} vazio={t.vazio}>
-            {null}
-          </DataState>
-        )}
-        {aba === "agendamentos" && pagina.proximo && (
-          <button
-            type="button"
-            onClick={carregarMais}
-            disabled={carregando}
-            className="min-h-11 w-fit self-center rounded-md border border-border-functional px-4 text-corpo font-medium disabled:opacity-60 medium:min-h-9"
-          >
-            {t.carregarMais}
-          </button>
-        )}
+      {/* os dois painéis ficam no DOM (o inativo com hidden), para o aria-controls de cada aba apontar para o seu */}
+      <div role="tabpanel" id={`${base}-agendamentos-painel`} aria-labelledby={`${base}-agendamentos`} hidden={aba !== "agendamentos"}>
+        <DataState
+          estado={pagina.itens.length ? { tipo: "pronto" } : { tipo: "vazio" }}
+          rotulo={t.estado}
+          esqueleto={{ linhas: 2, alturaRem: 7 }}
+          vazio={t.vazio}
+        >
+          <ul className="flex flex-col gap-3">
+            {pagina.itens.map((a) => (
+              <Agendamento key={a.id} a={a} fuso={pagina.fuso} />
+            ))}
+          </ul>
+        </DataState>
       </div>
+      <div role="tabpanel" id={`${base}-pendencias-painel`} aria-labelledby={`${base}-pendencias`} hidden={aba !== "pendencias"}>
+        <DataState
+          estado={pendentes.length || pagina.proximo ? { tipo: "pronto" } : { tipo: "vazio" }}
+          rotulo={t.estado}
+          esqueleto={{ linhas: 1, alturaRem: 9 }}
+          vazio={t.semPendencia}
+        >
+          <ul className="flex flex-col gap-3">
+            {pendentes.map((a) => (
+              <Pendencia key={a.id} a={a} fuso={pagina.fuso} />
+            ))}
+          </ul>
+        </DataState>
+      </div>
+      {erro && (
+        // o "tentar de novo" repete o carregar mais, sem recarregar a página
+        <DataState estado={{ tipo: "erro", tentarDeNovo: carregarMais, codigo: erro }} rotulo={t.estado} esqueleto={{ linhas: 1, alturaRem: 3 }} vazio={t.vazio}>
+          {null}
+        </DataState>
+      )}
+      {/* nas duas abas: o número das Pendências é o total do banco, e a lista sai das páginas carregadas */}
+      {pagina.proximo && !erro && (
+        <button
+          type="button"
+          onClick={carregarMais}
+          disabled={carregando}
+          className="min-h-11 w-fit self-center rounded-md border border-border-functional px-4 text-corpo font-medium disabled:opacity-60 medium:min-h-9"
+        >
+          {t.carregarMais}
+        </button>
+      )}
     </CartaoDeSecao>
   );
 }

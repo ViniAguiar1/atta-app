@@ -1,5 +1,6 @@
 import "server-only";
 import { falha, ok } from "@/lib/errors";
+import { iniciais } from "@/lib/texto/iniciais";
 import { isValidCpf, maskCpf, normalizeCpf } from "@/server/crypto/cpf";
 import type { AgendamentoDaPasta, CartaoDaRede, FichaDoPaciente, LinhaDePaciente, PortaPacientes } from "./porta";
 
@@ -10,7 +11,7 @@ function agendamentosSimulados(pessoa: { id: string; nome: string; cpf: string |
     duracaoMin: 60,
     tipo: "procedimento" as const,
     modalidade: "presencial" as const,
-    paciente: { tipo: "pessoa" as const, id: pessoa.id, nomeExibicao: pessoa.nome, cpfMascarado: pessoa.cpf ? maskCpf(pessoa.cpf) : null, iniciais: pessoa.nome.slice(0, 2).toUpperCase() },
+    paciente: { tipo: "pessoa" as const, id: pessoa.id, nomeExibicao: pessoa.nome, cpfMascarado: pessoa.cpf ? maskCpf(pessoa.cpf) : null, iniciais: iniciais(pessoa.nome) },
     servicos: [{ id: idSim(101), nome: "Peeling químico médio" }],
     profissional: { vinculoId: idSim(901), nomeExibicao: "Dr. Caio Andrade" },
     documentos: [],

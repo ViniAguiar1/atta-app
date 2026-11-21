@@ -159,7 +159,15 @@ const linhaDaPasta = linhaDoBancoBase.extend({
 const pastaDoBanco = z.object({
   totals: z.object({ appointments: contagemDoBanco, terms_signed: contagemDoBanco, clinical_docs: contagemDoBanco, pendencies: contagemDoBanco }),
   today: z.object({ count: contagemDoBanco, last_at: instante.nullable() }),
-  timezone: z.string().min(1),
+  // fuso IANA que o Intl aceita: um nome inválido viraria RangeError na tela
+  timezone: z.string().min(1).refine((fuso) => {
+    try {
+      new Intl.DateTimeFormat("pt-BR", { timeZone: fuso });
+      return true;
+    } catch {
+      return false;
+    }
+  }),
   data: z.array(z.unknown()),
   page: z.object({ next_cursor: z.string().nullable() }),
 });
