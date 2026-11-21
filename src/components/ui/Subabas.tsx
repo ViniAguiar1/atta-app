@@ -26,7 +26,7 @@ export function Subabas({ rotulo, itens, ativa }: Props) {
               <Link
                 href={item.href}
                 aria-current={atual ? "page" : undefined}
-                className={`-mb-px flex min-h-11 items-center border-b-2 px-4 text-sm whitespace-nowrap ${
+                className={`-mb-px flex min-h-11 items-center border-b-2 px-4 text-[0.8125rem] whitespace-nowrap ${
                   atual ? "border-brand font-semibold text-text-primary" : "border-transparent text-text-secondary hover:text-text-primary"
                 }`}
               >
