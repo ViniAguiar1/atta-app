@@ -2,20 +2,12 @@
 
 import { useEffect, useId, useState } from "react";
 import { DataState, type EstadoDeDados } from "@/components/ui/DataState";
-import { DialogoDeMotivo } from "@/components/agenda/DialogoDeMotivo";
-import { textosDaAgenda } from "@/components/agenda/textos";
-import type { Acao } from "@/lib/agenda/linha";
+import { useAcoesDaLinha } from "@/components/agenda/useAcoesDaLinha";
 import type { Resultado } from "@/lib/errors";
 import {
-  JUSTIFICATIVA_MINIMA,
-  MOTIVOS_CANCELAR_ANTES,
-  MOTIVOS_CANCELAR_DEPOIS,
-  MOTIVOS_CONCLUIR,
-  MOTIVOS_REABRIR,
   termoPronto,
   type DiaDaAgenda,
   type EntradaDaAcao,
-  type LinhaDaAgenda,
   type FiltroDoDia,
   type FiltroDoPeriodo,
   type FiltroDosConcluidos,
@@ -57,20 +49,7 @@ function argumentosDoFiltro(chave: string): FiltroDoDia {
 
 const ESPERA_DA_BUSCA_MS = 300;
 
-type AcaoComMotivo = "cancelar" | "concluir_pela_recepcao" | "reabrir_preenchimento";
-const TEXTOS_DO_DIALOGO = {
-  cancelar: textosDaAgenda.dialogo.cancelar,
-  concluir_pela_recepcao: textosDaAgenda.dialogo.concluir,
-  reabrir_preenchimento: textosDaAgenda.dialogo.reabrir,
-} satisfies Record<AcaoComMotivo, { titulo: string; texto: string; confirmar: string }>;
-
 export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, buscarConcluidos, resumir, executar }: Props) {
-  const [acionando, setAcionando] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
-  // Cancelar, Concluir pela recepção e Reabrir preenchimento pedem motivo (e justificativa): abrem o diálogo; o erro do
-  // servidor fica nele
-  const [dialogo, setDialogo] = useState<{ linha: LinhaDaAgenda; acao: AcaoComMotivo } | null>(null);
-  const [erroDoDialogo, setErroDoDialogo] = useState<string | null>(null);
   const [visao, setVisao] = useState<Visao>("hoje");
   // Concluídos abre em "Esta semana"; "Este mês" e "Todo o período" vêm no painel Filtros (captura 37, PR dos filtros)
   const periodo: PeriodoConcluidos = "semana";
@@ -130,50 +109,16 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
     setResumo(null);
     setResumo(await resumir());
   };
-  // Ação da linha (PDD §10.2.2): grava pela server action, anuncia o resultado e relê a lista e os cards. O texto do
-  // erro vem do code/reason traduzido no textos.ts, nunca a message do servidor.
-  const depoisDeGravar = (acao: EntradaDaAcao["acao"]) => {
-    setAviso({ tipo: "ok", texto: textos.acoes.feito[acao] });
-    setTocado(true);
-    setTentativa((n) => n + 1);
-    void recarregarResumo();
-  };
-  const acionar = async (linha: LinhaDaAgenda, acao: Acao) => {
-    if (!executar) return;
-    if (acao === "cancelar" || acao === "concluir_pela_recepcao" || acao === "reabrir_preenchimento") {
-      setErroDoDialogo(null);
-      setDialogo({ linha, acao });
-      return;
-    }
-    if (acao !== "confirmar" && acao !== "marcar_ausente") return;
-    setAcionando(linha.id);
-    setAviso(null);
-    const r = await executar({ acao, id: linha.id });
-    setAcionando(null);
-    if (!r.ok) {
-      setAviso({ tipo: "erro", texto: textos.acoes.erro(r.error.reason ?? r.error.code) });
-      return;
-    }
-    depoisDeGravar(acao);
-  };
-  const confirmarDialogo = async ({ motivo, justificativa }: { motivo: string; justificativa?: string }) => {
-    if (!executar || !dialogo) return;
-    const { linha, acao } = dialogo;
-    setAcionando(linha.id);
-    setErroDoDialogo(null);
-    const entrada =
-      acao === "concluir_pela_recepcao"
-        ? ({ acao, id: linha.id, motivo, justificativa: justificativa ?? "" } as EntradaDaAcao)
-        : ({ acao, id: linha.id, motivo } as EntradaDaAcao);
-    const r = await executar(entrada);
-    setAcionando(null);
-    if (!r.ok) {
-      setErroDoDialogo(textos.acoes.erro(r.error.reason ?? r.error.code));
-      return;
-    }
-    setDialogo(null);
-    depoisDeGravar(acao);
-  };
+  // Ação da linha (PDD §10.2.2): o hook comum (components/agenda, também usado na Pasta) grava pela server action,
+  // anuncia o resultado e abre o diálogo de motivo; aqui, depois de gravar, relê a lista e os cards.
+  const { acionando, aviso, acionar, dialogoDaAcao } = useAcoesDaLinha({
+    executar,
+    depoisDeGravar: () => {
+      setTocado(true);
+      setTentativa((n) => n + 1);
+      void recarregarResumo();
+    },
+  });
   const estado = estadoDe({
     dia,
     falhou,
@@ -301,29 +246,7 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
         )}
       </DataState>
 
-      {dialogo && (
-        <DialogoDeMotivo
-          titulo={TEXTOS_DO_DIALOGO[dialogo.acao].titulo}
-          texto={TEXTOS_DO_DIALOGO[dialogo.acao].texto}
-          motivos={
-            dialogo.acao === "concluir_pela_recepcao"
-              ? MOTIVOS_CONCLUIR
-              : dialogo.acao === "reabrir_preenchimento"
-                ? MOTIVOS_REABRIR
-                : // antes da chegada (Agendado, Ausente) ou depois (PDD §10.2.2); o banco confere a lista pelo estado
-                  dialogo.linha.status === "agendado" || dialogo.linha.status === "ausente"
-                  ? MOTIVOS_CANCELAR_ANTES
-                  : MOTIVOS_CANCELAR_DEPOIS
-          }
-          rotuloConfirmar={TEXTOS_DO_DIALOGO[dialogo.acao].confirmar}
-          justificativaMinima={dialogo.acao === "concluir_pela_recepcao" ? JUSTIFICATIVA_MINIMA : undefined}
-          negativo={dialogo.acao === "cancelar"}
-          enviando={acionando === dialogo.linha.id}
-          erro={erroDoDialogo}
-          aoConfirmar={(escolha) => void confirmarDialogo(escolha)}
-          aoFechar={() => setDialogo(null)}
-        />
-      )}
+      {dialogoDaAcao}
     </div>
   );
 }

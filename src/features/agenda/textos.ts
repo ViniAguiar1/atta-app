@@ -7,15 +7,6 @@ import type { EstadoDoDocumento } from "./schema";
 export const SEM_NUMERO = "—";
 
 /** Erro de uma ação da linha, pelo reason do banco (ADR 0001 §5) ou pelo code; todos provisórios. */
-const ERROS_DA_ACAO: Record<string, string> = {
-  "ATTA-IN-0003:status": "Este atendimento mudou de estado. A lista foi atualizada; confira antes de tentar de novo.", // provisório
-  "ATTA-IN-0003:absent_day": "Só dá para marcar como ausente no dia do atendimento.", // provisório
-  "ATTA-IN-0003:reopen_day": "Só dá para reabrir o preenchimento no dia do atendimento.", // provisório
-  SEM_PERMISSAO: "Você não tem permissão para esta ação.", // provisório
-  NAO_ENCONTRADO: "Este atendimento não foi encontrado. Atualize a lista.", // provisório
-  "ATTA-IN-0001:reason": "Escolha um motivo da lista.", // provisório
-  "ATTA-IN-0001:justification": "A justificativa precisa de pelo menos 50 caracteres.", // provisório
-};
 
 export const textos = {
   titulo: "Agendamentos", // PDD §10.2 (h1 só para o leitor de tela; a aba já mostra o nome)
@@ -52,17 +43,7 @@ export const textos = {
     todos: "Todos", // PDD §10.2.2
     concluidos: "Concluídos", // PDD §10.2.2
   },
-  acoes: {
-    feito: {
-      confirmar: "Agendamento confirmado.", // provisório
-      marcar_ausente: "Paciente marcado como ausente.", // provisório
-      cancelar: "Agendamento cancelado.", // provisório
-      concluir_pela_recepcao: "Atendimento concluído pela recepção.", // provisório
-      reabrir_preenchimento: "Preenchimento reaberto. O atendimento voltou para Agendado.", // provisório
-    },
-    erro: (codigo: string) =>
-      ERROS_DA_ACAO[codigo] ?? "Não foi possível concluir a ação. Atualize a lista e tente de novo.", // provisório
-  },
+  acoes: textosDaAgenda.resultado, // fonte única em src/components/agenda/textos.ts (comum à Agenda e à Pasta)
   cards: {
     rotulo: "Resumo do dia", // provisório (nome da região para o leitor de tela)
     hoje: {
