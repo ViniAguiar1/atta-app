@@ -9,7 +9,7 @@ import { MenuDoModelo } from "./MenuDoModelo";
 export function TabelaDeModelos({ modelos }: { modelos: ModeloDeDocumento[] }) {
   const c = textos.colunas;
   return (
-    <div role="region" aria-label={textos.rotuloDaLista} tabIndex={0} className="relative overflow-x-auto rounded-xl border border-border bg-surface-raised">
+    <div role="region" aria-label={textos.rotuloDaLista} tabIndex={0} className="relative overflow-x-auto rounded-lg border border-border bg-surface-raised">
       <table className="w-full min-w-[60rem] table-fixed border-collapse text-left text-[0.8125rem]">
         <colgroup>
           {LARGURAS.map((largura, i) => (
