@@ -12,7 +12,7 @@ async function preencher() {
   await userEvent.type(screen.getByLabelText("CPF"), "52998224725");
   await userEvent.type(screen.getByLabelText("WhatsApp de contato"), "11987654321");
   await userEvent.selectOptions(screen.getByLabelText("Conselho"), "crm");
-  await userEvent.type(screen.getByLabelText("Número de registro"), "201577");
+  await userEvent.type(screen.getByLabelText("Número de registro"), "990001");
   await userEvent.selectOptions(screen.getByLabelText("UF"), "SP");
 }
 
@@ -40,7 +40,7 @@ describe("PROpass, passos 1 e 2", () => {
     expect(await screen.findByRole("heading", { name: "Camada 1 — Validação ATTA (Conselho)" })).toHaveFocus();
     expect(screen.getByText("Regularizado (Conselho Ativo)")).toBeInTheDocument();
     expect(screen.getByText("consultado às 16:24")).toBeInTheDocument();
-    expect(screen.getByText("201577-SP")).toBeInTheDocument();
+    expect(screen.getByText("990001-SP")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Bruna Reis");
   });
