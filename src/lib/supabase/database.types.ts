@@ -147,7 +147,7 @@ export type Database = {
             }[]
                            },
 "propass_submit":
-{ Args: { "p_council": string,"p_council_number": string,"p_council_status": string,"p_council_uf": string,"p_cpf_enc": string,"p_cpf_hmac": string,"p_cpf_masked": string,"p_dek_wrapped": string,"p_display_name": string,"p_email_enc": string,"p_email_hmac": string,"p_kek_version": number,"p_phone_enc": string,"p_privacy_notice_version": string,"p_professional_id": string,"p_secret_hash": string }; Returns: string
+{ Args: { "p_atta_code": string,"p_council": string,"p_council_number": string,"p_council_status": string,"p_council_uf": string,"p_cpf_enc": string,"p_cpf_hmac": string,"p_cpf_masked": string,"p_dek_wrapped": string,"p_display_name": string,"p_document_id": string,"p_email_enc": string,"p_email_hmac": string,"p_kek_version": number,"p_payload_canonical": string,"p_phone_enc": string,"p_pin_mac": string,"p_pin_mac_version": number,"p_privacy_notice_version"?: string,"p_professional_id": string,"p_seal": string,"p_seal_kid": string,"p_secret_hash": string,"p_stroke": Json }; Returns: string
                            },
 "rate_limit_hit":
 { Args: { "p_bucket": string,"p_key_hash": string,"p_limit": number,"p_window_seconds": number }; Returns: boolean
@@ -742,6 +742,26 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"professional_pin": {
+                  Row: {
+                    "pin_mac": string,"pin_mac_version": number,"professional_id": string,"set_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "pin_mac": string,"pin_mac_version": number,"professional_id": string,"set_at"?: string
+                  }
+                  Update: {
+                    "pin_mac"?: string,"pin_mac_version"?: number,"professional_id"?: string,"set_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "professional_pin_professional_id_fkey"
+      columns: ["professional_id"]
+isOneToOne: true
+      referencedRelation: "professional"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"professional_tenant_link": {
                   Row: {
