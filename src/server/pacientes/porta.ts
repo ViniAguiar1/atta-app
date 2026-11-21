@@ -16,14 +16,23 @@ export type Identificacao =
   | { tipo: "estrangeiro"; mascarado: string } // RNE ou RNM/CRNM (RN-PAC-02; dono, 20/11)
   | { tipo: "incompleto" }; // sem documento: cadastro incompleto (RN-PAC-02)
 
-/** Marcadores de documento do painel (PDD §10.2.2): ● vinculado, ✓ assinado, ✗ recusado. */
-export type MarcaDeDocumento = "vinculado" | "assinado" | "recusado";
-
 export type Contato = { celular: string | null; email: string | null };
 
+/** Chip do selo "Identidade Verificada" (§10.1, RN-PAC-05/06; simulador, captura 09): só vem do ATTA me. */
+export type SeloNaLista = "com_selo" | "selo_expirado";
+
+/** Coluna Atendimento (simulador, captura 09): o último atendimento ou o próximo agendamento, no fuso da clínica. */
+export type AtendimentoNaLista = {
+  tipo: "ultimo" | "proximo";
+  em: string; // AAAA-MM-DDTHH:mm, local da clínica
+  procedimento: string;
+  profissional: string;
+};
+
 /**
- * Uma linha da lista de Pacientes (PDD §10, "Pacientes, lista": Paciente, Identificação, Contato, Último atendimento e
- * Documentos; selo, origem e Formulário de Saúde não entram). Formato de cada célula: Simulador, capturas 09 e 10.
+ * Uma linha da lista de Pacientes, igual ao Simulador ATTA-in (capturas 09 a 11): Paciente (avatar, nome e chip),
+ * Identificação, Contato e Atendimento. Decisão do dono de 20/11 (PLANO, "Abas e fidelidade ao simulador"): aqui vale o
+ * simulador, por cima da lista de colunas do PDD §10.
  */
 export type LinhaDePaciente = {
   id: string;
@@ -33,6 +42,8 @@ export type LinhaDePaciente = {
   usaNomeSocial: boolean;
   /** Chip "Incompleto" (RN-PAC-02; estados do cadastro do §10.1), calculado no servidor, nunca na tela. */
   incompleto: boolean;
+  /** Chip do selo; null sem selo. */
+  selo: SeloNaLista | null;
   identificacao: Identificacao;
   /** AAAA-MM-DD; null quando não informado. */
   nascimento: string | null;
@@ -41,10 +52,8 @@ export type LinhaDePaciente = {
    * da Segurança). O inteiro só na Pasta do Paciente. null quando a clínica não tem contato deste paciente.
    */
   contato: Contato | null;
-  /** O último atendimento concluído nesta clínica, no fuso dela; null quando não houve nenhum. */
-  ultimoAtendimento: { em: string /* AAAA-MM-DDTHH:mm, local */; procedimento: string; profissional: string } | null;
-  /** Documentos do paciente nesta clínica; [] quando não há. */
-  documentos: { nome: string; marca: MarcaDeDocumento }[];
+  /** null quando não há atendimento nem agendamento nesta clínica ("Nenhum atendimento aqui"). */
+  atendimento: AtendimentoNaLista | null;
 };
 
 /** Cursor da lista, em ordem de nome (keyset do api.patient_list). Opaco para a tela. */

@@ -1,18 +1,17 @@
 import { iniciais } from "@/lib/texto/iniciais";
-import type { Identificacao, LinhaDePaciente, MarcaDeDocumento } from "@/server/pacientes/porta";
+import type { Identificacao, LinhaDePaciente } from "@/server/pacientes/porta";
 import { textos } from "../textos";
 
-// Tabela da lista de Pacientes. Colunas do PDD v206 §10 ("Pacientes, lista"): Paciente, Identificação, Contato, Último
-// atendimento e Documentos; selo, origem e Formulário de Saúde ficam fora, na Pasta. Formato das células: Simulador,
-// capturas 09 e 10 (avatar com iniciais, chip "Incompleto", asterisco do nome social, "Nasc." embaixo do CPF). Títulos de
-// coluna na fonte do corpo, sem maiúsculas, no verde do ATTA-in (§10, "Padrões visuais"). Marcadores de documento do
-// §10.2.2. A página não rola de lado: quem rola é o quadro da tabela (§10 e Guia de Design §3).
+// Tabela da lista de Pacientes, igual ao Simulador ATTA-in (capturas 09 e 10; decisão do dono de 20/11, PLANO "Abas e
+// fidelidade ao simulador"): Paciente (avatar, nome, asterisco do nome social e chip de situação), Identificação (documento
+// mascarado e "Nasc."), Contato e Atendimento ("Último atendimento" ou "Próximo agendamento", data em negrito e
+// "Procedimento · Profissional"). Os números e as datas vêm prontos do servidor. Quem rola de lado é o quadro da tabela.
 
 // o que fica à mostra na máscara única (ADR 0002 §6): "···.···.247-25" → "247-25"; "······A12" → "A12"
 const final = (mascarado: string) => mascarado.replace(/^[·.]+/, "");
 
 function Documento({ identificacao }: { identificacao: Identificacao }) {
-  if (identificacao.tipo === "incompleto") return <span className="text-text-secondary">{textos.identificacao.semDocumento}</span>;
+  if (identificacao.tipo === "incompleto") return <span>{textos.identificacao.semDocumento}</span>;
   const cpf = identificacao.tipo === "cpf";
   const falado = cpf
     ? textos.identificacao.cpfFalado(final(identificacao.mascarado))
@@ -26,16 +25,19 @@ function Documento({ identificacao }: { identificacao: Identificacao }) {
   );
 }
 
-const SIMBOLO: Record<MarcaDeDocumento, string> = { vinculado: "●", assinado: "✓", recusado: "✗" };
-const COR: Record<MarcaDeDocumento, string> = {
-  vinculado: "text-text-secondary",
-  assinado: "text-text-primary",
-  recusado: "text-status-negative",
-};
+const PONTO_DO_CHIP = { incompleto: "bg-text-secondary", com_selo: "bg-text-primary", selo_expirado: "bg-status-pending" } as const;
 
-const cabecalho = "px-4 py-3 text-left font-medium text-brand whitespace-nowrap";
-const celula = "px-4 py-3 align-top";
-const secundario = "text-text-secondary";
+function Chip({ tipo }: { tipo: keyof typeof PONTO_DO_CHIP }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface-card px-2.5 py-0.5 text-xs font-medium text-text-primary">
+      <span aria-hidden="true" className={`size-1.5 rounded-full ${PONTO_DO_CHIP[tipo]}`} />
+      {textos.chip[tipo]}
+    </span>
+  );
+}
+
+const cabecalho = "px-4 py-3 text-left font-semibold whitespace-nowrap text-text-primary";
+const celula = "px-4 py-3.5 align-top";
 
 export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] }) {
   return (
@@ -51,48 +53,45 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
         <caption className="sr-only">{textos.tabela}</caption>
         <thead className="border-b border-border bg-surface-app">
           <tr>
-            <th scope="col" className={cabecalho}>{textos.colunas.paciente}</th>
-            <th scope="col" className={cabecalho}>{textos.colunas.identificacao}</th>
-            <th scope="col" className={cabecalho}>{textos.colunas.contato}</th>
-            <th scope="col" className={cabecalho}>{textos.colunas.ultimoAtendimento}</th>
-            <th scope="col" className={cabecalho}>{textos.colunas.documentos}</th>
+            <th scope="col" className={`${cabecalho} w-[36%]`}>{textos.colunas.paciente}</th>
+            <th scope="col" className={`${cabecalho} w-[14%]`}>{textos.colunas.identificacao}</th>
+            <th scope="col" className={`${cabecalho} w-[20%]`}>{textos.colunas.contato}</th>
+            <th scope="col" className={cabecalho}>{textos.colunas.atendimento}</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="text-text-primary">
           {pacientes.map((p) => (
             <tr key={p.id} className="border-b border-border last:border-b-0">
               <th scope="row" className={`${celula} text-left font-normal`}>
                 <span className="flex items-center gap-3">
                   <span
                     aria-hidden="true"
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-card text-xs font-semibold text-text-primary"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-card text-xs font-semibold"
                   >
                     {iniciais(p.nome)}
                   </span>
-                  <span className="text-base text-text-primary">
-                    {p.nome}
-                    {p.usaNomeSocial && (
-                      <>
-                        <span aria-hidden="true">*</span>
-                        <span className="sr-only">, {textos.nomeSocial}</span>
-                      </>
-                    )}
-                  </span>
-                  {p.incompleto && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-card px-2.5 py-0.5 text-xs font-medium text-text-primary">
-                      <span aria-hidden="true" className="size-1.5 rounded-full bg-text-secondary" />
-                      {textos.incompleto}
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-[0.9375rem]">
+                      {p.nome}
+                      {p.usaNomeSocial && (
+                        <>
+                          <sup aria-hidden="true">*</sup>
+                          <span className="sr-only">, {textos.nomeSocial}</span>
+                        </>
+                      )}
                     </span>
-                  )}
+                    {p.selo && <Chip tipo={p.selo} />}
+                    {p.incompleto && <Chip tipo="incompleto" />}
+                  </span>
                 </span>
               </th>
               <td className={`${celula} whitespace-nowrap`}>
-                <span className="flex flex-col">
+                <span className="flex flex-col gap-1">
                   <Documento identificacao={p.identificacao} />
                   {p.nascimento ? (
-                    <span className={secundario}>{textos.identificacao.nascimento(p.nascimento)}</span>
+                    <span>{textos.identificacao.nascimento(p.nascimento)}</span>
                   ) : (
-                    <span className={secundario}>
+                    <span>
                       <span aria-hidden="true">{textos.identificacao.nascimento(null)}</span>
                       <span className="sr-only">{textos.identificacao.semNascimentoFalado}</span>
                     </span>
@@ -100,39 +99,20 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
                 </span>
               </td>
               <td className={celula}>
-                <span className="flex flex-col">
-                  <span className={p.contato?.celular ? "whitespace-nowrap" : secundario}>{p.contato?.celular ?? textos.semCelular}</span>
-                  <span className={p.contato?.email ? "" : secundario}>{p.contato?.email ?? textos.semEmail}</span>
+                <span className="flex flex-col gap-1">
+                  <span className="whitespace-nowrap">{p.contato?.celular ?? textos.semCelular}</span>
+                  <span>{p.contato?.email ?? textos.semEmail}</span>
                 </span>
               </td>
               <td className={celula}>
-                {p.ultimoAtendimento ? (
-                  <span className="flex flex-col">
-                    <span className="font-semibold whitespace-nowrap text-text-primary">{textos.atendimento.quando(p.ultimoAtendimento.em)}</span>
-                    <span className={secundario}>
-                      {textos.atendimento.oQue(p.ultimoAtendimento.procedimento, p.ultimoAtendimento.profissional)}
-                    </span>
+                {p.atendimento ? (
+                  <span className="flex flex-col gap-1">
+                    <span>{textos.atendimento.rotulo[p.atendimento.tipo]}</span>
+                    <span className="font-semibold whitespace-nowrap">{textos.atendimento.quando(p.atendimento.em)}</span>
+                    <span>{textos.atendimento.oQue(p.atendimento.procedimento, p.atendimento.profissional)}</span>
                   </span>
                 ) : (
-                  <span className={secundario}>{textos.atendimento.nenhum}</span>
-                )}
-              </td>
-              <td className={celula}>
-                {p.documentos.length === 0 ? (
-                  <span className={secundario}>{textos.nenhumDocumento}</span>
-                ) : (
-                  <ul className="flex flex-col gap-0.5">
-                    {p.documentos.map((d, i) => (
-                      // a porta ainda não traz id do documento (MIG-20); nome + posição não repete
-                      <li key={`${i}-${d.nome}`} className="flex items-baseline gap-2">
-                        <span aria-hidden="true" className={COR[d.marca]}>{SIMBOLO[d.marca]}</span>
-                        <span>
-                          {d.nome}
-                          <span className="sr-only">, {textos.marca[d.marca]}</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <span>{textos.atendimento.nenhum}</span>
                 )}
               </td>
             </tr>

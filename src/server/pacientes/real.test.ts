@@ -47,9 +47,9 @@ describe("porta real de Pacientes (MIG-43)", () => {
       ok: true,
       data: {
         itens: [{
-          id: ID, nome: "Juliana Prates", usaNomeSocial: false, incompleto: false,
+          id: ID, nome: "Juliana Prates", usaNomeSocial: false, incompleto: false, selo: null,
           identificacao: { tipo: "cpf", mascarado: "···.···.247-25" }, nascimento: "1990-09-17",
-          contato: { celular: "(11) ·····-4321", email: "ju···@exemplo.test" }, ultimoAtendimento: null, documentos: [],
+          contato: { celular: "(11) ·····-4321", email: "ju···@exemplo.test" }, atendimento: null,
         }],
         proxima: null,
         total: 5,
@@ -75,6 +75,12 @@ describe("porta real de Pacientes (MIG-43)", () => {
     });
     const r = await porta.listar();
     expect(r.ok && r.data.itens[0]).toMatchObject({ usaNomeSocial: true, incompleto: true, identificacao: { tipo: "incompleto" }, contato: null });
+  });
+
+  it("selo válido do banco vira o chip Com selo", async () => {
+    rpc.mockResolvedValue({ data: [await linha({ is_verified: true, verified_until: "2027-06-30T00:00:00Z" })], error: null });
+    const r = await porta.listar();
+    expect(r.ok && r.data.itens[0]?.selo).toBe("com_selo");
   });
 
   it("a busca devolve a mesma linha da lista, com o contato mascarado", async () => {

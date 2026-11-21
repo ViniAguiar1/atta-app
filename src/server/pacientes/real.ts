@@ -159,11 +159,12 @@ async function paraLinha(r: z.infer<typeof linhaSchema>, tenantId: string): Prom
     nome: r.display_name,
     usaNomeSocial: r.display_is_social,
     incompleto: r.is_incomplete,
+    // o banco só devolve o selo válido (em pending, nem ele); "Selo expirado" entra quando a API trouxer a expiração
+    selo: r.is_verified ? "com_selo" : null,
     identificacao: identificacaoDe(r.cpf_masked, r.foreign_doc_masked),
     nascimento: r.birth_date,
     contato: celular || email ? { celular, email } : null,
-    ultimoAtendimento: null, // o formato fecha com o MIG-11; até lá a função devolve nulo
-    documentos: [], // idem, com o schema documents
+    atendimento: null, // last_appointment vem nulo até a agenda (MIG-11); o formato fecha com ela
   };
 }
 
