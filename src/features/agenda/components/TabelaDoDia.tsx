@@ -46,7 +46,7 @@ export function TabelaDoDia({
       aria-busy={ocupado || undefined}
       className="relative overflow-x-auto rounded-md border border-border bg-surface-raised"
     >
-      <table className="w-full min-w-[56rem] border-collapse text-left text-[0.8125rem]">
+      <table className="w-full min-w-[56rem] border-collapse text-left text-corpo">
         <thead>
           <tr className="border-b border-border">
             {comData && (
