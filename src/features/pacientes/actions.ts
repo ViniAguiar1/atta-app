@@ -3,7 +3,7 @@
 import { falhaDeValidacao, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
-import { MOTIVOS_DE_DIVERGENCIA, portaPacientes, type CartaoDaRede, type ConsultaDeCpf, type LinhaDePaciente, type PaginaDePacientes } from "@/server/pacientes/porta";
+import { MOTIVOS_DE_DIVERGENCIA, portaPacientes, type AgendamentosDaPasta, type CartaoDaRede, type ConsultaDeCpf, type LinhaDePaciente, type PaginaDePacientes } from "@/server/pacientes/porta";
 import { celularMascarado, emailMascarado } from "@/server/pacientes/real";
 import { buscaSchema, cadastroSchema, cpfDaBuscaSchema, cursorSchema } from "./schema";
 
@@ -109,5 +109,14 @@ export async function arquivarPaciente(entrada: unknown): Promise<Resultado<{ ar
   if (!dados.success) return falhaDeValidacao(dados.error.issues);
   const resultado = await portaPacientes.arquivar(dados.data.id, dados.data.arquivar);
   logger.info("pacientes.arquivo", { ok: resultado.ok, arquivar: dados.data.arquivar, code: resultado.ok ? undefined : resultado.error.code });
+  return resultado;
+}
+
+/** "Carregar mais" dos agendamentos da Pasta: a página seguinte pelo cursor do banco ("<instante>|<id>"). */
+export async function maisAgendamentosDaPasta(entrada: unknown): Promise<Resultado<AgendamentosDaPasta>> {
+  const dados = z.object({ id: z.uuid(), cursor: z.string().min(1).max(80) }).strict().safeParse(entrada);
+  if (!dados.success) return falhaDeValidacao(dados.error.issues);
+  const resultado = await portaPacientes.agendamentosDaPasta(dados.data.id, dados.data.cursor);
+  if (!resultado.ok) logger.warn("pacientes.agendamentos_falhou", { code: resultado.error.code });
   return resultado;
 }

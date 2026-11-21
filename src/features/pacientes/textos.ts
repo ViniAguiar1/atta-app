@@ -68,6 +68,29 @@ export const textos = {
       emAberto: "Cancele ou conclua os agendamentos antes de arquivar.", // provisório da PO (PLANO e patient_set_archived)
       erro: "Não foi possível concluir agora. Tente de novo.", // provisório
     },
+    agendamentos: {
+      titulo: "Agendamentos e documentos", // simulador, captura 13
+      subtitulo: "Cada agendamento é uma subpasta; as demais abas listam tudo, com a data do agendamento", // simulador, captura 13
+      abas: "Seções da pasta", // provisório (nome da lista de abas para o leitor de tela)
+      aba: { agendamentos: (n: number) => `Agendamentos (${n})`, pendencias: (n: number) => `Pendências (${n})` }, // simulador, captura 13
+      vazio: { titulo: "Nenhum agendamento nesta clínica", texto: "Os agendamentos do paciente aparecem aqui, do mais recente ao mais antigo." }, // provisório
+      semPendencia: { titulo: "Nenhuma pendência", texto: "Os atendimentos com termo obrigatório não assinado aparecem aqui." }, // provisório
+      estado: "agendamentos do paciente", // provisório (rótulo do DataState para leitor de tela)
+      semMarcos: "Sem marcos ainda", // simulador, captura 13
+      marco: { checkin: "Check-in", pronto: "Pronto", emAtendimento: "Em atendimento", concluido: "Concluído" }, // simulador, captura 13
+      pendenciaARegularizar: "Pendência a regularizar", // simulador, captura 13
+      pendenciaObrigatoria: "Pendência obrigatória", // simulador, captura 13
+      contagem: (termos: number, docs: number) => `${termos} termo(s) · ${docs} doc(s) clínico(s)`, // simulador, captura 13
+      carregarMais: "Carregar mais agendamentos", // provisório
+      termoNaoAssinado: "Termo não assinado", // simulador, captura 14
+      termoNaoAssinadoTexto: "Há termo obrigatório deste atendimento que ainda não foi assinado.", // provisório (a API manda o código, sem o nome do termo)
+      comoResolver: "Como resolver:", // simulador, captura 14
+      // simulador, captura 14
+      comoResolverTexto:
+        "Ninguém assina pelo paciente. O termo vai ao paciente (pelo link ou por outro meio da clínica) e ele assina. Se for pelo link, o termo vira Assinado definitivo na hora quando o atendimento já foi concluído; se não, segue o fluxo normal e vira definitivo na conclusão. Se o arquivo assinado sobe em \"Adicionar documento\", tipo Termo, ele já fica Assinado definitivo, sinalizado \"Assinado após o procedimento\". Se o atendimento não aconteceu, cancele.",
+    },
+    hoje: (n: number, hora: string | null) => (n > 0 && hora ? `${n} · último às ${hora}` : String(n)), // simulador, captura 12
+    aRegularizar: (n: number) => `${n} a regularizar`, // simulador, captura 12
     registro: {
       titulo: "Registro e métricas", // simulador, captura 12
       texto: "Abrir a pasta é leitura de dado pessoal e fica na Auditoria.", // simulador, captura 12

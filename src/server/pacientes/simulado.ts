@@ -1,7 +1,29 @@
 import "server-only";
 import { falha, ok } from "@/lib/errors";
 import { isValidCpf, maskCpf, normalizeCpf } from "@/server/crypto/cpf";
-import type { CartaoDaRede, FichaDoPaciente, LinhaDePaciente, PortaPacientes } from "./porta";
+import type { AgendamentoDaPasta, CartaoDaRede, FichaDoPaciente, LinhaDePaciente, PortaPacientes } from "./porta";
+
+// dois agendamentos fictícios para a seção da Pasta (como na captura 13: um em atendimento com pendência, um agendado)
+const idSim = (n: number) => `5a5a0000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+function agendamentosSimulados(pessoa: { id: string; nome: string; cpf: string | null }): AgendamentoDaPasta[] {
+  const base = {
+    duracaoMin: 60,
+    tipo: "procedimento" as const,
+    modalidade: "presencial" as const,
+    paciente: { tipo: "pessoa" as const, id: pessoa.id, nomeExibicao: pessoa.nome, cpfMascarado: pessoa.cpf ? maskCpf(pessoa.cpf) : null, iniciais: pessoa.nome.slice(0, 2).toUpperCase() },
+    servicos: [{ id: idSim(101), nome: "Peeling químico médio" }],
+    profissional: { vinculoId: idSim(901), nomeExibicao: "Dr. Caio Andrade" },
+    documentos: [],
+    atrasado: false,
+    confirmacao: "confirmado" as const,
+    boardingCheckEnviadoEm: null,
+    acoes: [],
+  };
+  return [
+    { ...base, id: idSim(2), inicio: "2026-11-20T14:00:00-03:00", status: "agendado", marcos: { checkin: null, pronto: null, emAtendimento: null, concluido: null }, pendencia: { tipo: "termo_nao_assinado", obrigatoria: true }, termos: 1, docsClinicos: 0 },
+    { ...base, id: idSim(1), inicio: "2026-11-19T11:30:00-03:00", status: "em_atendimento", marcos: { checkin: "2026-11-19T11:20:00-03:00", pronto: "2026-11-19T11:24:00-03:00", emAtendimento: "2026-11-19T11:35:00-03:00", concluido: null }, pendencia: { tipo: "termo_nao_assinado", obrigatoria: true }, termos: 2, docsClinicos: 0 },
+  ];
+}
 
 // Implementação simulada da porta de Pacientes, para a tela andar antes da porta real. Só dado fictício: CPFs gerados
 // (dígito verificador válido, ninguém real), nomes, celulares e e-mails inventados. Sem estado entre requisições: o
@@ -186,6 +208,18 @@ export function criarPortaSimulada(pacientes: readonly Simulado[] = PACIENTES_SI
     async reportarDivergencia(id) {
       if (!existe(id)) return falha("NAO_ENCONTRADO", "Paciente não encontrado.");
       return ok({ protocolo: crypto.randomUUID() });
+    },
+    async agendamentosDaPasta(id) {
+      const p = ordenados.find((x) => x.id === id);
+      if (!p) return falha("NAO_ENCONTRADO", "Paciente não encontrado.");
+      const itens = agendamentosSimulados({ id: p.id, nome: p.nome, cpf: p.cpf });
+      return ok({
+        itens,
+        totais: { agendamentos: itens.length, termosAssinados: 0, docsClinicos: 0, pendencias: itens.filter((i) => i.pendencia).length },
+        hoje: { quantidade: 0, ultimoEm: null },
+        proximo: null,
+        fuso: "America/Sao_Paulo",
+      });
     },
   };
 }

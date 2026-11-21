@@ -3,10 +3,10 @@ import { Suspense } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { Subabas } from "@/components/ui/Subabas";
 import { sessaoDoPainel } from "@/features/casca/sessao";
-import { arquivarPaciente } from "@/features/pacientes/actions";
+import { arquivarPaciente, maisAgendamentosDaPasta } from "@/features/pacientes/actions";
 import { EstadoDaPasta } from "@/features/pacientes/components/EstadoDaPasta";
 import { PastaDoPaciente } from "@/features/pacientes/components/PastaDoPaciente";
-import { abrirPasta } from "@/features/pacientes/pasta";
+import { abrirAgendamentos, abrirPasta } from "@/features/pacientes/pasta";
 import { SUBABAS_DE_PACIENTES } from "@/features/pacientes/subabas";
 import { textos } from "@/features/pacientes/textos";
 
@@ -33,9 +33,19 @@ async function Conteudo({ searchParams }: Props) {
   await connection(); // por requisição: a ficha é da clínica da sessão, e cada abertura fica na Auditoria
   const { paciente } = await searchParams;
   if (paciente === undefined) return <EstadoDaPasta tipo="vazio" titulo={textos.pasta.vazioTitulo} texto={textos.pasta.vazioTexto} />;
-  const [ficha, sessao] = await Promise.all([abrirPasta(paciente), sessaoDoPainel()]);
+  // a ficha, a sessão e os agendamentos em paralelo; a seção de agendamentos não segura a ficha (cada uma com o seu estado)
+  const [ficha, sessao, agendamentos] = await Promise.all([abrirPasta(paciente), sessaoDoPainel(), abrirAgendamentos(paciente)]);
   // só o gestor arquiva (PLANO, decisão do dono de 20/11); o banco confere o papel de novo
-  if (ficha.ok) return <PastaDoPaciente ficha={ficha.data} arquivar={sessao?.papel === "ADMIN" ? arquivarPaciente : null} />;
+  if (ficha.ok) {
+    return (
+      <PastaDoPaciente
+        ficha={ficha.data}
+        arquivar={sessao?.papel === "ADMIN" ? arquivarPaciente : null}
+        agendamentos={agendamentos}
+        mais={maisAgendamentosDaPasta}
+      />
+    );
+  }
   if (ficha.error.code === "NAO_ENCONTRADO" || ficha.error.code === "VALIDACAO") return <EstadoDaPasta tipo="vazio" titulo={textos.pasta.naoEncontrado} />;
   return <EstadoDaPasta tipo="erro" codigo={ficha.error.code} />;
 }

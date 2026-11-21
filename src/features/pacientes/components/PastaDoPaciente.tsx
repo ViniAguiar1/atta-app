@@ -1,10 +1,12 @@
 import type { Resultado } from "@/lib/errors";
-import type { FichaDoPaciente } from "@/server/pacientes/porta";
+import type { AgendamentosDaPasta as Pagina, FichaDoPaciente } from "@/server/pacientes/porta";
 import { useId } from "react";
 import { CartaoDeSecao } from "@/components/ui/CartaoDeSecao";
 import { textos } from "../textos";
+import { AgendamentosDaPasta } from "./AgendamentosDaPasta";
 import { AvisoDeArquivado, BotaoDeArquivar } from "./ArquivarPaciente";
 import { Documento } from "./Documento";
+import { EstadoDaPasta } from "./EstadoDaPasta";
 
 // Pasta do Paciente, topo (Simulador ATTA-in, captura 12; PDD v206 §10, "Pacientes, lista": o nome abre a Pasta, onde
 // ficam o selo e a origem do cadastro): o cartão "Dados cadastrais" e a coluna "Resumo do paciente". O contato chega
@@ -120,7 +122,10 @@ function ItemDoResumo({ rotulo, children }: { rotulo: string; children: React.Re
   );
 }
 
-function Resumo({ ficha, arquivar }: { ficha: FichaDoPaciente; arquivar: Arquivar | null }) {
+const horaNoFuso = (iso: string, fuso: string) =>
+  new Intl.DateTimeFormat("pt-BR", { timeZone: fuso, hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+
+function Resumo({ ficha, arquivar, pagina }: { ficha: FichaDoPaciente; arquivar: Arquivar | null; pagina: Pagina | null }) {
   const incompleto = ficha.identificacao.tipo === "incompleto";
   const titulo = useId();
   return (
@@ -142,9 +147,23 @@ function Resumo({ ficha, arquivar }: { ficha: FichaDoPaciente; arquivar: Arquiva
             {incompleto ? textos.chip.incompleto : t.resumo.completo}
           </span>
         </ItemDoResumo>
-        <ItemDoResumo rotulo={t.resumo.atendimentosHoje}><SemDado /></ItemDoResumo>
-        <ItemDoResumo rotulo={t.resumo.termosAssinados}><SemDado /></ItemDoResumo>
-        <ItemDoResumo rotulo={t.resumo.pendencias}><SemDado /></ItemDoResumo>
+        {/* os números vêm do api.patient_folder_appointments; sem ele (sem permissão ou erro), "—" */}
+        <ItemDoResumo rotulo={t.resumo.atendimentosHoje}>
+          {pagina ? t.hoje(pagina.hoje.quantidade, pagina.hoje.ultimoEm && horaNoFuso(pagina.hoje.ultimoEm, pagina.fuso)) : <SemDado />}
+        </ItemDoResumo>
+        <ItemDoResumo rotulo={t.resumo.termosAssinados}>{pagina ? pagina.totais.termosAssinados : <SemDado />}</ItemDoResumo>
+        <ItemDoResumo rotulo={t.resumo.pendencias}>
+          {!pagina ? (
+            <SemDado />
+          ) : pagina.totais.pendencias > 0 ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-card px-2 py-0.5 text-xs font-medium">
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-status-pending" />
+              {t.aRegularizar(pagina.totais.pendencias)}
+            </span>
+          ) : (
+            0
+          )}
+        </ItemDoResumo>
       </dl>
       <div className="rounded-md border border-border bg-surface-raised p-3 text-xs">
         <p className="font-semibold text-text-primary">{t.registro.titulo}</p>
@@ -154,8 +173,26 @@ function Resumo({ ficha, arquivar }: { ficha: FichaDoPaciente; arquivar: Arquiva
   );
 }
 
-/** arquivar: a action do servidor, só para o gestor (ADMIN); null para o Colaborador, que não vê o botão. */
-export function PastaDoPaciente({ ficha, arquivar = null }: { ficha: FichaDoPaciente; arquivar?: Arquivar | null }) {
+type Mais = (e: { id: string; cursor: string }) => Promise<Resultado<Pagina>>;
+
+/**
+ * arquivar: a action do servidor, só para o gestor (ADMIN); null para o Colaborador, que não vê o botão.
+ * agendamentos: a primeira página do api.patient_folder_appointments. Sem appointments.view (SEM_PERMISSAO), a seção
+ * não aparece; outro erro mostra o DataState com "tentar de novo".
+ */
+export function PastaDoPaciente({
+  ficha,
+  arquivar = null,
+  agendamentos = null,
+  mais,
+}: {
+  ficha: FichaDoPaciente;
+  arquivar?: Arquivar | null;
+  agendamentos?: Resultado<Pagina> | null;
+  mais?: Mais;
+}) {
+  const pagina = agendamentos?.ok ? agendamentos.data : null;
+  const erro = agendamentos && !agendamentos.ok && agendamentos.error.code !== "SEM_PERMISSAO" ? agendamentos.error.code : null;
   return (
     <div className="flex flex-col gap-4">
       {ficha.arquivadoEm && <AvisoDeArquivado id={ficha.id} arquivadoEm={ficha.arquivadoEm} arquivar={arquivar} />}
@@ -165,8 +202,14 @@ export function PastaDoPaciente({ ficha, arquivar = null }: { ficha: FichaDoPaci
           <DadosCadastrais ficha={ficha} />
           <Vinculos ficha={ficha} />
         </div>
-        <Resumo ficha={ficha} arquivar={arquivar} />
+        <Resumo ficha={ficha} arquivar={arquivar} pagina={pagina} />
       </div>
+      {/* captura 13: "Agendamentos e documentos" ocupa a largura toda, abaixo dos cartões e do resumo */}
+      {(pagina || erro) && (
+        <div className="rounded-md bg-surface-raised p-4">
+          {pagina && mais ? <AgendamentosDaPasta id={ficha.id} inicial={pagina} mais={mais} /> : erro && <EstadoDaPasta tipo="erro" codigo={erro} />}
+        </div>
+      )}
     </div>
   );
 }
