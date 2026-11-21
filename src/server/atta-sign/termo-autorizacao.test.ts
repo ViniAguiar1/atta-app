@@ -6,7 +6,16 @@ import { MasterKeyCofre, parseKeyring } from "@/server/cofre/master-key";
 import { columnAad, open } from "@/server/crypto/envelope";
 import { CI_TEST_KEYRING } from "../../../tests/fixtures/cofre-ci";
 import { verifySeal } from "./seal";
-import { assinarTermoDeAutorizacao, registroDoConselho, TETO_DO_PNG, type DadosDoTermo } from "./termo-autorizacao";
+import {
+  assinarTermoDeAutorizacao,
+  type ContextoDoTermo,
+  dadosDoContexto,
+  formatarCnpj,
+  preencherTermo,
+  registroDoConselho,
+  TETO_DO_PNG,
+  type DadosDoTermo,
+} from "./termo-autorizacao";
 
 const { privateKey, publicKey } = generateKeyPairSync("ed25519");
 const CHAVE = { kid: "staging-seal-teste-unidade", privadaPem: privateKey.export({ type: "pkcs8", format: "pem" }).toString() };
@@ -120,5 +129,54 @@ describe("assinarTermoDeAutorizacao", () => {
 
   it("registroDoConselho segue a forma do payload (o banco recalcula igual)", () => {
     expect(registroDoConselho("crm", "sp", "201.577")).toBe("CRM-SP 201.577");
+  });
+});
+
+describe("preencherTermo (ADR 0001, dados da clínica e texto do Termo)", () => {
+  const corpo =
+    "Eu, {{profissional.nome}}, inscrita(o) no {{profissional.registro}}, autorizo {{clinica.razao_social}} " +
+    '(CNPJ {{clinica.cnpj}}), estabelecimento "{{clinica.nome}}", a: (i) …\n\nFim do documento · {{clinica.razao_social}}';
+  const contexto = (body = corpo, sha = createHash("sha256").update(body).digest("hex")): ContextoDoTermo => ({
+    legal_name: "Clínica Fictícia Ltda",
+    trade_name: "Clínica Fictícia",
+    cnpj: "00000000000191",
+    template_id: "00000000-0000-4000-8000-0000000005e1",
+    version: 1,
+    body_sha256: sha,
+    body_normalization: "nfc+lf+trim",
+    body,
+  });
+  const profissional = { nome: "Dra. Fictícia", conselho: "cro", uf: "SP", numero: "11111" };
+
+  it("o texto preenchido usa exatamente os valores que o pacote assinado leva", async () => {
+    const ctx = contexto();
+    const texto = preencherTermo(ctx, profissional);
+    const pacote = await assinarTermoDeAutorizacao({ ...dados(), ...dadosDoContexto(ctx), profissional }, {
+      cofre, chave: CHAVE, agora: () => new Date("2026-11-21T10:02:03.456Z"), novoId: () => DOC, subir: async () => {},
+    });
+    const payload = JSON.parse(Buffer.from(pacote.p_payload_canonical.slice(2), "hex").toString("utf8"));
+    expect(payload.document.body_sha256).toBe(ctx.body_sha256); // o hash assinado é o do body com os campos
+    expect(texto).toBe(
+      `Eu, ${payload.parties[0].name}, inscrita(o) no ${payload.parties[0].council}, autorizo ${payload.tenant.legal_name} ` +
+        `(CNPJ ${payload.tenant.cnpj}), estabelecimento "${payload.tenant.trade_name}", a: (i) …\n\nFim do documento · ${payload.tenant.legal_name}`,
+    );
+    expect(payload.tenant).toEqual({ legal_name: "Clínica Fictícia Ltda", trade_name: "Clínica Fictícia", cnpj: "00.000.000/0001-91" });
+    expect(texto).not.toMatch(/\{\{|\}\}/);
+  });
+
+  it("confere o body contra o body_sha256 antes de preencher", () => {
+    expect(() => preencherTermo(contexto(corpo, "b".repeat(64)), profissional)).toThrow(/versão vigente/);
+    expect(() => preencherTermo(contexto(corpo, "não é hash"), profissional)).toThrow(/versão vigente/);
+  });
+
+  it("recusa campo desconhecido e campo que sobrar sem preencher", () => {
+    expect(() => preencherTermo(contexto("Olá {{paciente.cpf}}."), profissional)).toThrow(/desconhecido/);
+    expect(() => preencherTermo(contexto("Olá {{Clinica.Nome}}."), profissional)).toThrow(/sem preencher/);
+  });
+
+  it("formatarCnpj aceita 14 dígitos (formatados ou não) e recusa o resto", () => {
+    expect(formatarCnpj("00000000000191")).toBe("00.000.000/0001-91");
+    expect(formatarCnpj("00.000.000/0001-91")).toBe("00.000.000/0001-91");
+    expect(() => formatarCnpj("123")).toThrow();
   });
 });
