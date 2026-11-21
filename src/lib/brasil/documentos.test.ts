@@ -20,6 +20,31 @@ describe("documentos", () => {
   });
 });
 
+// Vetores gerados (ninguém real), numéricos e alfanuméricos; o "12ABC34501DE35" é o exemplo publicado pela Receita.
+describe("CNPJ alfanumérico (IN RFB 2.229/2024; ADR 0001)", async () => {
+  const { cnpjValido, formatarCnpj, normalizarCnpj } = await import("./documentos");
+
+  it("válidos, numéricos e com letras, com ou sem pontuação e em minúsculas", () => {
+    for (const c of ["48309271000150", "48.309.271/0001-50", "12ABC34501DE35", "12.ABC.345/01DE-35", "12.abc.345/01de-35", "A1B2C3D4E5F668", "ZZZZZZZZ000191"]) {
+      expect(cnpjValido(c), c).toBe(true);
+    }
+  });
+
+  it("inválidos: DV errado, letra no DV, tamanho, caractere repetido e símbolo", () => {
+    for (const c of ["48309271000151", "12ABC34501DE36", "12ABC34501DE3A", "12ABC34501DE3", "12ABC34501DE355", "00000000000000", "AAAAAAAAAAAAAA", "12ABC34501D!35"]) {
+      expect(cnpjValido(c), c).toBe(false);
+    }
+  });
+
+  it("normaliza (maiúsculas, sem pontuação) e formata, inclusive enquanto digita", () => {
+    expect(normalizarCnpj("12.abc.345/01de-35")).toBe("12ABC34501DE35");
+    expect(formatarCnpj("12abc34501de35")).toBe("12.ABC.345/01DE-35");
+    expect(formatarCnpj("48309271000150")).toBe("48.309.271/0001-50");
+    expect(formatarCnpj("12ab")).toBe("12.AB");
+    expect(formatarCnpj("12ABC34501")).toBe("12.ABC.345/01");
+  });
+});
+
 describe("CNPJ, CEP e telefone fixo (Perfil da Clínica)", async () => {
   const { cnpjValido, mascararCnpj, mascararCep, mascararTelefone } = await import("./documentos");
   it("CNPJ pelo dígito verificador, com ou sem pontuação", () => {
