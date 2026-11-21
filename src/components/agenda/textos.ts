@@ -2,7 +2,31 @@ import type { Acao, Status } from "@/lib/agenda/linha";
 
 // Textos dos componentes de domínio da agenda (src/components/agenda), comuns à Agenda e à Pasta do Paciente.
 // Cada linha diz a origem: // PDD §x.y. Dono: Frontend 4.
+/** Erro da ação pelo code/reason do banco (nunca a message): ATTA-IN-0003 e ATTA-IN-0001 com o detalhe. */
+const ERROS_DA_ACAO: Record<string, string> = {
+  "ATTA-IN-0003:status": "Este atendimento mudou de estado. A lista foi atualizada; confira antes de tentar de novo.", // provisório
+  "ATTA-IN-0003:absent_day": "Só dá para marcar como ausente no dia do atendimento.", // provisório
+  "ATTA-IN-0003:reopen_day": "Só dá para reabrir o preenchimento no dia do atendimento.", // provisório
+  SEM_PERMISSAO: "Você não tem permissão para esta ação.", // provisório
+  NAO_ENCONTRADO: "Este atendimento não foi encontrado. Atualize a lista.", // provisório
+  "ATTA-IN-0001:reason": "Escolha um motivo da lista.", // provisório
+  "ATTA-IN-0001:justification": "A justificativa precisa de pelo menos 50 caracteres.", // provisório
+};
+
 export const textosDaAgenda = {
+  /** resultado das ações da linha (Agenda e Pasta): o feito anuncia; o erro vem do code/reason */
+  resultado: {
+    feito: {
+      confirmar: "Agendamento confirmado.", // provisório
+      marcar_ausente: "Paciente marcado como ausente.", // provisório
+      cancelar: "Agendamento cancelado.", // provisório
+      concluir_pela_recepcao: "Atendimento concluído pela recepção.", // provisório
+      reabrir_preenchimento: "Preenchimento reaberto. O atendimento voltou para Agendado.", // provisório
+    },
+    erro: (codigo: string) =>
+      ERROS_DA_ACAO[codigo] ?? "Não foi possível concluir a ação. Atualize a lista e tente de novo.", // provisório
+  },
+
   status: {
     agendado: "Agendado", // PDD §10.2.2
     em_preenchimento: "Em preenchimento", // PDD §10.2.2
