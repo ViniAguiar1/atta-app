@@ -1,4 +1,5 @@
 import type { MotivoDeDivergencia } from "@/server/pacientes/porta";
+import { dataDoInstante } from "./formatos";
 // Textos da tela de Pacientes (MIG-43). Fonte: o Simulador ATTA-in (capturas 09 a 11 e o README "Pacientes, Pasta do
 // Paciente e Novo paciente"), que aqui vale por cima do PDD §10 (decisão do dono de 20/11, PLANO "Abas e fidelidade ao
 // simulador"). O que não está no simulador é provisório e vai para o textos-para-a-po.md. As linhas de demonstração do
@@ -32,9 +33,9 @@ export const textos = {
       sem: "Sem selo", // simulador, captura 12
       semTexto: "Sem ATTA me. O selo só vem do ATTA me; a ausência nunca bloqueia o atendimento.", // simulador, captura 12
       com: "Com selo", // simulador, captura 10 (chip)
-      comTexto: (ate: string) => `Verificado pelo ATTA me. Vale até ${data(ate.slice(0, 10))}.`, // provisório
+      comTexto: (ate: string) => `Verificado pelo ATTA me. Vale até ${dataDoInstante(ate)}.`, // provisório
       expirado: "Selo expirado", // simulador, captura 12
-      expiradoTexto: (em: string) => `Selo expirado em ${data(em.slice(0, 10))} (vale 1 ano). O paciente refaz a verificação no ATTA me.`, // simulador, captura 12
+      expiradoTexto: (em: string) => `Selo expirado em ${dataDoInstante(em)} (vale 1 ano). O paciente refaz a verificação no ATTA me.`, // simulador, captura 12
     },
     resumo: {
       titulo: "Resumo do paciente", // simulador, captura 12
