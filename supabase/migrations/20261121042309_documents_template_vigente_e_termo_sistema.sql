@@ -10,8 +10,9 @@
 -- No mesmo PR (a lista é a mesma função; sem pilha): o Termo de Autorização do profissional vira modelo de SISTEMA
 -- (decisão do CTO, PLANO "Regras de negócio" P2c; ADR 0001 §1). A ATTA publica por seed em cada clínica (Backend 3,
 -- MIG-21c), igual para todas; a clínica não cria, não edita, não inativa nem publica esse kind:
---   - gatilho em documents.template recusa INSERT e UPDATE desse kind por quem não é o dono (postgres): qualquer
---     caminho do painel (authenticated) cai nele; o seed por migration roda como postgres e passa;
+--   - gatilho em documents.template recusa INSERT e UPDATE desse kind quando há usuário no token ou quem escreve não
+--     é o dono: qualquer caminho da clínica cai nele, inclusive função SECURITY DEFINER; o seed por migration (dono,
+--     sem token) passa;
 --   - as funções SECURITY DEFINER que mexem no modelo (publicar e inativar) recusam o kind explicitamente, porque
 --     dentro delas a sessão já é o dono; o template_set_services já recusava;
 --   - a lista mostra o termo sem ação nenhuma (allowed_actions vazio).
@@ -97,8 +98,10 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  -- SECURITY INVOKER: current_user é quem escreve. O painel escreve como authenticated; o seed, como o dono.
-  if current_user <> 'postgres'
+  -- Recusa quando há usuário no token (qualquer caminho: tabela ou função SECURITY DEFINER, dentro da qual o
+  -- current_user já é o dono) ou quando quem escreve não é o dono. O seed por migration e os jobs sem token passam.
+  -- (Tech Lead no #188: só current_user deixaria uma função nova furar a regra.)
+  if (current_user <> 'postgres' or (select auth.uid()) is not null)
      and (new.kind = 'termo_de_autorizacao' or (tg_op = 'UPDATE' and old.kind = 'termo_de_autorizacao')) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'kind';
   end if;
