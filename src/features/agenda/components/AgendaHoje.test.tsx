@@ -29,6 +29,13 @@ const RESUMO = ok({
 });
 
 beforeEach(() => vi.useFakeTimers());
+// O jsdom não tem showModal: o <dialog> só abre.
+HTMLDialogElement.prototype.showModal = function () {
+  this.setAttribute("open", "");
+};
+HTMLDialogElement.prototype.close = function () {
+  this.removeAttribute("open");
+};
 afterEach(() => vi.useRealTimers());
 
 async function digitar(texto: string) {
@@ -290,5 +297,68 @@ describe("Agenda › Hoje", () => {
     const alerta = screen.getAllByRole("alert").find((a) => a.textContent?.includes("mudou de estado"));
     expect(alerta).toBeDefined();
     expect(document.body.textContent).not.toContain("mensagem do servidor");
+  });
+
+  it("Cancelar abre o diálogo com os motivos de antes da chegada (Agendado) ou de depois (Em preenchimento), e grava o motivo", async () => {
+    const dia = await diaSimulado();
+    const executar = vi.fn().mockResolvedValue(ok(null));
+    render(
+      <AgendaHoje
+        inicial={ok(dia)}
+        resumoInicial={RESUMO}
+        resumir={vi.fn().mockResolvedValue(RESUMO)}
+        buscar={vi.fn().mockResolvedValue(ok(dia))}
+        buscarPeriodo={vi.fn()}
+        buscarConcluidos={vi.fn()}
+        executar={executar}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ações de Rafael Menezes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar agendamento" }));
+    expect(screen.getByRole("radio", { name: "Paciente desistiu do procedimento" })).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Ações de Eduardo Lima" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar agendamento" }));
+    const dialogo = screen.getByRole("dialog", { name: "Cancelar agendamento" });
+    expect(within(dialogo).queryByRole("radio", { name: "Paciente desistiu do procedimento" })).toBeNull();
+    fireEvent.click(within(dialogo).getByRole("radio", { name: "Cancelado pelo paciente" }));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cancelar agendamento" }));
+    await act(async () => {});
+    const eduardo = dia.linhas.find((l) => l.paciente.nomeExibicao === "Eduardo Lima");
+    expect(executar).toHaveBeenCalledWith({ acao: "cancelar", id: eduardo?.id, motivo: "cancelado_pelo_paciente" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("Agendamento cancelado.")).toBeDefined();
+  });
+
+  it("recusa do servidor no Concluir pela recepção fica no diálogo, que continua aberto", async () => {
+    const dia = await diaSimulado();
+    const executar = vi.fn().mockResolvedValue({
+      ok: false,
+      error: { code: "VALIDACAO", message: "x", reason: "ATTA-IN-0001:justification" },
+    });
+    render(
+      <AgendaHoje
+        inicial={ok(dia)}
+        resumoInicial={RESUMO}
+        resumir={vi.fn()}
+        buscar={vi.fn()}
+        buscarPeriodo={vi.fn()}
+        buscarConcluidos={vi.fn()}
+        executar={executar}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ações de Juliana Prates" }));
+    fireEvent.click(screen.getByRole("button", { name: "Concluir pela recepção" }));
+    const dialogo = screen.getByRole("dialog", { name: "Concluir pela recepção" });
+    fireEvent.click(within(dialogo).getByRole("radio", { name: "Emergência clínica" }));
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Justificativa" }), {
+      target: { value: "O profissional precisou sair para uma emergência clínica com outro paciente." },
+    });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Concluir atendimento" }));
+    await act(async () => {});
+    expect(executar.mock.calls[0]?.[0]).toMatchObject({ acao: "concluir_pela_recepcao", motivo: "emergencia_clinica" });
+    expect(within(dialogo).getByRole("alert").textContent).toBe("A justificativa precisa de pelo menos 50 caracteres.");
+    expect(screen.getByRole("dialog")).toBeDefined();
   });
 });

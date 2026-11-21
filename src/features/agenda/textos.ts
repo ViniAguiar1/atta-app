@@ -12,6 +12,8 @@ const ERROS_DA_ACAO: Record<string, string> = {
   "ATTA-IN-0003:absent_day": "Só dá para marcar como ausente no dia do atendimento.", // provisório
   SEM_PERMISSAO: "Você não tem permissão para esta ação.", // provisório
   NAO_ENCONTRADO: "Este atendimento não foi encontrado. Atualize a lista.", // provisório
+  "ATTA-IN-0001:reason": "Escolha um motivo da lista.", // provisório
+  "ATTA-IN-0001:justification": "A justificativa precisa de pelo menos 50 caracteres.", // provisório
 };
 
 export const textos = {
@@ -53,6 +55,8 @@ export const textos = {
     feito: {
       confirmar: "Agendamento confirmado.", // provisório
       marcar_ausente: "Paciente marcado como ausente.", // provisório
+      cancelar: "Agendamento cancelado.", // provisório
+      concluir_pela_recepcao: "Atendimento concluído pela recepção.", // provisório
     },
     erro: (codigo: string) =>
       ERROS_DA_ACAO[codigo] ?? "Não foi possível concluir a ação. Atualize a lista e tente de novo.", // provisório

@@ -224,16 +224,18 @@ export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>, hm
       const lida = entradaDaAcaoSchema.safeParse(entrada);
       if (!lida.success) return falha("VALIDACAO", MENSAGENS.VALIDACAO, [{ campo: "acao", code: "VALIDACAO" }]);
       const banco = (await cliente()).schema("atta_in");
+      const e = lida.data;
+      const transicao = (args: ArgsDaTransicao) => banco.rpc("transition_appointment", args);
       const { error } =
-        lida.data.acao === "confirmar"
-          ? await banco.rpc("confirm_appointment", { p_id: lida.data.id } satisfies ArgsDoConfirmar)
-          : await banco.rpc("transition_appointment", { p_id: lida.data.id, p_to: "ausente" } satisfies ArgsDaTransicao);
-      if (error) {
-        const r = falhaDoBanco(error);
-        logger.warn("agenda.acao_recusada", { acao: lida.data.acao, code: r.ok ? undefined : r.error.code });
-        return r;
-      }
-      return ok(null);
+        e.acao === "confirmar"
+          ? await banco.rpc("confirm_appointment", { p_id: e.id } satisfies ArgsDoConfirmar)
+          : e.acao === "marcar_ausente"
+            ? await transicao({ p_id: e.id, p_to: "ausente" })
+            : e.acao === "cancelar"
+              ? await transicao({ p_id: e.id, p_to: "cancelado", p_reason: e.motivo })
+              : await transicao({ p_id: e.id, p_to: "concluido", p_reason: e.motivo, p_justification: e.justificativa });
+      // o log fica só na server action (com a ação e o code), para não sair em dobro
+      return error ? falhaDoBanco(error) : ok(null);
     },
   };
 }
