@@ -20,4 +20,4 @@ const chaves = {
 // Formato de várias linhas do $GITHUB_ENV (a chave PEM tem quebras de linha).
 const texto = Object.entries(chaves).map(([nome, valor]) => `${nome}<<FIM_DA_CHAVE\n${valor.trim()}\nFIM_DA_CHAVE\n`).join("");
 appendFileSync(destino, texto);
-console.log(`chaves de teste do e2e: ${Object.keys(chaves).join(", ")}`); // só os nomes, nunca os valores
+process.stdout.write(`chaves de teste do e2e: ${Object.keys(chaves).join(", ")}\n`); // só os nomes, nunca os valores
