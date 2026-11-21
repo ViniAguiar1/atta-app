@@ -149,6 +149,9 @@ export type Database = {
 "report_divergence":
 { Args: { "p_person_id": string,"p_reason": string }; Returns: string
                            },
+"report_divergence_by_cpf":
+{ Args: { "p_cpf_hmac": string,"p_reason": string }; Returns: Json
+                           },
 "team_accept_invite":
 { Args: { "p_membership_id": string }; Returns: undefined
                            },
