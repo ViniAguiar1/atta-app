@@ -23,6 +23,26 @@ test.describe("sem sessão", () => {
   }
 });
 
+// Mãozinha em tudo que é clicável e "não permitido" no desabilitado (regra global do globals.css; o Tailwind 4 tirou o
+// cursor: pointer padrão dos botões). O botão e o link desabilitados são peças de prova, criadas e removidas no teste.
+test("clicável tem a mãozinha; desabilitado, o não permitido", async ({ page }) => {
+  await page.goto("/login");
+  const cursor = (l: import("@playwright/test").Locator) => l.evaluate((el) => getComputedStyle(el).cursor);
+  expect(await cursor(page.getByRole("button", { name: "Entrar", exact: true }))).toBe("pointer");
+  expect(await cursor(page.locator("main a[href]").first())).toBe("pointer");
+  const desabilitados = await page.evaluate(() => {
+    const botao = Object.assign(document.createElement("button"), { disabled: true, textContent: "prova" });
+    const link = Object.assign(document.createElement("a"), { href: "#", textContent: "prova" });
+    link.setAttribute("aria-disabled", "true");
+    document.body.append(botao, link);
+    const lidos = [getComputedStyle(botao).cursor, getComputedStyle(link).cursor];
+    botao.remove();
+    link.remove();
+    return lidos;
+  });
+  expect(desabilitados).toEqual(["not-allowed", "not-allowed"]);
+});
+
 test.describe("com sessão", () => {
   test.use({ storageState: SESSAO_DA_GESTORA });
 

@@ -24,7 +24,7 @@ function mensagem(erro: Erro, campo?: "email" | "whatsapp"): string {
   return erro.code === "SEM_PERMISSAO" ? t.erros.SEM_PERMISSAO : t.erros.outro;
 }
 
-const caixa = "size-5 shrink-0 cursor-pointer accent-brand disabled:cursor-not-allowed";
+const caixa = "size-5 shrink-0 accent-brand";
 // alvo de toque de 44 px no celular e 32 px a partir de medium em volta da caixa de 20 px, sem mudar o visual (Guia §3)
 const alvo = "inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center medium:min-h-8 medium:min-w-8";
 const chip = "inline-flex items-center gap-1.5 rounded-full bg-surface-card px-2.5 py-1 text-xs font-medium";
@@ -166,7 +166,7 @@ function CartaoDoCanal({ canal, dados, gravar, erroEm }: Parte & { canal: Canal 
           onKeyDown={(e) => e.key === "Enter" && salvarDestino()}
           aria-invalid={erro ? true : undefined}
           aria-describedby={`${id}-ajuda`}
-          className="min-h-11 w-full rounded-md border border-border-functional bg-surface-raised px-3 disabled:cursor-not-allowed disabled:opacity-60 medium:min-h-9"
+          className="min-h-11 w-full rounded-md border border-border-functional bg-surface-raised px-3 disabled:opacity-60 medium:min-h-9"
         />
         <p id={`${id}-ajuda`} className={`text-xs ${erro ? "text-status-negative" : "text-text-secondary"}`}>
           {erro ??
