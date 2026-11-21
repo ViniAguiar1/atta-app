@@ -1,7 +1,7 @@
 -- MIG-21c (parte 1): Termo de Autorização do profissional, modelo de sistema e gravação assinada. PDD v206 §10.4.3;
 -- decisões do CTO de 21/11; ADR 0001 §1. Só dado fictício.
 begin;
-select plan(25);
+select plan(27);
 
 -- Código ATTA pelos vetores do atta-core (tests/vectors/atta_sign_v1)
 select is(private.atta_code_from_sha256('95d0d4842a89fbc60bfac2d3e5a8fe3a9c592f69f392debf9c506187087ae3e8'),
@@ -60,8 +60,8 @@ returns bytea language sql as $$
   )::text, 'UTF8')
   from documents.template_version v where v.tenant_id = p_tenant and v.kind = 'termo_de_autorizacao'
 $$;
-create function pg_temp.traco(p_doc uuid) returns jsonb language sql as $$
-  select jsonb_build_object('storage_path', '00000000-0000-4000-8000-0000000005a1/' || p_doc || '/assinatura.png',
+create function pg_temp.traco(p_doc uuid, p_prefixo text default '00000000-0000-4000-8000-0000000005a1') returns jsonb language sql as $$
+  select jsonb_build_object('storage_path', p_prefixo || '/' || p_doc || '/assinatura.png',
                             'sha256_plain', repeat('a', 64), 'size_bytes', 2048, 'dek_wrapped', 'abcd', 'kek_version', 1)
 $$;
 create function pg_temp.gravar(p_doc uuid, p_payload bytea, p_code text default null, p_kid text default 'staging-seal-teste-aut',
@@ -112,6 +112,13 @@ select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000
           'vínculo inexistente é recusado');
 select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000000005c9',
             convert_to('{não é json', 'UTF8')) $$), 'payload', 'payload que não é JSON é recusado');
+select is(pg_temp.detalhe($$ select private.document_insert_signed_authorization('00000000-0000-4000-8000-0000000005a1',
+            '00000000-0000-4000-8000-0000000005d1', '00000000-0000-4000-8000-0000000005c9',
+            pg_temp.payload('00000000-0000-4000-8000-0000000005c9'),
+            private.atta_code_from_sha256(encode(sha256(pg_temp.payload('00000000-0000-4000-8000-0000000005c9')), 'hex')),
+            'staging-seal-teste-aut', sha512('selo-ficticio'::bytea),
+            pg_temp.traco('00000000-0000-4000-8000-0000000005c9', '00000000-0000-4000-8000-0000000005b1')) $$), 'stroke',
+          'traço no Storage de outra clínica é recusado');
 select is((select count(*)::int from documents.document where professional_link_id = '00000000-0000-4000-8000-0000000005d1'), 0,
           'nenhuma recusa deixou documento');
 
@@ -136,6 +143,11 @@ select is((select count(*)::int from audit.event where action = 'document.sign_a
 select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000000005c2',
             pg_temp.payload('00000000-0000-4000-8000-0000000005c2')) $$), 'professional_link_id',
           'um termo vigente por vínculo');
+-- a mesma garantia pelo índice, mesmo que dois envios simultâneos passem juntos pela conferência
+select throws_ok($$ insert into documents.document (tenant_id, template_version_id, professional_link_id, status)
+                    select '00000000-0000-4000-8000-0000000005a1', template_version_id, professional_link_id, 'assinado_definitivo'
+                    from documents.document where id = '00000000-0000-4000-8000-0000000005c1' $$,
+                 '23505', null, 'índice único: um termo vigente por vínculo, também na corrida');
 
 -- clínica sem o modelo de sistema ------------------------------------------------------------------------------------
 update documents.template set status = 'inativo' where tenant_id = '00000000-0000-4000-8000-0000000005b1';
