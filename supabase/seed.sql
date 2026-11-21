@@ -161,3 +161,20 @@ begin
   perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000508', v_tenant, 'em_atendimento');
   perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000508', v_tenant, 'concluido');
 end $$;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- MIG-14b: um convite de PROpass pendente na Clínica Alfa, para o e2e do fluxo completo no CI e o `pnpm dev` (pedido do
+-- Frontend 6; regra do CTO, 21/11). Segredo FIXO e conhecido (o repo é público), em tests/fixtures/propass-convite-local.ts;
+-- aqui só o sha256 dele. Vale só no local e no CI: o e-mail do convite está cifrado com a KEK de TESTE, que a prévia e a
+-- produção recusam, e src/server/propass/seed-local.test.ts prova as travas. Na nuvem, o convite de teste sai só do
+-- scripts/seed-nuvem/convite-propass.ts (Backend 1), com validade curta e uso único.
+-- Vínculo sem profissional (o PROpass o cria); e-mail convite.propass.ficticio@exemplo.test;
+-- envelope pela ADR 0001 §1 e 0002 §6 (DEK com (clínica, platform.professional_tenant_link, dek, envelope_id)), pelo
+-- selarConvite do app. O link sai pela private.propass_issue, a mesma do convite do painel: uso único, 7 dias do reset.
+-- ---------------------------------------------------------------------------------------------------------------
+insert into platform.professional_tenant_link (id, tenant_id, invite_email_hmac, invite_email_enc, envelope_id,
+  dek_wrapped, kek_version) values
+  ('eeee0000-0000-4000-8000-000000000321', 'eeee0000-0000-4000-8000-000000000001', '\xc6fe373cd89e70a50451d6c288f394cc02b8f65b63428b5e3ae6ffc426071063', '\x010001873a463555b45040ae09ac6e3c2e11e44b7126d9a381ee2ae9db8cb3934e30eb303479cb1f3de7d3ee777237fdd7d7c25ee7e7533df84ba102bf0c529f65103308', 'eeee0000-0000-4000-8000-000000000322', '\x01000136d2b437af7b6333ee2fffc778c8f926e2570115a2512d0c0942ec6cf599f08964184f4e456cd7e713cb39e1ced410e2b0430bc9ddf0b287da450ae7', 1);
+
+select private.propass_issue('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-000000000321',
+  '\xaf178a5f8eb71983f61a109ae84377bdf7a06bbee169d70b5067d7ad57ec97fe'::bytea);
