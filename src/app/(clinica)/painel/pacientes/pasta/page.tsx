@@ -1,14 +1,12 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Subabas } from "@/components/ui/Subabas";
-import { moduloDisponivel } from "@/features/casca/abas";
 import { SUBABAS_DE_PACIENTES } from "@/features/pacientes/subabas";
 import { textos } from "@/features/pacientes/textos";
 
 // Pasta do Paciente sem paciente escolhido (subaba do Simulador ATTA-in, captura 09). A Pasta de um paciente (capturas
-// 12 a 14) entra no próximo item do MIG-43; até lá, a subaba abre o estado vazio, sem dado de mentira.
+// 12 a 14) entra no próximo item do MIG-43; até lá, a subaba abre o estado vazio, sem dado de mentira. Sem 404: as
+// abas do painel aparecem sempre (decisão do dono, 20/11).
 export default function Page() {
-  if (!moduloDisponivel("/painel/pacientes")) notFound();
   return (
     <div className="flex flex-col gap-6">
       <h1 className="sr-only">{textos.subabas.pasta}</h1>
