@@ -63,6 +63,15 @@ export const TEXTOS = {
     "Você não tem login nem painel no ATTA‑in. Para cada atendimento, chega pelo WhatsApp um link só daquele paciente, com o Formulário de Saúde e os termos, que você abre com a sua senha de 4 números.", // provisório (PDD §10.4.3 e §10.2.3)
   aguardandoConferencia:
     "A conferência do seu registro no conselho é feita pela equipe ATTA. A clínica só agenda seus atendimentos depois dessa conferência.", // provisório (decisão do dono, 20/11)
+  // Divisão de responsabilidade depois do PROpass: conteúdo do PDD §10.4.3 ("fica declarada na própria tela do PROpass",
+  // decisão da PO), em frases curtas; a forma é provisória (CTO, 21/11; vai à PO em R45).
+  responsabilidadesTitulo: "Quem cuida de quê depois do PROpass", // provisório
+  responsabilidades: [
+    "A clínica mantém os seus dados atualizados no sistema.", // PDD §10.4.3, forma provisória
+    "Você avisa a clínica de qualquer mudança no seu e-mail, no seu telefone ou na situação do seu registro no conselho.", // idem
+    "A ATTA não responde pelo conteúdo clínico ou técnico dos documentos que você assina, nem pelo resumo do atendimento que você preenche.", // idem
+    "A ATTA também não responde por dado desatualizado informado por você ou pela clínica.", // idem
+  ],
 } as const;
 
 export const ROTULOS: Record<CampoDosDados | "email", string> = {
