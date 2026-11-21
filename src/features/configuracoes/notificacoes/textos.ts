@@ -40,9 +40,9 @@ export const textos = {
     colunas: { evento: "Evento", email: "E-mail", whatsapp: "WhatsApp", consome: "(consome mensagem)", desligado: "(desligado)" }, // simulador
     marcarFalado: (evento: string, canal: string) => `${evento} por ${canal}`, // provisório (nome acessível de cada caixa)
     categorias: {
-      checkin: "Check-in & Atendimentos", // PDD §10.4.6
-      documentos: "Documentos & Modelos", // PDD §10.4.6
-      sistema: "Sistema & Conta", // PDD §10.4.6
+      checkin_atendimentos: "Check-in & Atendimentos", // PDD §10.4.6
+      documentos_biblioteca: "Documentos & Modelos", // PDD §10.4.6
+      sistema_conta: "Sistema & Conta", // PDD §10.4.6
     } satisfies Record<CategoriaDeEvento, string>,
     nomes: {
       checkin_iniciado: "Paciente iniciou check-in", // PDD §10.4.6
@@ -50,11 +50,11 @@ export const textos = {
       documento_assinado: "Documento assinado", // PDD §10.4.6
       paciente_atrasado: "Paciente atrasado", // PDD §10.4.6
       atendimento_sem_documento: "Atendimento sem documento vinculado", // PDD §10.4.6
-      modelo_criado: "Novo modelo de documento criado", // PDD §10.4.6
-      documento_a_vencer: "Documento prestes a vencer", // PDD §10.4.6
-      documentos_do_procedimento_atualizados: "Documentos vinculados a um procedimento atualizados", // PDD §10.4.6
+      novo_modelo: "Novo modelo de documento criado", // PDD §10.4.6
+      documento_vencendo: "Documento prestes a vencer", // PDD §10.4.6
+      documentos_procedimento_atualizados: "Documentos vinculados a um procedimento atualizados", // PDD §10.4.6
       membro_convidado: "Novo membro de equipe convidado", // PDD §10.4.6
-      limite_de_documentos: "Limite de documentos atingido (90%)", // PDD §10.4.6
+      limite_documentos_90: "Limite de documentos atingido (90%)", // PDD §10.4.6
     } satisfies Record<ChaveDeEvento, string>,
     ajudas: {
       paciente_atrasado: "Não iniciou o check-in 15 min após o horário", // PDD §10.4.6
