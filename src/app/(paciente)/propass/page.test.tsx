@@ -3,18 +3,19 @@ import { propassNoAr } from "@/server/propass/disponivel";
 import { GET } from "./[segredo]/route";
 import Pagina from "./page";
 
-// Stage = produção (PLANO; S3-4): com a porta simulada, /propass e /propass/<segredo> dão 404 na produção.
+// Stage = produção (PLANO; S3-4): o PROpass usa a porta real (MIG-55) e está em MODULOS_PRONTOS, então /propass e
+// /propass/<segredo> abrem também na produção. A guarda continua: tirar "/propass" da lista volta o 404.
 afterEach(() => vi.unstubAllEnvs());
 const SEGREDO = "conv".padEnd(43, "A");
 const abrirLink = () => GET(new Request(`http://127.0.0.1/propass/${SEGREDO}`), { params: Promise.resolve({ segredo: SEGREDO }) });
 
 describe("guarda do PROpass", () => {
-  it("na produção: página 404 e link 404 sem cookie", async () => {
+  it("na produção, com a porta real: a página abre e o link guarda o cookie", async () => {
     vi.stubEnv("VERCEL_ENV", "production");
-    expect(() => Pagina()).toThrow();
+    expect(Pagina()).toBeTruthy();
     const r = await abrirLink();
-    expect(r.status).toBe(404);
-    expect(r.headers.get("set-cookie")).toBeNull();
+    expect(r.status).toBe(303);
+    expect(r.headers.get("set-cookie")).toMatch(/atta_propass_link=/);
   });
 
   it("na prévia e no local: a página abre e o link guarda o cookie e manda para /propass", async () => {
@@ -28,8 +29,9 @@ describe("guarda do PROpass", () => {
     expect(Pagina()).toBeTruthy();
   });
 
-  it("com /propass em MODULOS_PRONTOS (porta real), abre também na produção", () => {
+  it("a guarda continua: fora de MODULOS_PRONTOS, a produção volta ao 404", () => {
     vi.stubEnv("VERCEL_ENV", "production");
     expect(propassNoAr(["/propass"])).toBe(true);
+    expect(propassNoAr([])).toBe(false);
   });
 });

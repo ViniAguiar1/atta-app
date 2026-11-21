@@ -8,6 +8,7 @@ import { portaConselho } from "@/server/conselho/porta";
 import { paraBytea } from "@/server/pacientes/contato";
 import { type ContextoDoTermo, preencherTermo } from "@/server/atta-sign/termo-autorizacao";
 import { abrirConvite } from "./convite";
+import { conferirIdentidade, enviarPropass } from "./envio";
 import type { ConvitePropass, PortaPropass, SituacaoDoConselho, TermoDeAutorizacao } from "./porta";
 
 // Porta real do PROpass (MIG-55; PDD v206 §10.4.3; ADR 0004 §3) sobre o servidor do Backend 4 (#187, #208) e do
@@ -56,7 +57,7 @@ async function resolverLinha(hashDoLink: Buffer) {
   return ok(linha.data[0]!);
 }
 
-export const portaPropassReal: Pick<PortaPropass, "resolver" | "conferirConselho" | "termo"> = {
+export const portaPropassReal: PortaPropass = {
   async resolver(hashDoLink): Promise<Resultado<ConvitePropass>> {
     const r = await resolverLinha(hashDoLink);
     if (!r.ok) return r;
@@ -92,5 +93,21 @@ export const portaPropassReal: Pick<PortaPropass, "resolver" | "conferirConselho
       logger.error("propass.termo_nao_preencheu", { code: "INTERNO" }); // sem nome nem registro
       return falha("INTERNO", "Algo deu errado. Tente de novo.");
     }
+  },
+  /** Passo 2: o servidor do Backend 4 (#247), com o limite por IP e por link; o id do profissional não sai de lá. */
+  async identidade(hashDoLink, registro, origem) {
+    const r = await conferirIdentidade(hashDoLink, registro, origem);
+    return r.ok ? ok(r.data.status) : r;
+  },
+  /** Envio final: o enviarPropass do Backend 4 (#247), tudo ou nada; o PNG e o PIN só existem nesta chamada. */
+  async enviar(hashDoLink, envio) {
+    const r = await enviarPropass(hashDoLink, {
+      dados: envio.dados,
+      assinaturaPng: envio.assinaturaPng,
+      pin: envio.pin,
+      leitura: envio.leitura,
+      origem: envio.origem,
+    });
+    return r.ok ? ok({ status: r.data.status }) : r;
   },
 };

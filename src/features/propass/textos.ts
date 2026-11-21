@@ -54,6 +54,8 @@ export const TEXTOS = {
   concluir: "Concluir o PROpass", // provisório
   enviando: "Enviando…", // provisório
   recusado: "Não conseguimos confirmar seus dados. Confira o CPF e o conselho ou fale com a clínica.", // provisório
+  limite: "Muitas tentativas seguidas. Aguarde um pouco e tente de novo.", // provisório (limite por IP e por link)
+  senhaExistente: "Use a mesma senha de 4 números que você já usa no Boarding Check.", // provisório (profissional que já tem a senha)
   // passo 4 (PDD §10.4.3: mini-explicação; o simulador não foi capturado)
   passo4: "Passo 4 de 4 · Como você recebe documentos", // simulador (aba "Como você recebe documentos")
   concluidoTitulo: "PROpass concluído", // provisório

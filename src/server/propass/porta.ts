@@ -1,7 +1,7 @@
 import "server-only";
 import type { Resultado } from "@/lib/errors";
 import type { Conselho } from "@/features/propass/schema";
-import { portaPropassSimulada } from "./simulado";
+import { portaPropassReal } from "./real";
 
 // Contrato entre as telas do PROpass (MIG-55, Frontend 6) e o domínio (MIG-14b, Backend 4). PDD v206 §10.4.3; ADR
 // 0004 §3. O profissional não tem login: o convite chega por e-mail com o link /propass/<segredo>, que o GET não
@@ -35,8 +35,17 @@ export type TermoDeAutorizacao = { titulo: string; paragrafos: string[] };
 export type EnvioDoPropass = {
   dados: { nome: string; cpf: string; whatsapp: string; conselho: Conselho; numero: string; uf: string };
   assinaturaPng: Buffer;
-  pin: string;
+  /** Só quando o passo 2 pediu a senha; null quando o profissional já tem uma (identidade 'usar_pin_existente'). */
+  pin: string | null;
+  /** "Leia até o fim": quando o termo apareceu e quando a leitura terminou (vão no pacote do ATTA Sign). */
+  leitura: { abertoEm: Date; rolagemCompletaEm: Date };
+  origem: Origem;
 };
+
+export type Origem = { ip: string | null; userAgent: string | null };
+
+/** Passo 2 (api.propass_identity_check, #247): sem oráculo de CPF, só "peça a senha" ou "use a que já tem". */
+export type Identidade = "pedir_pin" | "usar_pin_existente";
 
 /** `api.propass_submit`: 'ok' consome o link; 'recusado' é genérico (identidade), e a 5ª recusa revoga o link. A falta
  * do modelo do termo é guarda do banco e não deve acontecer (a ATTA publica o modelo por seed, CTO P2c): vira erro. */
@@ -47,10 +56,14 @@ export type PortaPropass = {
   resolver(hashDoLink: Buffer): Promise<Resultado<ConvitePropass>>;
   /** Camada 1 — Validação ATTA (Conselho), PDD §10.4.3. NAO_ENCONTRADO: como em `resolver`. */
   conferirConselho(hashDoLink: Buffer, registro: RegistroNoConselho): Promise<Resultado<SituacaoDoConselho>>;
+  /** Pede ou não a senha de 4 números. LIMITE: tentativas demais por IP ou por link. */
+  identidade(hashDoLink: Buffer, registro: { conselho: Conselho; uf: string; numero: string; cpf: string }, origem: Origem): Promise<Resultado<Identidade>>;
   /** O termo para ler antes de assinar (o modelo de sistema, publicado pela ATTA em toda clínica). */
   termo(hashDoLink: Buffer, registro: RegistroNoConselho): Promise<Resultado<TermoDeAutorizacao>>;
   /** Envio final, tudo ou nada. NAO_ENCONTRADO: como em `resolver`. A conferência do conselho é refeita no servidor. */
   enviar(hashDoLink: Buffer, envio: EnvioDoPropass): Promise<Resultado<DesfechoDoEnvio>>;
 };
 
-export const portaPropass: PortaPropass = portaPropassSimulada;
+// Porta real em todo ambiente (servidor do Backend 4 e do Backend 3 na main e na nuvem). A simulada (simulado.ts) fica
+// só para os testes da tela.
+export const portaPropass: PortaPropass = portaPropassReal;

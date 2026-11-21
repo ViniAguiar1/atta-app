@@ -12,6 +12,7 @@ const REGISTRO_QUE_NAO_CONFERE = "999999";
 const REGISTRO_NAO_CONSULTADO = "888888"; // o que a produção devolve enquanto a R20 estiver aberta
 const REGISTRO_COM_FALHA = "777777"; // simula uma falha do servidor ao montar o termo (erro genérico)
 const CPF_RECUSADO = "11144477735"; // simula a recusa de identidade no envio
+const REGISTRO_COM_SENHA = "666666"; // simula o profissional que já tem a senha do Boarding Check
 const valido = (hash: Buffer) => timingSafeEqual(hash, HASH_DO_LINK);
 const SEM_LINK = falha("NAO_ENCONTRADO", "Não encontrado.");
 
@@ -30,6 +31,10 @@ export const portaPropassSimulada: PortaPropass = {
     if (!valido(hashDoLink)) return SEM_LINK;
     if (registro.numero === REGISTRO_COM_FALHA) return falha("INDISPONIVEL", "Falha simulada.");
     return ok(termoSimulado(registro));
+  },
+  async identidade(hashDoLink, registro) {
+    if (!valido(hashDoLink)) return SEM_LINK;
+    return ok(registro.numero === REGISTRO_COM_SENHA ? "usar_pin_existente" : "pedir_pin");
   },
   async enviar(hashDoLink, envio) {
     if (!valido(hashDoLink)) return SEM_LINK;
