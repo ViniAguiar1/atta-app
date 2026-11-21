@@ -60,6 +60,8 @@
   --font-product: 'Montserrat', sans-serif;
   /* Subtítulos e mensagens sob título (DG 2.1). */
   --font-sub: 'Poppins', sans-serif;
+  /* código ATTA e hash da evidência (verificação pública, MIG-54; Tech Lead Frontend) */
+  --font-codigo: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Fonte do html no preflight do Tailwind. */
   --default-font-family: var(--font-body);

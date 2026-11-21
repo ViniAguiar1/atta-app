@@ -37,8 +37,14 @@ export function ResultadoDaVerificacao({ resultado }: Props) {
       <dd className="px-4 py-3 text-corpo text-text-primary">{valor}</dd>
     </div>
   );
+  const documento = r.document_type ? (TIPOS[r.document_type] ?? r.document_type) : "";
+  const estado = r.status ? (ESTADOS[r.status] ?? r.status) : "";
   return (
     <section aria-label={textos.rotuloResultado}>
+      {/* o resultado chega depois do envio: o resumo é anunciado, como o "não encontrado" (WCAG 4.1.3; nota do FE2) */}
+      <p role="status" className="sr-only">
+        {textos.resumo(documento, estado)}
+      </p>
       <dl className="overflow-hidden rounded-xl border border-border bg-surface-raised">
         {linha(
           textos.linhas.documento,
@@ -47,7 +53,7 @@ export function ResultadoDaVerificacao({ resultado }: Props) {
               <span aria-hidden="true" className="size-1.5 rounded-full bg-text-primary" />
               {textos.existe}
             </span>
-            {r.document_type ? (TIPOS[r.document_type] ?? r.document_type) : null}
+            {documento || null}
           </span>,
         )}
         {linha(
@@ -55,7 +61,7 @@ export function ResultadoDaVerificacao({ resultado }: Props) {
           r.status && (
             <span className={chip}>
               <span aria-hidden="true" className="size-1.5 rounded-full bg-text-primary" />
-              {ESTADOS[r.status] ?? r.status}
+              {estado}
             </span>
           ),
         )}
@@ -64,7 +70,7 @@ export function ResultadoDaVerificacao({ resultado }: Props) {
         {linha(
           textos.linhas.integridade,
           r.evidence_sha256 && (
-            <span className="text-xs break-all [font-family:ui-monospace,monospace]">{textos.shaDaEvidencia(r.evidence_sha256)}</span>
+            <span className="text-xs break-all font-codigo">{textos.shaDaEvidencia(r.evidence_sha256)}</span>
           ),
         )}
       </dl>
