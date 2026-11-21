@@ -183,20 +183,25 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
             <IconeFiltro />
           </button>
           {menuAberto && (
-            <ul id={idDoMenu} aria-label={textos.filtros.menu} className="absolute top-full left-0 z-10 mt-2 flex w-64 flex-col rounded-md border border-border bg-surface-raised p-1.5 shadow-md">
+            // no celular o funil fica na ponta direita: o menu ancora à direita e nunca passa da tela; do medium em diante, alinha ao funil
+            <ul
+              id={idDoMenu}
+              aria-label={textos.filtros.menu}
+              className="absolute top-full right-0 z-10 mt-2 flex w-[min(16rem,calc(100vw-2rem))] flex-col rounded-md border border-border bg-surface-raised p-1.5 shadow-md medium:right-auto medium:left-0"
+            >
               {FILTROS.map((f) => (
                 <li key={f}>
                   <button
                     type="button"
                     aria-pressed={filtro === f}
                     onClick={() => aplicarFiltro(filtro === f ? null : f)}
-                    className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-sm px-3 text-left text-corpo hover:bg-surface-card medium:min-h-9 ${
+                    className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-sm px-3 text-left text-sm hover:bg-surface-card medium:min-h-9 ${
                       filtro === f ? "font-semibold" : ""
                     }`}
                   >
                     {ROTULO_DO_FILTRO[f]}
                     {contadores && (
-                      <span className="text-xs text-text-secondary">
+                      <span className="text-corpo text-text-secondary">
                         <span aria-hidden="true">{contadores[f]}</span>
                         <span className="sr-only">{textos.filtros.contagem(contadores[f])}</span>
                       </span>
@@ -217,7 +222,8 @@ export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
             </button>
           )}
         </div>
-        <div className="ml-auto">{acoes}</div>
+        {/* o "+ Novo paciente" nunca encolhe: no celular, quebra inteiro para a linha de baixo, à direita */}
+        <div className="ml-auto shrink-0">{acoes}</div>
       </div>
 
       {/* a contagem da busca é anunciada ao leitor de tela; a lista em si não vira região viva */}
