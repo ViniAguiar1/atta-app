@@ -124,13 +124,16 @@ export function MenuDoModelo({ modelo }: Props) {
         aria-controls={idDaLista}
         disabled={ocupado}
         onClick={alternar}
-        className="grid size-8 place-items-center rounded-md border border-border-functional bg-surface-raised text-text-primary"
+        className="-m-1.5 grid size-11 place-items-center rounded-md text-text-primary"
       >
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="12" cy="5" r="1.8" />
-          <circle cx="12" cy="12" r="1.8" />
-          <circle cx="12" cy="19" r="1.8" />
-        </svg>
+        {/* o desenho tem 32 px, como na captura; a área de toque tem 44 px (nota do Frontend 2) */}
+        <span aria-hidden="true" className="grid size-8 place-items-center rounded-md border border-border-functional bg-surface-raised">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="1.8" />
+            <circle cx="12" cy="12" r="1.8" />
+            <circle cx="12" cy="19" r="1.8" />
+          </svg>
+        </span>
       </button>
       <ul
         id={idDaLista}
