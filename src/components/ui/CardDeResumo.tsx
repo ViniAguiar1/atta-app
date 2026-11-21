@@ -40,12 +40,12 @@ export function CardDeResumo({ valor, rotulo, icone, legenda, tom = "neutro", de
     <>
       <span
         aria-hidden="true"
-        className={`absolute top-4 right-4 flex size-8 items-center justify-center rounded-md ${TONS[negativo ? "negativo" : tom]}`}
+        className={`absolute top-3.5 right-3.5 flex size-8 items-center justify-center rounded-md ${TONS[negativo ? "negativo" : tom]}`}
       >
         {icone}
       </span>
       <span className="flex items-baseline gap-2 pr-10" aria-hidden={filtro ? true : undefined}>
-        <span className={`font-sub text-3xl leading-none ${negativo ? "text-status-negative" : "text-text-primary"}`}>
+        <span className={`font-sub text-[1.625rem] leading-none ${negativo ? "text-status-negative" : "text-text-primary"}`}>
           {valor ?? TRAVESSAO}
         </span>
         <span className="text-xs font-medium tracking-wide text-text-secondary uppercase">{rotulo}</span>
@@ -57,7 +57,8 @@ export function CardDeResumo({ valor, rotulo, icone, legenda, tom = "neutro", de
       )}
     </>
   );
-  const caixa = "relative flex min-h-28 flex-col gap-2 rounded-md border border-border bg-surface-raised p-4 text-left";
+  // medidas da captura 09 a 1440 px: padding de ~14 px, número de ~26 px e a legenda logo embaixo, sem altura mínima
+  const caixa = "relative flex flex-col gap-1.5 rounded-md border border-border bg-surface-raised p-3.5 text-left";
 
   if (filtro) {
     return (

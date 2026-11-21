@@ -9,10 +9,10 @@ import type { CartaoDaRede, FichaDoPaciente, LinhaDePaciente, PortaPacientes } f
 
 type Simulado = LinhaDePaciente & { cpf: string | null; ficha: Pick<FichaDoPaciente, "origem" | "selo" | "acessoARede"> };
 
-type Dados = Omit<LinhaDePaciente, "id" | "identificacao" | "usaNomeSocial" | "incompleto" | "documentos"> & {
+type Dados = Omit<LinhaDePaciente, "id" | "identificacao" | "usaNomeSocial" | "incompleto" | "selo" | "atendimento"> & {
   cpf: string | null;
   social?: boolean;
-  documentos?: LinhaDePaciente["documentos"];
+  atendimento?: LinhaDePaciente["atendimento"];
   ficha?: Simulado["ficha"];
 };
 
@@ -22,10 +22,10 @@ const linha = (n: number, d: Dados): Simulado => ({
   usaNomeSocial: d.social ?? false,
   incompleto: !d.cpf || !d.nascimento || !d.contato?.celular,
   identificacao: d.cpf ? { tipo: "cpf", mascarado: maskCpf(d.cpf) } : { tipo: "incompleto" },
+  selo: d.ficha?.selo ? "com_selo" : null,
   nascimento: d.nascimento,
   contato: d.contato,
-  ultimoAtendimento: d.ultimoAtendimento,
-  documentos: d.documentos ?? [],
+  atendimento: d.atendimento ?? null,
   cpf: d.cpf,
   ficha: d.ficha ?? { origem: "recepcao", selo: null, acessoARede: "proprio" },
 });
@@ -34,50 +34,45 @@ export const PACIENTES_SIMULADOS: readonly Simulado[] = [
   linha(1, {
     nome: "Juliana Prates", cpf: "52998224725", nascimento: "1990-09-17",
     contato: { celular: "(11) 98765-4321", email: "juliana.prates@exemplo.test" },
-    ultimoAtendimento: { em: "2026-11-20T11:00", procedimento: "Bioestimulador de colágeno", profissional: "Dra. Helena Prado" },
-    documentos: [{ nome: "Consentimento: bioestimulador", marca: "assinado" }, { nome: "Autorização de uso de imagem", marca: "recusado" }],
+    atendimento: { tipo: "ultimo", em: "2026-11-20T11:00", procedimento: "Bioestimulador de colágeno", profissional: "Dra. Helena Prado" },
     ficha: { origem: "atta_me", selo: { validoAte: "2027-06-30" }, acessoARede: "autorizado" },
   }),
   linha(2, {
     nome: "Carla Siqueira", social: true, cpf: "11144477735", nascimento: "1982-01-30",
     contato: { celular: "(11) 97654-3210", email: null },
-    ultimoAtendimento: { em: "2026-10-14T14:00", procedimento: "Peeling químico médio", profissional: "Dr. Caio Andrade" },
-    documentos: [{ nome: "Consentimento: peeling químico", marca: "vinculado" }],
+    atendimento: { tipo: "ultimo", em: "2026-10-14T14:00", procedimento: "Peeling químico médio", profissional: "Dr. Caio Andrade" },
   }),
-  linha(3, { nome: "Eduardo Lima", cpf: "39053344705", nascimento: null, contato: null, ultimoAtendimento: null }),
+  linha(3, { nome: "Eduardo Lima", cpf: "39053344705", nascimento: null, contato: null }),
   linha(4, {
     nome: "Alana Duarte", cpf: "86246109071", nascimento: "1994-07-02",
     contato: { celular: "(21) 99876-5432", email: "alana.duarte@exemplo.test" },
-    ultimoAtendimento: { em: "2026-10-02T09:30", procedimento: "Toxina botulínica", profissional: "Dra. Helena Prado" },
-    documentos: [{ nome: "Consentimento: toxina botulínica", marca: "assinado" }],
+    atendimento: { tipo: "ultimo", em: "2026-10-02T09:30", procedimento: "Toxina botulínica", profissional: "Dra. Helena Prado" },
   }),
   linha(5, {
     nome: "Bruno Teixeira", cpf: "47382169022", nascimento: "1979-03-11",
-    contato: { celular: "(31) 98877-6655", email: null }, ultimoAtendimento: null,
+    contato: { celular: "(31) 98877-6655", email: null },
     ficha: { origem: "recepcao", selo: null, acessoARede: "pendente" },
   }),
   linha(6, {
     nome: "Diana Ferraz", cpf: "21536784982", nascimento: "1988-11-21",
     contato: { celular: "(41) 99123-4567", email: "diana.ferraz@exemplo.test" },
-    ultimoAtendimento: { em: "2026-11-03T16:30", procedimento: "Preenchimento labial", profissional: "Dr. Caio Andrade" },
-    documentos: [{ nome: "Consentimento: preenchimento labial", marca: "assinado" }],
+    atendimento: { tipo: "ultimo", em: "2026-11-03T16:30", procedimento: "Preenchimento labial", profissional: "Dr. Caio Andrade" },
     ficha: { origem: "importacao", selo: null, acessoARede: "proprio" },
   }),
-  linha(7, { nome: "Fábio Moreira", cpf: null, nascimento: "2012-05-12", contato: { celular: "(11) 96543-2109", email: null }, ultimoAtendimento: null }),
+  linha(7, { nome: "Fábio Moreira", cpf: null, nascimento: "2012-05-12", contato: { celular: "(11) 96543-2109", email: null } }),
   linha(8, {
     nome: "Gabriela Antunes", cpf: "29537914852", nascimento: "1995-05-03",
     contato: { celular: "(51) 98234-5678", email: "gabriela.antunes@exemplo.test" },
-    ultimoAtendimento: { em: "2026-08-21T10:15", procedimento: "Limpeza de pele profunda", profissional: "Laís Ferraz" },
+    atendimento: { tipo: "ultimo", em: "2026-08-21T10:15", procedimento: "Limpeza de pele profunda", profissional: "Laís Ferraz" },
   }),
   linha(9, {
     nome: "Heitor Campos", cpf: "73181936006", nascimento: "1984-08-09",
     contato: { celular: "(11) 95432-1098", email: null },
-    ultimoAtendimento: { em: "2026-11-18T08:30", procedimento: "Microagulhamento", profissional: "Laís Ferraz" },
-    documentos: [{ nome: "Consentimento: microagulhamento", marca: "vinculado" }],
+    atendimento: { tipo: "ultimo", em: "2026-11-18T08:30", procedimento: "Microagulhamento", profissional: "Laís Ferraz" },
   }),
   linha(10, {
     nome: "Íris Nogueira", cpf: "60316544078", nascimento: "2010-02-03",
-    contato: { celular: "(19) 99655-0707", email: "iris.nogueira@exemplo.test" }, ultimoAtendimento: null,
+    contato: { celular: "(19) 99655-0707", email: "iris.nogueira@exemplo.test" },
   }),
 ];
 
@@ -107,8 +102,8 @@ const publico = (p: Simulado): LinhaDePaciente => ({
   identificacao: p.identificacao,
   nascimento: p.nascimento,
   contato: p.contato,
-  ultimoAtendimento: p.ultimoAtendimento,
-  documentos: p.documentos,
+  selo: p.selo,
+  atendimento: p.atendimento,
 });
 
 export function criarPortaSimulada(pacientes: readonly Simulado[] = PACIENTES_SIMULADOS, porPagina = 50): PortaPacientes {

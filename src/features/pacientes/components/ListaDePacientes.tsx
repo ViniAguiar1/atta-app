@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState, useTransition } from "react";
 import { DataState, type EstadoDeDados } from "@/components/ui/DataState";
 import type { Resultado } from "@/lib/errors";
 import type { Cursor, LinhaDePaciente, PaginaDePacientes } from "@/server/pacientes/porta";
@@ -12,6 +12,8 @@ import { TabelaDePacientes } from "./TabelaDePacientes";
 // server action. A busca por nome ou CPF vai no corpo do POST, nunca na URL (ADR 0001 §5). Os 4 estados pelo DataState.
 
 type Props = {
+  /** à direita da busca, como no simulador (o "+ Novo paciente") */
+  acoes?: ReactNode;
   inicial: Resultado<PaginaDePacientes>;
   listar: (apos?: Cursor) => Promise<Resultado<PaginaDePacientes>>;
   buscar: (entrada: { termo: string }) => Promise<Resultado<LinhaDePaciente[]>>;
@@ -21,7 +23,7 @@ type Erro = { codigo: string; repetir: () => void };
 
 const ESPERA_DA_BUSCA_MS = 300;
 
-export function ListaDePacientes({ inicial, listar, buscar }: Props) {
+export function ListaDePacientes({ acoes, inicial, listar, buscar }: Props) {
   const idDaDica = useId();
   const [termo, setTermo] = useState("");
   const [carregando, iniciar] = useTransition();
@@ -86,24 +88,30 @@ export function ListaDePacientes({ inicial, listar, buscar }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <label className="w-full max-w-sm">
-          <span className="sr-only">{textos.busca.rotulo}</span>
-          <input
-            type="search"
-            value={termo}
-            onChange={(e) => mudarTermo(e.target.value)}
-            placeholder={textos.busca.placeholder}
-            autoComplete="off"
-            aria-describedby={termoCurto ? idDaDica : undefined}
-            className="min-h-11 w-full rounded-full border border-border-functional bg-surface-raised px-4 text-text-primary placeholder:text-text-secondary"
-          />
-        </label>
-        {termoCurto && (
-          <p id={idDaDica} className="text-sm text-text-secondary">
-            {textos.busca.curta}
-          </p>
-        )}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex w-full max-w-[19rem] flex-col gap-1">
+          <label className="relative block">
+            <span className="sr-only">{textos.busca.rotulo}</span>
+            <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-text-secondary">
+              <IconeBusca />
+            </span>
+            <input
+              type="search"
+              value={termo}
+              onChange={(e) => mudarTermo(e.target.value)}
+              placeholder={textos.busca.placeholder}
+              autoComplete="off"
+              aria-describedby={termoCurto ? idDaDica : undefined}
+              className="min-h-11 w-full rounded-full border border-border-functional bg-surface-raised pr-4 pl-11 text-text-primary placeholder:text-text-secondary"
+            />
+          </label>
+          {termoCurto && (
+            <p id={idDaDica} className="text-sm text-text-secondary">
+              {textos.busca.curta}
+            </p>
+          )}
+        </div>
+        {acoes}
       </div>
 
       {/* a contagem da busca é anunciada ao leitor de tela; a lista em si não vira região viva */}
@@ -132,5 +140,15 @@ export function ListaDePacientes({ inicial, listar, buscar }: Props) {
         </button>
       )}
     </div>
+  );
+}
+
+// lupa de traço fino (Guia de Design §7), decorativa
+function IconeBusca() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" focusable="false">
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 4 4" />
+    </svg>
   );
 }
