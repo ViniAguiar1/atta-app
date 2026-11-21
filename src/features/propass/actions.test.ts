@@ -50,12 +50,12 @@ describe("carregarTermo e enviarPropass (actions)", () => {
     mocks.lerHashDoConvite.mockResolvedValue(HASH);
   });
 
-  it("o termo vem pronto do servidor; sem modelo ativo é sem_termo", async () => {
+  it("o termo vem pronto do servidor; falha do servidor volta como erro (genérico na tela)", async () => {
     mocks.termo.mockResolvedValue({ ok: true, data: { titulo: "T", paragrafos: ["p"] } });
     expect(await carregarTermo(DADOS)).toEqual({ ok: true, data: { situacao: "pronto", termo: { titulo: "T", paragrafos: ["p"] } } });
     expect(mocks.termo).toHaveBeenCalledWith(HASH, { conselho: "crm", numero: "990001", uf: "SP", nome: "Bruna Reis" });
-    mocks.termo.mockResolvedValue({ ok: false, error: { code: "CONFLITO", message: "x", reason: "ATTA-IN-0003:authorization_template" } });
-    expect(await carregarTermo(DADOS)).toEqual({ ok: true, data: { situacao: "sem_termo" } });
+    mocks.termo.mockResolvedValue({ ok: false, error: { code: "CONFLITO", message: "x", reason: "ATTA-IN-0003:termo_de_autorizacao" } });
+    expect(await carregarTermo(DADOS)).toMatchObject({ ok: false, error: { code: "CONFLITO" } });
   });
 
   it("o envio passa o PNG em bytes e o PIN à porta, e repassa o desfecho", async () => {

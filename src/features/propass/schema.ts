@@ -54,5 +54,5 @@ export const envioSchema = z.object({
 });
 
 export type TermoNaTela = { titulo: string; paragrafos: string[] };
-export type TermoCarregado = { situacao: "pronto"; termo: TermoNaTela } | { situacao: "sem_termo" } | { situacao: "link_sem_validade" };
-export type DesfechoNaTela = { status: "ok" } | { status: "recusado" } | { status: "sem_termo" } | { status: "link_sem_validade" };
+export type TermoCarregado = { situacao: "pronto"; termo: TermoNaTela } | { situacao: "link_sem_validade" };
+export type DesfechoNaTela = { status: "ok" } | { status: "recusado" } | { status: "link_sem_validade" };

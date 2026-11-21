@@ -79,7 +79,7 @@ test("do convite ao conselho regularizado, sem dado pessoal na URL", async ({ pa
   await print(page, "4-concluido");
 });
 
-test("clínica sem o Termo de Autorização publicado: aviso, sem quadro de assinatura", async ({ page }) => {
+test("falha ao montar o termo: erro genérico no passo 2, sem quadro de assinatura", async ({ page }) => {
   await page.goto(LINK);
   await page.getByLabel("Nome completo").fill("Bruna Reis");
   await page.getByLabel("CPF").fill("52998224725");
@@ -89,7 +89,7 @@ test("clínica sem o Termo de Autorização publicado: aviso, sem quadro de assi
   await page.getByLabel("UF").selectOption("SP");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: /ainda não publicou o Termo/ })).toBeVisible();
+  await expect(page.locator("main").getByRole("alert")).toHaveText(/Não conseguimos continuar agora/);
   await expect(page.locator("canvas")).toHaveCount(0);
   expect(await axe(page)).toEqual([]);
 });

@@ -38,16 +38,16 @@ export type EnvioDoPropass = {
   pin: string;
 };
 
-/** `api.propass_submit`: 'ok' consome o link; 'recusado' é genérico (identidade), e a 5ª recusa revoga o link;
- * `sem_termo` = a clínica ainda não tem o modelo ativo (ATTA-IN-0003:authorization_template), nada gravado. */
-export type DesfechoDoEnvio = { status: "ok" } | { status: "recusado" } | { status: "sem_termo" };
+/** `api.propass_submit`: 'ok' consome o link; 'recusado' é genérico (identidade), e a 5ª recusa revoga o link. A falta
+ * do modelo do termo é guarda do banco e não deve acontecer (a ATTA publica o modelo por seed, CTO P2c): vira erro. */
+export type DesfechoDoEnvio = { status: "ok" } | { status: "recusado" };
 
 export type PortaPropass = {
   /** NAO_ENCONTRADO: link desconhecido, vencido (7 dias), revogado ou de vínculo excluído (a mesma resposta). */
   resolver(hashDoLink: Buffer): Promise<Resultado<ConvitePropass>>;
   /** Camada 1 — Validação ATTA (Conselho), PDD §10.4.3. NAO_ENCONTRADO: como em `resolver`. */
   conferirConselho(hashDoLink: Buffer, registro: RegistroNoConselho): Promise<Resultado<SituacaoDoConselho>>;
-  /** O termo para ler antes de assinar. CONFLITO (reason authorization_template): a clínica não tem o modelo ativo. */
+  /** O termo para ler antes de assinar (o modelo de sistema, publicado pela ATTA em toda clínica). */
   termo(hashDoLink: Buffer, registro: RegistroNoConselho): Promise<Resultado<TermoDeAutorizacao>>;
   /** Envio final, tudo ou nada. NAO_ENCONTRADO: como em `resolver`. A conferência do conselho é refeita no servidor. */
   enviar(hashDoLink: Buffer, envio: EnvioDoPropass): Promise<Resultado<DesfechoDoEnvio>>;

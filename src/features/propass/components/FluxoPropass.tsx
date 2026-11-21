@@ -21,7 +21,6 @@ type Passo =
   | { nome: "termo"; termo: TermoNaTela }
   | { nome: "senha"; termo: TermoNaTela; assinatura: string }
   | { nome: "concluido" }
-  | { nome: "sem_termo" }
   | { nome: "sem_validade" };
 
 const VAZIO: DadosDoProfissional = { nome: "", cpf: "", whatsapp: "", conselho: "" as never, numero: "", uf: "" as never };
@@ -40,7 +39,7 @@ export function FluxoPropass({ clinica, email, conviteEm, fuso }: Props) {
       const r = await carregarTermo(dados);
       if (!r.ok) return setErro(TEXTOS.indisponivel);
       if (r.data.situacao === "pronto") return setPasso({ nome: "termo", termo: r.data.termo });
-      setPasso({ nome: r.data.situacao === "sem_termo" ? "sem_termo" : "sem_validade" });
+      setPasso({ nome: "sem_validade" });
     });
   }
 
@@ -48,15 +47,13 @@ export function FluxoPropass({ clinica, email, conviteEm, fuso }: Props) {
     const r = await enviarPropass({ dados, assinatura, leuAteOFim: true, pin });
     if (!r.ok) return TEXTOS.indisponivel;
     if (r.data.status === "recusado") return TEXTOS.recusado;
-    setPasso({ nome: r.data.status === "ok" ? "concluido" : r.data.status === "sem_termo" ? "sem_termo" : "sem_validade" });
+    setPasso({ nome: r.data.status === "ok" ? "concluido" : "sem_validade" });
     return null;
   }
 
   switch (passo.nome) {
     case "sem_validade":
       return <Aviso titulo={TEXTOS.linkSemValidade} texto={TEXTOS.linkSemValidadeAjuda} />;
-    case "sem_termo":
-      return <Aviso titulo={TEXTOS.semTermo} />;
     case "concluido":
       return <PassoConcluido />;
     case "senha":

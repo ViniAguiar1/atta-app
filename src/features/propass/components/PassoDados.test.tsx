@@ -26,7 +26,7 @@ describe("PROpass, passos 1 e 2", () => {
     expect(screen.getByLabelText("E-mail profissional")).toHaveAttribute("readonly");
     await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
     await vi.waitFor(() => expect(screen.getByLabelText("Nome completo")).toHaveFocus());
-    expect(screen.getByLabelText("CPF")).toHaveAccessibleDescription(/Confira o CPF/);
+    expect(screen.getByLabelText("CPF")).toHaveAccessibleDescription(/Informe o CPF\./); // vazio: falta, não "não bate"
     expect(acoes.conferirDados).not.toHaveBeenCalled();
   });
 
@@ -40,7 +40,7 @@ describe("PROpass, passos 1 e 2", () => {
     expect(await screen.findByRole("heading", { name: "Camada 1 — Validação ATTA (Conselho)" })).toHaveFocus();
     expect(screen.getByText("Regularizado (Conselho Ativo)")).toBeInTheDocument();
     expect(screen.getByText("consultado às 16:24")).toBeInTheDocument();
-    expect(screen.getByText("990001-SP")).toBeInTheDocument();
+    expect(screen.getByText("CRM-SP 990.001")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Bruna Reis");
   });

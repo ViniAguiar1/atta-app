@@ -7,7 +7,7 @@ import { mascararCelular, mascararCpf } from "@/lib/brasil/documentos";
 import { conferirDados } from "../actions";
 import { dataHora } from "../formatos";
 import { CONSELHOS, type CampoDosDados, type ConferenciaDoConselho, type DadosDoProfissional, dadosSchema, UFS } from "../schema";
-import { ERROS, NOMES_DOS_CONSELHOS, ROTULOS, TEXTOS } from "../textos";
+import { ERROS, NOMES_DOS_CONSELHOS, ROTULOS, TEXTOS, VAZIOS } from "../textos";
 
 // Passo 1 do PROpass: Confirmação de dados (PDD §10.4.3; simulador, captura 24). O e-mail vem travado do convite; o
 // resto é o profissional quem preenche. Erro por campo com aria-describedby e foco no primeiro inválido.
@@ -44,7 +44,7 @@ export function PassoDados({ clinica, email, conviteEm, fuso, inicial, aoConferi
     const r = dadosSchema.safeParse(dados);
     if (!r.success) {
       const campos = [...new Set(r.error.issues.map((i) => String(i.path[0]) as CampoDosDados))];
-      return mostrarErros(Object.fromEntries(campos.map((c) => [c, ERROS[c]])));
+      return mostrarErros(Object.fromEntries(campos.map((c) => [c, (!String(dados[c]).trim() && VAZIOS[c]) || ERROS[c]])));
     }
     executar(async () => {
       const resposta = await conferirDados(dados);

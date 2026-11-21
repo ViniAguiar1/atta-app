@@ -10,7 +10,7 @@ export const LINK_PROPASS_SIMULADO = "conv".padEnd(43, "A");
 const HASH_DO_LINK = hashDoSegredo(LINK_PROPASS_SIMULADO) as Buffer;
 const REGISTRO_QUE_NAO_CONFERE = "999999";
 const REGISTRO_NAO_CONSULTADO = "888888"; // o que a produção devolve enquanto a R20 estiver aberta
-const REGISTRO_SEM_TERMO = "777777"; // simula a clínica sem o modelo ativo do Termo de Autorização
+const REGISTRO_COM_FALHA = "777777"; // simula uma falha do servidor ao montar o termo (erro genérico)
 const CPF_RECUSADO = "11144477735"; // simula a recusa de identidade no envio
 const valido = (hash: Buffer) => timingSafeEqual(hash, HASH_DO_LINK);
 const SEM_LINK = falha("NAO_ENCONTRADO", "Não encontrado.");
@@ -28,18 +28,15 @@ export const portaPropassSimulada: PortaPropass = {
   },
   async termo(hashDoLink, registro) {
     if (!valido(hashDoLink)) return SEM_LINK;
-    if (registro.numero === REGISTRO_SEM_TERMO) return SEM_TERMO;
+    if (registro.numero === REGISTRO_COM_FALHA) return falha("INDISPONIVEL", "Falha simulada.");
     return ok(termoSimulado(registro));
   },
   async enviar(hashDoLink, envio) {
     if (!valido(hashDoLink)) return SEM_LINK;
-    if (envio.dados.numero === REGISTRO_SEM_TERMO) return ok({ status: "sem_termo" });
     if (envio.dados.cpf === CPF_RECUSADO) return ok({ status: "recusado" });
     return ok({ status: "ok" });
   },
 };
-
-const SEM_TERMO = falha("CONFLITO", "Termo de Autorização não publicado.", undefined, "ATTA-IN-0003:authorization_template");
 
 // Texto do simulador (captura 26), completado com as cláusulas do PDD §10.4.3 (decisão do CTO, P2c). Na real, vem da
 // versão vigente do modelo de sistema. Clínica e CNPJ fictícios.
@@ -47,7 +44,7 @@ function termoSimulado(r: { nome: string; conselho: string; numero: string; uf: 
   return {
     titulo: "Termo de Autorização de Uso de Imagem de Assinatura Digital",
     paragrafos: [
-      `Eu, ${r.nome}, inscrita(o) no ${r.conselho.toUpperCase()}-${r.uf} ${r.numero}, autorizo Aurora Serviços de Estética Ltda. (CNPJ 41.218.605/0001-37), estabelecimento "Clínica Aurora Estética", a:`,
+      `Eu, ${r.nome}, inscrita(o) no ${r.conselho.toUpperCase()}-${r.uf} ${Number(r.numero).toLocaleString("pt-BR")}, autorizo Aurora Serviços de Estética Ltda. (CNPJ 41.218.605/0001-37), estabelecimento "Clínica Aurora Estética", a:`,
       "(i) reproduzir digitalmente a imagem da minha assinatura manuscrita, capturada nesta tela, neste momento;",
       "(ii) aplicar essa imagem, sempre acompanhada do ATTA Sign (resumo criptográfico SHA-256, data e hora e origem), exclusivamente aos documentos vinculados aos atendimentos realizados por mim neste estabelecimento;",
       "(iii) guardar o histórico das assinaturas aplicadas pelo prazo legal de retenção.",
