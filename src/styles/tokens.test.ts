@@ -25,7 +25,7 @@ describe("tokens", () => {
     expect(imports).toEqual(["tailwindcss", "./tokens.css", "./tokens.theme.css"]);
   });
 
-  it.each(["--color-status-ready", "--color-brand-active", "--color-status-active"])("%s existe no tokens.css e no @theme (classe do Tailwind)", (token) => {
+  it.each(["--color-status-ready", "--color-brand-active", "--color-status-checkin"])("%s existe no tokens.css e no @theme (classe do Tailwind)", (token) => {
     expect(ler("tokens.css")).toContain(`${token}:`);
     expect(blocoDoTema).toContain(`${token}:`);
   });
