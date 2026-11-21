@@ -55,6 +55,10 @@ test("o profissional preenche, lê, assina, cria a senha e conclui; o link não 
   await page.getByLabel("Confirme a senha").fill("2468");
   await page.getByRole("button", { name: "Concluir o PROpass" }).click();
   await expect(page.getByRole("heading", { name: "PROpass concluído" })).toBeVisible({ timeout: 15_000 });
+  // o Código ATTA do Termo assinado agora, com o link para a verificação pública (§18)
+  const codigo = page.getByRole("region", { name: "Código ATTA do seu Termo de Autorização" });
+  await expect(codigo).toContainText(/ATTA-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}/);
+  await expect(page.getByRole("link", { name: "Conferir na verificação pública" })).toHaveAttribute("href", /^\/verificar\/ATTA-/);
   await semViolacoes(page);
   expect(await page.locator("body").innerText()).not.toContain(CPF_FICTICIO);
 

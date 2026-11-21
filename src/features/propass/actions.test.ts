@@ -64,7 +64,7 @@ describe("conferirDados (action)", () => {
 describe("carregarTermo e enviarPropass (actions)", () => {
   const PNG = "data:image/png;base64,iVBORw0KGgo=";
   const LEITURA = { abertoEm: "2026-11-21T10:00:00.000Z", rolagemCompletaEm: "2026-11-21T10:01:00.000Z" };
-  const ENVIO = { dados: DADOS, assinatura: PNG, leuAteOFim: true, pin: "2468", leitura: LEITURA };
+  const ENVIO = { dados: DADOS, assinatura: PNG, leuAteOFim: true, pin: "2468", leitura: LEITURA, avisoDePrivacidade: null };
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.lerHashDoConvite.mockResolvedValue(HASH);
@@ -79,8 +79,8 @@ describe("carregarTermo e enviarPropass (actions)", () => {
   });
 
   it("o envio passa o PNG em bytes e o PIN à porta, e repassa o desfecho", async () => {
-    mocks.enviar.mockResolvedValue({ ok: true, data: { status: "ok" } });
-    expect(await enviarPropass(ENVIO)).toEqual({ ok: true, data: { status: "ok" } });
+    mocks.enviar.mockResolvedValue({ ok: true, data: { status: "ok", codigoAtta: "ATTA-7K3M-Q9PX-2HDV" } });
+    expect(await enviarPropass(ENVIO)).toEqual({ ok: true, data: { status: "ok", codigoAtta: "ATTA-7K3M-Q9PX-2HDV" } }); // o código vai à tela
     const [hash, envio] = mocks.enviar.mock.calls[0]!;
     expect(hash).toBe(HASH);
     expect(envio.pin).toBe("2468");
@@ -91,8 +91,8 @@ describe("carregarTermo e enviarPropass (actions)", () => {
     mocks.enviar.mockResolvedValue({ ok: true, data: { status: "recusado" } });
     expect(await enviarPropass(ENVIO)).toEqual({ ok: true, data: { status: "recusado" } });
     // quem já tem a senha envia sem PIN
-    mocks.enviar.mockResolvedValue({ ok: true, data: { status: "ok" } });
-    expect(await enviarPropass({ ...ENVIO, pin: null })).toEqual({ ok: true, data: { status: "ok" } });
+    mocks.enviar.mockResolvedValue({ ok: true, data: { status: "ok", codigoAtta: "ATTA-7K3M-Q9PX-2HDV" } });
+    expect(await enviarPropass({ ...ENVIO, pin: null })).toMatchObject({ ok: true, data: { status: "ok" } });
     expect(mocks.enviar.mock.calls.at(-1)![1].pin).toBeNull();
   });
 
@@ -119,5 +119,15 @@ describe("carregarTermo e enviarPropass (actions)", () => {
     expect(await enviarPropass(ENVIO)).toEqual({ ok: true, data: { status: "senha_invalida", motivo: "obvio" } });
     mocks.enviar.mockResolvedValue({ ok: false, error: { code: "VALIDACAO", message: "x", fields: [{ campo: "pin", code: "VALIDACAO" }], reason: "ATTA-IN-0001:pin_existente" } });
     expect(await enviarPropass(ENVIO)).toEqual({ ok: true, data: { status: "senha_invalida", motivo: "outro" } });
+  });
+
+  it("Aviso de Privacidade desligado (P2b): nenhuma versão vai ao servidor; versão no pedido é recusada", async () => {
+    mocks.enviar.mockResolvedValue({ ok: true, data: { status: "ok", codigoAtta: "ATTA-7K3M-Q9PX-2HDV" } });
+    for (const avisoDePrivacidade of ["aviso-v1", "", undefined]) {
+      expect(await enviarPropass({ ...ENVIO, avisoDePrivacidade })).toMatchObject({ ok: false, error: { code: "VALIDACAO" } });
+    }
+    expect(mocks.enviar).not.toHaveBeenCalled();
+    expect(await enviarPropass(ENVIO)).toMatchObject({ ok: true });
+    expect(mocks.enviar.mock.calls.at(-1)![1].avisoDePrivacidade).toBeNull();
   });
 });

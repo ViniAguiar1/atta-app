@@ -1,10 +1,22 @@
+import { AVISO_DE_PRIVACIDADE } from "./aviso-de-privacidade";
 import type { CampoDosDados, Conselho } from "./schema";
+
+// Etapas da barra (simulador, captura 26); o Aviso de Privacidade (PDD §10.4.3) entra antes do Termo só com a trava ligada
+// (P2b). Desligado, os rótulos são os literais do simulador ("Passo 1 de 4 · …").
+const ETAPAS = [
+  "Confirmação de dados",
+  "Validação do conselho",
+  ...(AVISO_DE_PRIVACIDADE ? ["Aviso de Privacidade"] : []),
+  "Assinatura",
+  "Como você recebe documentos",
+];
+const passo = (etapa: string) => `Passo ${ETAPAS.indexOf(etapa) + 1} de ${ETAPAS.length} · ${etapa}`;
 
 // Textos do PROpass, num lugar só. "PDD": literal do PDD v206. "simulador": literal do Simulador ATTA-in (capturas 24 e
 // 25), que vale onde o PDD não tem texto. "provisório": nem um nem outro; vai ao CTO para o textos-para-a-po.md.
 export const TEXTOS = {
   titulo: "PROpass", // PDD §10.4.3
-  passo1: "Passo 1 de 4 · Confirmação de dados", // simulador
+  passo1: passo("Confirmação de dados"), // simulador
   saudacao: "Confirme quem é você", // simulador, sem o nome: quem preenche o nome é o profissional (decisão do dono)
   convite: (clinica: string) =>
     `${clinica} convidou você para assinar documentos dos seus atendimentos. É você quem preenche os dados, não a clínica.`, // simulador
@@ -16,7 +28,7 @@ export const TEXTOS = {
   selecione: "Selecione", // provisório (opção vazia dos selects)
   voltar: "Voltar", // simulador
   conferindo: "Conferindo…", // provisório
-  passo2: "Passo 2 de 4 · Validação do conselho", // simulador (aba "Validação do conselho")
+  passo2: passo("Validação do conselho"), // simulador (aba "Validação do conselho")
   camada1: "Camada 1 — Validação ATTA (Conselho)", // PDD §10.4.3
   situacaoTitulo: "Situação do seu registro", // simulador
   regularizado: "Regularizado (Conselho Ativo)", // PDD §10.4.3
@@ -32,7 +44,7 @@ export const TEXTOS = {
   indisponivel: "Não conseguimos continuar agora. Tente de novo em instantes.", // provisório (igual ao check-in)
   carregando: "Carregando…", // provisório
   // passo 3: Termo de Autorização (simulador, captura 26; texto do termo vem do servidor)
-  passo3: "Passo 3 de 4 · Assinatura", // simulador
+  passo3: passo("Assinatura"), // simulador
   termoIntro:
     "Leia até o fim: o quadro de assinatura só abre depois da leitura completa. Este termo é sobre o seu vínculo com a clínica, não sobre um atendimento. Por isso ele nasce Assinado, sem passar por Pré-assinado, e já sai com hash e Código ATTA verificáveis.", // simulador (sem a referência interna CA-E04-03)
   leiaAteOFim: "Leia até o fim para liberar a assinatura.", // simulador
@@ -57,7 +69,15 @@ export const TEXTOS = {
   limite: "Muitas tentativas seguidas. Aguarde um pouco e tente de novo.", // provisório (limite por IP e por link)
   senhaExistente: "Use a mesma senha de 4 números que você já usa no Boarding Check.", // provisório (profissional que já tem a senha)
   // passo 4 (PDD §10.4.3: mini-explicação; o simulador não foi capturado)
-  passo4: "Passo 4 de 4 · Como você recebe documentos", // simulador (aba "Como você recebe documentos")
+  passo4: passo("Como você recebe documentos"), // simulador (aba "Como você recebe documentos")
+  passoAviso: passo("Aviso de Privacidade"), // PDD §10.4.3 (só com a trava ligada)
+  avisoConfirmo: "Li o Aviso de Privacidade do Profissional.", // provisório
+  avisoFalta: "Confirme que leu o Aviso de Privacidade para continuar.", // provisório
+  avisoRotulo: "Texto do Aviso de Privacidade do Profissional", // provisório (região rolável, leitor de tela)
+  // Código ATTA do Termo na conclusão (CTO, 21/11: rótulo provisório; vai à PO em R45)
+  codigoRotulo: "Código ATTA do seu Termo de Autorização", // provisório
+  codigoAjuda: "Com este código, qualquer pessoa confere a autenticidade do termo na verificação pública.", // provisório
+  codigoLink: "Conferir na verificação pública", // provisório
   concluidoTitulo: "PROpass concluído", // provisório
   concluidoTexto:
     "Você não tem login nem painel no ATTA‑in. Para cada atendimento, chega pelo WhatsApp um link só daquele paciente, com o Formulário de Saúde e os termos, que você abre com a sua senha de 4 números.", // provisório (PDD §10.4.3 e §10.2.3)

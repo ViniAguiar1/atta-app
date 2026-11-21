@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AVISO_DE_PRIVACIDADE } from "./aviso-de-privacidade";
 import { celularValido, cpfValido, nomeValido, soDigitos } from "@/lib/brasil/documentos";
 
 // Bordas do PROpass (MIG-55; PDD v206 §10.4.3). O profissional preenche tudo; a clínica só deu o e-mail (decisão do
@@ -60,12 +61,17 @@ export const envioSchema = z.object({
   leitura: z
     .object({ abertoEm: instante, rolagemCompletaEm: instante })
     .refine((l) => Date.parse(l.abertoEm) <= Date.parse(l.rolagemCompletaEm) && Date.parse(l.rolagemCompletaEm) <= Date.now() + 60_000),
+  /**
+   * Versão do Aviso de Privacidade confirmada (P2b). Só a versão publicada, como literal da constante, nunca texto livre
+   * do navegador (condição da Segurança); com o aviso desligado, só null: nenhuma versão vai ao servidor.
+   */
+  avisoDePrivacidade: AVISO_DE_PRIVACIDADE ? z.literal(AVISO_DE_PRIVACIDADE.versao) : z.null(),
 });
 
 export type TermoNaTela = { titulo: string; paragrafos: string[] };
 export type TermoCarregado = { situacao: "pronto"; termo: TermoNaTela } | { situacao: "link_sem_validade" };
 export type DesfechoNaTela =
-  | { status: "ok" }
+  | { status: "ok"; codigoAtta: string }
   | { status: "recusado" }
   | { status: "link_sem_validade" }
   | { status: "limite" }
