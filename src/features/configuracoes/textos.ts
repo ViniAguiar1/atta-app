@@ -82,7 +82,6 @@ export const textos = {
     salvoEm: (hora: string) => `Último salvamento às ${hora}.`, // provisório (PDD §10.4.1: "horário do último salvamento")
     faltam: "Para consolidar documentos, falta preencher:", // provisório (PDD §10.4.1: aviso dos obrigatórios no topo)
     salvoAs: (hora: string) => `Salvo às ${hora}.`, // provisório
-    obrigatorio: "obrigatório", // provisório (leitor de tela)
     empresa: {
       titulo: "Dados da empresa", // simulador, captura 42
       subtitulo: "Como a clínica aparece para o paciente e nos documentos", // simulador, captura 42

@@ -46,9 +46,16 @@ export function TelaPerfil({ resultado }: { resultado: Resultado<PerfilDaClinica
 }
 
 function Perfil({ perfil }: { perfil: PerfilDaClinica }) {
+  const router = useRouter();
   const [salvoEm, setSalvoEm] = useState(perfil.salvoEm);
+  // depois de salvar, relê o perfil no servidor: o aviso do que falta (missing_required) vem do banco. A key da tela não
+  // muda e cada campo guarda o próprio estado, então nada do que está sendo digitado se perde.
+  const aoSalvar = (quando: string) => {
+    setSalvoEm(quando);
+    router.refresh();
+  };
   const campo = (c: CampoDaEmpresa) => (
-    <CampoDoPerfil key={c} campo={c} valor={perfil.campos[c]} obrigatorio={OBRIGATORIOS.has(c)} fuso={perfil.fuso} aoSalvar={setSalvoEm} />
+    <CampoDoPerfil key={c} campo={c} valor={perfil.campos[c]} obrigatorio={OBRIGATORIOS.has(c)} fuso={perfil.fuso} aoSalvar={aoSalvar} />
   );
   return (
     <div className="flex flex-col gap-4 text-corpo">
