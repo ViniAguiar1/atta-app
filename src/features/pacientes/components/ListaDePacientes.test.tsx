@@ -134,6 +134,10 @@ describe("lista de Pacientes (MIG-43; simulador, capturas 09 a 11)", () => {
       await userEvent.keyboard("{Escape}");
       expect(screen.queryByRole("list", { name: "Filtrar pacientes" })).toBeNull();
       expect(botao).toHaveFocus();
+      // o Tab que sai do menu (para o + Novo paciente ou a tabela) fecha o menu
+      await userEvent.click(botao);
+      for (let i = 0; i < 4; i++) await userEvent.tab();
+      expect(screen.queryByRole("list", { name: "Filtrar pacientes" })).toBeNull();
     });
 
     it("escolher um filtro relê a lista com ele; o Limpar filtros volta à lista dos ativos", async () => {
