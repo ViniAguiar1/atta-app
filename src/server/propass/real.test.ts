@@ -90,6 +90,14 @@ describe("portaPropassReal.termo", () => {
     expect(primeiro).not.toContain("{{");
   });
 
+  it("o CNPJ do pacote pode ser alfanumérico (IN RFB 2.229/2024), sem pontuação e em maiúsculas", async () => {
+    const { contextoSchema } = await import("./real");
+    for (const cnpj of ["11222333000181", "12ABC34501DE35"]) expect(contextoSchema.safeParse(contexto({ cnpj })).success).toBe(true);
+    for (const cnpj of ["12abc34501de35", "12.ABC.345/01DE-35", "12ABC34501DEAB", "1122233300018", "11222333000181X"]) {
+      expect(contextoSchema.safeParse(contexto({ cnpj })).success).toBe(false);
+    }
+  });
+
   it("corpo que não bate com o hash assinado vira INTERNO, sem montar o termo", async () => {
     rpc.mockResolvedValue({ data: [contexto({ body_sha256: "0".repeat(64) })], error: null });
     expect(await porta.termo(HASH, registro)).toMatchObject({ ok: false, error: { code: "INTERNO" } });
