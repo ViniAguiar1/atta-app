@@ -10,6 +10,7 @@ export const SEM_NUMERO = "—";
 const ERROS_DA_ACAO: Record<string, string> = {
   "ATTA-IN-0003:status": "Este atendimento mudou de estado. A lista foi atualizada; confira antes de tentar de novo.", // provisório
   "ATTA-IN-0003:absent_day": "Só dá para marcar como ausente no dia do atendimento.", // provisório
+  "ATTA-IN-0003:reopen_day": "Só dá para reabrir o preenchimento no dia do atendimento.", // provisório
   SEM_PERMISSAO: "Você não tem permissão para esta ação.", // provisório
   NAO_ENCONTRADO: "Este atendimento não foi encontrado. Atualize a lista.", // provisório
   "ATTA-IN-0001:reason": "Escolha um motivo da lista.", // provisório
@@ -57,6 +58,7 @@ export const textos = {
       marcar_ausente: "Paciente marcado como ausente.", // provisório
       cancelar: "Agendamento cancelado.", // provisório
       concluir_pela_recepcao: "Atendimento concluído pela recepção.", // provisório
+      reabrir_preenchimento: "Preenchimento reaberto. O atendimento voltou para Agendado.", // provisório
     },
     erro: (codigo: string) =>
       ERROS_DA_ACAO[codigo] ?? "Não foi possível concluir a ação. Atualize a lista e tente de novo.", // provisório

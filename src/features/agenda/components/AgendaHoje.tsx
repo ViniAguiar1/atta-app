@@ -11,6 +11,7 @@ import {
   MOTIVOS_CANCELAR_ANTES,
   MOTIVOS_CANCELAR_DEPOIS,
   MOTIVOS_CONCLUIR,
+  MOTIVOS_REABRIR,
   termoPronto,
   type DiaDaAgenda,
   type EntradaDaAcao,
@@ -56,11 +57,19 @@ function argumentosDoFiltro(chave: string): FiltroDoDia {
 
 const ESPERA_DA_BUSCA_MS = 300;
 
+type AcaoComMotivo = "cancelar" | "concluir_pela_recepcao" | "reabrir_preenchimento";
+const TEXTOS_DO_DIALOGO = {
+  cancelar: textosDaAgenda.dialogo.cancelar,
+  concluir_pela_recepcao: textosDaAgenda.dialogo.concluir,
+  reabrir_preenchimento: textosDaAgenda.dialogo.reabrir,
+} satisfies Record<AcaoComMotivo, { titulo: string; texto: string; confirmar: string }>;
+
 export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, buscarConcluidos, resumir, executar }: Props) {
   const [acionando, setAcionando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
-  // Cancelar e Concluir pela recepção pedem motivo (e justificativa): abrem o diálogo; o erro do servidor fica nele
-  const [dialogo, setDialogo] = useState<{ linha: LinhaDaAgenda; acao: "cancelar" | "concluir_pela_recepcao" } | null>(null);
+  // Cancelar, Concluir pela recepção e Reabrir preenchimento pedem motivo (e justificativa): abrem o diálogo; o erro do
+  // servidor fica nele
+  const [dialogo, setDialogo] = useState<{ linha: LinhaDaAgenda; acao: AcaoComMotivo } | null>(null);
   const [erroDoDialogo, setErroDoDialogo] = useState<string | null>(null);
   const [visao, setVisao] = useState<Visao>("hoje");
   // Concluídos abre em "Esta semana"; "Este mês" e "Todo o período" vêm no painel Filtros (captura 37, PR dos filtros)
@@ -131,7 +140,7 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
   };
   const acionar = async (linha: LinhaDaAgenda, acao: Acao) => {
     if (!executar) return;
-    if (acao === "cancelar" || acao === "concluir_pela_recepcao") {
+    if (acao === "cancelar" || acao === "concluir_pela_recepcao" || acao === "reabrir_preenchimento") {
       setErroDoDialogo(null);
       setDialogo({ linha, acao });
       return;
@@ -153,9 +162,9 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
     setAcionando(linha.id);
     setErroDoDialogo(null);
     const entrada =
-      acao === "cancelar"
-        ? ({ acao, id: linha.id, motivo } as EntradaDaAcao)
-        : ({ acao, id: linha.id, motivo, justificativa: justificativa ?? "" } as EntradaDaAcao);
+      acao === "concluir_pela_recepcao"
+        ? ({ acao, id: linha.id, motivo, justificativa: justificativa ?? "" } as EntradaDaAcao)
+        : ({ acao, id: linha.id, motivo } as EntradaDaAcao);
     const r = await executar(entrada);
     setAcionando(null);
     if (!r.ok) {
@@ -294,17 +303,19 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
 
       {dialogo && (
         <DialogoDeMotivo
-          titulo={dialogo.acao === "cancelar" ? textosDaAgenda.dialogo.cancelar.titulo : textosDaAgenda.dialogo.concluir.titulo}
-          texto={dialogo.acao === "cancelar" ? textosDaAgenda.dialogo.cancelar.texto : textosDaAgenda.dialogo.concluir.texto}
+          titulo={TEXTOS_DO_DIALOGO[dialogo.acao].titulo}
+          texto={TEXTOS_DO_DIALOGO[dialogo.acao].texto}
           motivos={
             dialogo.acao === "concluir_pela_recepcao"
               ? MOTIVOS_CONCLUIR
-              : // antes da chegada (Agendado, Ausente) ou depois (PDD §10.2.2); o banco confere a lista pelo estado
-                dialogo.linha.status === "agendado" || dialogo.linha.status === "ausente"
-                ? MOTIVOS_CANCELAR_ANTES
-                : MOTIVOS_CANCELAR_DEPOIS
+              : dialogo.acao === "reabrir_preenchimento"
+                ? MOTIVOS_REABRIR
+                : // antes da chegada (Agendado, Ausente) ou depois (PDD §10.2.2); o banco confere a lista pelo estado
+                  dialogo.linha.status === "agendado" || dialogo.linha.status === "ausente"
+                  ? MOTIVOS_CANCELAR_ANTES
+                  : MOTIVOS_CANCELAR_DEPOIS
           }
-          rotuloConfirmar={dialogo.acao === "cancelar" ? textosDaAgenda.dialogo.cancelar.confirmar : textosDaAgenda.dialogo.concluir.confirmar}
+          rotuloConfirmar={TEXTOS_DO_DIALOGO[dialogo.acao].confirmar}
           justificativaMinima={dialogo.acao === "concluir_pela_recepcao" ? JUSTIFICATIVA_MINIMA : undefined}
           negativo={dialogo.acao === "cancelar"}
           enviando={acionando === dialogo.linha.id}

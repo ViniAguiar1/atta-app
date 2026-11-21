@@ -251,12 +251,29 @@ describe("porta real da agenda: ações", () => {
     });
   });
 
+  it("reabrir preenchimento vai ao transition para agendado, com o motivo", async () => {
+    const { rpc, porta } = clienteFalso({ data: null, error: null });
+    expect(await porta.acao({ acao: "reabrir_preenchimento", id: id(5), motivo: "ausente_por_engano" })).toEqual({ ok: true, data: null });
+    expect(rpc).toHaveBeenLastCalledWith("transition_appointment", { p_id: id(5), p_to: "agendado", p_reason: "ausente_por_engano" });
+  });
+
+  it("reabrir fora do dia sai com o reason do banco (ATTA-IN-0003:reopen_day)", async () => {
+    const { porta } = clienteFalso({ data: null, error: { code: "P0001", message: "ATTA-IN-0003", details: "reopen_day", hint: null } });
+    expect(await porta.acao({ acao: "reabrir_preenchimento", id: id(5), motivo: "paciente_chegou_atrasado" })).toMatchObject({
+      ok: false,
+      error: { code: "CONFLITO", reason: "ATTA-IN-0003:reopen_day" },
+    });
+  });
+
   it("justificativa curta, motivo fora da lista ou campo a mais são recusados antes do banco", async () => {
     const { rpc, porta } = clienteFalso({ data: null, error: null });
     for (const ruim of [
       { acao: "concluir_pela_recepcao", id: id(1), motivo: "emergencia_clinica", justificativa: "curta" },
       { acao: "cancelar", id: id(1), motivo: "porque_sim" },
       { acao: "cancelar", id: id(1), motivo: "agendado_por_engano", observacao: "texto livre" },
+      { acao: "reabrir_preenchimento", id: id(1) },
+      { acao: "reabrir_preenchimento", id: id(1), motivo: "cancelado_pelo_paciente" },
+      { acao: "reabrir_preenchimento", id: id(1), motivo: "ausente_por_engano", justificativa: "texto livre" },
     ]) {
       // @ts-expect-error entradas fora do contrato
       expect(await porta.acao(ruim)).toMatchObject({ ok: false, error: { code: "VALIDACAO" } });
