@@ -96,7 +96,7 @@ select is(pg_temp.erro($$ select api.notification_channel_set('email', true, pg_
           'P0001:ATTA-IN-0001:address', 'endereço em claro no lugar da máscara: recusado');
 select is(pg_temp.erro($$ select api.notification_channel_set('email', false, pg_temp.enc(), 're•••@cl•••.test',
                                                               gen_random_uuid(), pg_temp.enc(), 1::smallint) $$),
-          'P0001:ATTA-IN-0003:estado', 'trocar o endereço com o canal desligado: recusado (ligue para editar)');
+          'P0001:ATTA-IN-0003:estado', 'endereço novo numa chamada que deixa o canal desligado: recusado (ligue para editar)');
 select is(pg_temp.erro($$ select api.notification_channel_set('email', true, pg_temp.enc(), 're•••@cl•••.test',
                                                               gen_random_uuid(), pg_temp.enc(), 0::smallint) $$),
           'P0001:ATTA-IN-0001:address', 'versão de chave inválida no envelope: recusada');
