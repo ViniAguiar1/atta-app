@@ -60,6 +60,12 @@ describe("porta real do Perfil da Clínica", () => {
     expect(r.ok && r.data?.responsavelTecnico).toBeNull();
   });
 
+  it("campos sem uma das 14 chaves também viram INTERNO", async () => {
+    const semEmail = Object.fromEntries(Object.entries(perfilDoBanco.fields).filter(([chave]) => chave !== "commercial_email"));
+    const { porta } = clienteFalso({ data: { ...perfilDoBanco, fields: semEmail }, error: null });
+    expect(await porta.perfil()).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+  });
+
   it("resposta fora do contrato vira INTERNO, sem o corpo no log", async () => {
     const { porta } = clienteFalso({ data: { fields: {} }, error: null });
     expect(await porta.perfil()).toMatchObject({ ok: false, error: { code: "INTERNO" } });
