@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { falha, ok } from "@/lib/errors";
-import type { SituacaoDaImportacao } from "@/components/importacao/tipos";
+import type { SituacaoImportacao as SituacaoDaImportacao } from "@/server/importacao/porta";
 import type { AcoesDaImportacao } from "@/components/importacao/FluxoDeImportacao";
 import { TelaImportacao } from "./TelaImportacao";
 
