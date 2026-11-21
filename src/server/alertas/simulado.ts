@@ -26,17 +26,17 @@ const mascararEmail = (email: string) => {
   return `${nome.slice(0, 2)}·····@${dominio}`;
 };
 const recusa = () => falha("VALIDACAO", "Destino inválido.", [{ campo: "destino", code: "VALIDACAO" }], "ATTA-IN-0001:destino");
-const canalDesligado = () => falha("CONFLITO", "Canal desligado.", undefined, "ATTA-IN-0003:estado");
+const semDestino = () => falha("CONFLITO", "Canal sem destino.", undefined, "ATTA-IN-0003:address");
 const copia = () => structuredClone(estado);
 
 export const portaAlertasSimulada: PortaAlertas = {
   ler: async () => ok(copia()),
   async ligarCanal(canal, ativo) {
+    if (ativo && !estado[canal].destinoMascarado) return semDestino(); // o banco recusa igual (MIG-15)
     estado[canal].ativo = ativo;
     return ok(copia());
   },
-  async alterarCanal(canal, destino) {
-    if (!estado[canal].ativo) return canalDesligado(); // "Ligue o canal para editar" (simulador): o banco recusa igual
+  async alterarCanal(canal, destino, ativar) {
     if (canal === "email") {
       if (!EMAIL.test(destino.trim())) return recusa();
       estado.email.destinoMascarado = mascararEmail(destino.trim());
@@ -45,6 +45,7 @@ export const portaAlertasSimulada: PortaAlertas = {
       if (!CELULAR.test(numero)) return recusa();
       estado.whatsapp.destinoMascarado = mascararNumero(numero);
     }
+    if (ativar) estado[canal].ativo = true;
     return ok(copia());
   },
   async marcarEvento(chave, canal, marcado) {

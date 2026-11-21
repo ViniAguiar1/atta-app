@@ -70,6 +70,20 @@ describe("Configurações › Notificações (PDD §10.4.6, captura 45)", () => 
     expect(screen.getAllByText("Informe um e-mail válido, como nome@clinica.com.br.").length).toBeGreaterThan(0);
   });
 
+  it("ligar o WhatsApp sem número abre o campo; o número e o ligado vão juntos; sair vazio desliga de novo", async () => {
+    acoes.alterarCanal.mockResolvedValue({ ok: true, data: { ...DADOS, whatsapp: { ativo: true, destinoMascarado: "(48) ·····-0001" } } });
+    abrir();
+    const campo = screen.getByLabelText("Número da equipe (com DDD)");
+    expect(campo).toBeDisabled();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Receber alertas por WhatsApp" }));
+    expect(acoes.ligarCanal).not.toHaveBeenCalled();
+    expect(campo).toBeEnabled();
+    expect(screen.getByText("Informe o destino para ligar o canal.")).toBeInTheDocument();
+    await userEvent.type(campo, "48998760001{enter}");
+    expect(acoes.alterarCanal).toHaveBeenCalledWith({ canal: "whatsapp", destino: "48998760001", ativar: true });
+    await waitFor(() => expect(screen.getByText(/Número cadastrado: \(48\) ·····-0001/)).toBeInTheDocument());
+  });
+
   it("não há violação do axe", async () => {
     const { container } = abrir();
     expect(await violacoesDoAxe(container)).toEqual([]);

@@ -11,7 +11,7 @@ import { type AlertasDaEquipe, CANAIS, EVENTOS, FREQUENCIAS } from "@/server/ale
 const chaves = EVENTOS.map((e) => e.chave) as [string, ...string[]];
 
 const ligarSchema = z.object({ canal: z.enum(CANAIS), ativo: z.boolean() });
-const destinoSchema = z.object({ canal: z.enum(CANAIS), destino: z.string().min(1).max(120) });
+const destinoSchema = z.object({ canal: z.enum(CANAIS), destino: z.string().min(1).max(120), ativar: z.boolean().optional() });
 const eventoSchema = z.object({ chave: z.enum(chaves), canal: z.enum(CANAIS), marcado: z.boolean() });
 const filtrosSchema = z.object({ pausaNoturna: z.boolean(), frequenciaDoResumo: z.enum(FREQUENCIAS) });
 
@@ -30,7 +30,7 @@ export async function ligarCanal(entrada: unknown): Promise<Resultado<AlertasDaE
 export async function alterarCanal(entrada: unknown): Promise<Resultado<AlertasDaEquipe>> {
   const d = destinoSchema.safeParse(entrada);
   if (!d.success) return falhaDeValidacao(d.error.issues);
-  const r = await portaAlertas.alterarCanal(d.data.canal, d.data.destino);
+  const r = await portaAlertas.alterarCanal(d.data.canal, d.data.destino, d.data.ativar);
   registrar("configuracoes.alerta_canal_alterado", r, { canal: d.data.canal });
   return r;
 }
