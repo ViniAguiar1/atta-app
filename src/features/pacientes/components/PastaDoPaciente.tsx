@@ -193,23 +193,24 @@ export function PastaDoPaciente({
 }) {
   const pagina = agendamentos?.ok ? agendamentos.data : null;
   const erro = agendamentos && !agendamentos.ok && agendamentos.error.code !== "SEM_PERMISSAO" ? agendamentos.error.code : null;
+  const temSecao = Boolean((pagina && mais) || erro);
   return (
     <div className="flex flex-col gap-4">
       {ficha.arquivadoEm && <AvisoDeArquivado id={ficha.id} arquivadoEm={ficha.arquivadoEm} arquivar={arquivar} />}
-      {/* captura 12: os cartões num painel claro com 16 px de respiro; o resumo à direita, separado por uma linha */}
-      <div className="grid grid-cols-1 gap-4 large:grid-cols-[minmax(0,1fr)_16.5rem]">
-        <div className="flex min-w-0 flex-col gap-4 rounded-md bg-surface-raised p-4">
+      {/* capturas 12 e 13: os cartões num painel claro com 16 px de respiro; o resumo à direita, separado por uma linha; o
+          painel continua por baixo do resumo, em L, com "Agendamentos e documentos" na largura toda */}
+      <div className="grid grid-cols-1 gap-y-4 large:grid-cols-[minmax(0,1fr)_16.5rem] large:gap-x-4 large:gap-y-0">
+        <div className={`flex min-w-0 flex-col gap-4 rounded-md bg-surface-raised p-4 ${temSecao ? "large:rounded-b-none" : ""}`}>
           <DadosCadastrais ficha={ficha} />
           <Vinculos ficha={ficha} />
         </div>
         <Resumo ficha={ficha} arquivar={arquivar} pagina={pagina} />
+        {temSecao && (
+          <div className="rounded-md bg-surface-raised p-4 large:col-span-2 large:rounded-tl-none">
+            {pagina && mais ? <AgendamentosDaPasta id={ficha.id} inicial={pagina} mais={mais} /> : erro && <EstadoDaPasta tipo="erro" codigo={erro} />}
+          </div>
+        )}
       </div>
-      {/* captura 13: "Agendamentos e documentos" ocupa a largura toda, abaixo dos cartões e do resumo */}
-      {(pagina || erro) && (
-        <div className="rounded-md bg-surface-raised p-4">
-          {pagina && mais ? <AgendamentosDaPasta id={ficha.id} inicial={pagina} mais={mais} /> : erro && <EstadoDaPasta tipo="erro" codigo={erro} />}
-        </div>
-      )}
     </div>
   );
 }

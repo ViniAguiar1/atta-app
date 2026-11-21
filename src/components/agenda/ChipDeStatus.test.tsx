@@ -28,4 +28,11 @@ describe("ChipDeStatus", () => {
     expect(selo.getAttribute("data-selo")).toBe("atrasado");
     expect(selo.getAttribute("data-status")).toBeNull();
   });
+
+  it("compacto: a escala da Pasta (11 px semibold), com a mesma cor e o mesmo texto", () => {
+    render(<><ChipDeStatus status="agendado" compacto /><SeloAtrasado compacto /></>);
+    expect(screen.getByText("Agendado").className).toContain("text-rotulo");
+    expect(screen.getByText("Agendado").className).toContain("bg-surface-card");
+    expect(screen.getByText("Atrasado").className).toContain("text-rotulo");
+  });
 });
