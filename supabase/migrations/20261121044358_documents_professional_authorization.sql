@@ -152,6 +152,11 @@ create trigger tenant_seed_authorization_template after insert on platform.tenan
 
 insert into audit.action (action, kind) values ('document.sign_authorization', 'change') on conflict (action) do nothing;
 
+-- um Termo de Autorização vigente por vínculo, garantido pelo índice (dois envios simultâneos do mesmo vínculo: o
+-- segundo cai em 23505, que o servidor trata como CONFLITO; revisão do Backend 6 no #192)
+create unique index document_professional_authorization_uq on documents.document (tenant_id, professional_link_id)
+  where professional_link_id is not null and status = 'assinado_definitivo';
+
 -- ---------------------------------------------------------------------------------------------------------------
 -- Gravar o termo assinado. Só o api.propass_submit chama (SECURITY DEFINER, sem token): tenant e vínculo vêm
 -- explícitos. O servidor monta o pacote do ATTA Sign (payload JCS, Código ATTA e selo Ed25519, que ele confere antes
@@ -232,6 +237,12 @@ begin
   v_sha := encode(sha256(p_payload_canonical), 'hex');
   if p_atta_code is distinct from private.atta_code_from_sha256(v_sha) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'atta_code';
+  end if;
+  -- o traço fica no Storage desta clínica e deste documento (revisão da Segurança no #192): um erro do servidor não
+  -- aponta a assinatura para o objeto de outra clínica
+  if p_stroke is null or (p_stroke ->> 'storage_path') is null
+     or not starts_with(p_stroke ->> 'storage_path', p_tenant_id::text || '/' || p_document_id::text || '/') then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'stroke';
   end if;
   -- a chave do selo valia no momento da assinatura (o verifySeal do servidor confere a assinatura Ed25519)
   if p_seal is null or octet_length(p_seal) <> 64
