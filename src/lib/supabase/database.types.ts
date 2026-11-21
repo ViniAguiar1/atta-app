@@ -799,14 +799,14 @@ isOneToOne: false
                   ]
                 },"tenant": {
                   Row: {
-                    "cnpj": string | null,"created_at": string,"deleted_at": string | null,"id": string,"kind": string,"name": string,"parent_tenant_id": string | null,"timezone": string,"updated_at": string
+                    "cnpj": string | null,"created_at": string,"deleted_at": string | null,"id": string,"kind": string,"legal_name": string | null,"name": string,"parent_tenant_id": string | null,"timezone": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cnpj"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"name": string,"parent_tenant_id"?: string | null,"timezone"?: string,"updated_at"?: string
+                    "cnpj"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"legal_name"?: string | null,"name": string,"parent_tenant_id"?: string | null,"timezone"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "cnpj"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"name"?: string,"parent_tenant_id"?: string | null,"timezone"?: string,"updated_at"?: string
+                    "cnpj"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"legal_name"?: string | null,"name"?: string,"parent_tenant_id"?: string | null,"timezone"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
