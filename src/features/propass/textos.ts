@@ -31,6 +31,37 @@ export const TEXTOS = {
   linkSemValidadeAjuda: "Peça à clínica que reenvie o link do PROpass.", // provisório
   indisponivel: "Não conseguimos continuar agora. Tente de novo em instantes.", // provisório (igual ao check-in)
   carregando: "Carregando…", // provisório
+  // passo 3: Termo de Autorização (simulador, captura 26; texto do termo vem do servidor)
+  passo3: "Passo 3 de 4 · Assinatura", // simulador
+  termoIntro:
+    "Leia até o fim: o quadro de assinatura só abre depois da leitura completa. Este termo é sobre o seu vínculo com a clínica, não sobre um atendimento. Por isso ele nasce Assinado, sem passar por Pré-assinado, e já sai com hash e Código ATTA verificáveis.", // simulador (sem a referência interna CA-E04-03)
+  leiaAteOFim: "Leia até o fim para liberar a assinatura.", // simulador
+  quadro: "Desenhe sua assinatura com o mouse ou o dedo", // simulador
+  botaoBloqueado: "Leia o termo até o fim para assinar", // simulador
+  assinar: "Assinar o termo", // provisório (o simulador troca o botão, sem o texto capturado)
+  limpar: "Limpar assinatura", // provisório
+  semAssinatura: "Desenhe sua assinatura no quadro.", // provisório
+  rotuloTermo: "Texto do Termo de Autorização", // provisório (região rolável, leitor de tela)
+  semTermo: "A clínica ainda não publicou o Termo de Autorização. Avise a clínica e abra o link de novo mais tarde.", // provisório
+  // passo 3b: senha de 4 números (decisão do dono, R10; não existe no simulador)
+  passoSenha: "Passo 3 de 4 · Senha", // provisório
+  senhaTitulo: "Crie sua senha de 4 números", // provisório
+  senhaTexto: "É a senha que você digita para abrir o Boarding Check de cada atendimento. Ela nunca vai junto com o link.", // provisório
+  rotuloSenha: "Senha", // provisório
+  rotuloConfirmar: "Confirme a senha", // provisório
+  senhaFormato: "A senha tem 4 números.", // provisório
+  senhaObvia: "Escolha uma senha menos óbvia: evite números repetidos ou em sequência.", // provisório (decisão do CTO, R12)
+  senhaDiferente: "As duas senhas não são iguais.", // provisório
+  concluir: "Concluir o PROpass", // provisório
+  enviando: "Enviando…", // provisório
+  recusado: "Não conseguimos confirmar seus dados. Confira o CPF e o conselho ou fale com a clínica.", // provisório
+  // passo 4 (PDD §10.4.3: mini-explicação; o simulador não foi capturado)
+  passo4: "Passo 4 de 4 · Como você recebe documentos", // simulador (aba "Como você recebe documentos")
+  concluidoTitulo: "PROpass concluído", // provisório
+  concluidoTexto:
+    "Você não tem login nem painel no ATTA-in. Para cada atendimento, chega pelo WhatsApp um link só daquele paciente, com o Formulário de Saúde e os termos, que você abre com a sua senha de 4 números.", // provisório (PDD §10.4.3 e §10.2.3)
+  aguardandoConferencia:
+    "A conferência do seu registro no conselho é feita pela equipe ATTA. A clínica só agenda seus atendimentos depois dessa conferência.", // provisório (decisão do dono, 20/11)
 } as const;
 
 export const ROTULOS: Record<CampoDosDados | "email", string> = {
