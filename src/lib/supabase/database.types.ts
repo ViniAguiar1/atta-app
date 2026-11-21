@@ -132,6 +132,9 @@ export type Database = {
 "grant_revoke":
 { Args: { "p_secret_hash": string }; Returns: undefined
                            },
+"health_answer_save":
+{ Args: { "p_answer_id": string,"p_dek_wrapped": string,"p_grant_secret_hash": string,"p_kek_version": number,"p_question_id": string,"p_refused": boolean,"p_value_enc": string }; Returns: string
+                           },
 "notification_channel_set":
 { Args: { "p_active": boolean,"p_address_enc"?: string,"p_address_masked"?: string,"p_channel": string,"p_dek_wrapped"?: string,"p_envelope_id"?: string,"p_kek_version"?: number }; Returns: undefined
                            },
