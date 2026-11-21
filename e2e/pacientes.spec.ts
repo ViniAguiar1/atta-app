@@ -117,6 +117,9 @@ test.describe("gestora da Clínica Alfa", () => {
       expect(await page.locator("main").innerText()).not.toMatch(PROIBIDO);
       const rolaDeLado = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(rolaDeLado).toBe(false);
+      // o "+ Novo paciente" inteiro na tela (um corte dentro de contêiner não aparece na rolagem lateral)
+      const novo = await page.getByRole("button", { name: "+ Novo paciente" }).boundingBox();
+      expect(novo && novo.x >= 0 && novo.x + novo.width <= largura).toBe(true);
     });
   }
 });
