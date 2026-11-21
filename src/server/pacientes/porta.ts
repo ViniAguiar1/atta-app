@@ -110,7 +110,8 @@ export type CartaoDaRede = {
   incompleto: boolean;
   contato: Contato | null;
   selo: { validoAte: string } | null;
-  respostasDeSaude: number;
+  /** só a contagem do Formulário de Saúde na rede, nunca o conteúdo; null quando a leitura não traz (já paciente) */
+  respostasDeSaude: number | null;
 };
 
 export type ConsultaDeCpf =

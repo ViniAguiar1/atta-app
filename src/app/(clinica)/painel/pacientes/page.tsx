@@ -6,6 +6,7 @@ import { sessaoDoPainel } from "@/features/casca/sessao";
 import {
   buscarPacientes,
   cadastrarPaciente,
+  cartaoDoPacienteDaClinica,
   consultarCpfNaRede,
   listarPacientes,
   vincularPacienteDaRede,
@@ -38,7 +39,7 @@ async function Conteudo() {
   const novo = (
     <NovoPaciente
       clinica={sessao?.clinica ?? null}
-      acoes={{ consultar: consultarCpfNaRede, vincular: vincularPacienteDaRede, cadastrar: cadastrarPaciente }}
+      acoes={{ consultar: consultarCpfNaRede, vincular: vincularPacienteDaRede, cadastrar: cadastrarPaciente, cartao: cartaoDoPacienteDaClinica }}
     />
   );
   // espaçamento da captura 09: ~37 px das subabas aos cards (gap da página + mt-3), ~16 px dos cards à busca
