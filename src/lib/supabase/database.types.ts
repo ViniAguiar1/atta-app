@@ -20,9 +20,14 @@ export type Database = {
 "agenda_summary":
 { Args: { "p_professional_link_id"?: string }; Returns: Json
                            },
+"atta_code_material":
+{ Args: { "p_code": string }; Returns: {
+              "evidence_sha256": string,"payload_canonical_b64": string,"seal_keys": Json,"seals": Json,"signed_at": string
+            }[]
+                           },
 "atta_code_verify":
 { Args: { "p_code": string }; Returns: {
-              "document_type": string,"evidence_sha256": string,"exists": boolean,"level": string,"signed_at": string,"status": string,"template_version": number,"tenant_trade_name": string
+              "document_type": string,"evidence_sha256": string,"exists": boolean,"level": string,"signed_at": string,"status": string,"template_version": number,"tenant_cnpj": string,"tenant_trade_name": string
             }[]
                            },
 "atta_in_service_delete_blockers":
