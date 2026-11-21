@@ -27,10 +27,11 @@ export type CampoDosDados = keyof z.input<typeof dadosSchema>;
 export type DadosDoProfissional = z.input<typeof dadosSchema>;
 
 /** O que a tela recebe ao conferir o conselho. Só a situação: CPF e WhatsApp não voltam. */
+/** pedirSenha: o passo 2 do servidor (identidade) diz se a pessoa cria a senha ou usa a que já tem no Boarding Check. */
 export type ConferenciaDoConselho =
-  | { situacao: "regularizado"; consultadoEm: string } // ISO 8601
+  | { situacao: "regularizado"; consultadoEm: string; pedirSenha: boolean } // ISO 8601
   | { situacao: "nao_confere" }
-  | { situacao: "nao_consultado" }
+  | { situacao: "nao_consultado"; pedirSenha: boolean }
   | { situacao: "link_sem_validade" };
 
 /** PIN óbvio (decisão do CTO, R12): quatro dígitos iguais ou sequência de 4, crescente (0123–6789) ou decrescente
@@ -47,13 +48,25 @@ export const pinSchema = z.string().regex(/^\d{4}$/).refine((p) => !pinObvio(p))
 /** PNG do quadro de assinatura, como data URL. Até ~300 KB: o quadro tem tamanho fixo e traço fino. */
 export const assinaturaSchema = z.string().regex(/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/).max(400_000);
 
+const instante = z.iso.datetime({ offset: true });
+
 export const envioSchema = z.object({
   dados: dadosSchema,
   assinatura: assinaturaSchema,
   leuAteOFim: z.literal(true),
-  pin: pinSchema,
+  /** null quando o profissional já tem a senha (o passo 2 disse para usar a que já tem). */
+  pin: pinSchema.nullable(),
+  /** "Leia até o fim": quando o termo apareceu e quando a leitura terminou, na ordem, e não no futuro. */
+  leitura: z
+    .object({ abertoEm: instante, rolagemCompletaEm: instante })
+    .refine((l) => Date.parse(l.abertoEm) <= Date.parse(l.rolagemCompletaEm) && Date.parse(l.rolagemCompletaEm) <= Date.now() + 60_000),
 });
 
 export type TermoNaTela = { titulo: string; paragrafos: string[] };
 export type TermoCarregado = { situacao: "pronto"; termo: TermoNaTela } | { situacao: "link_sem_validade" };
-export type DesfechoNaTela = { status: "ok" } | { status: "recusado" } | { status: "link_sem_validade" };
+export type DesfechoNaTela =
+  | { status: "ok" }
+  | { status: "recusado" }
+  | { status: "link_sem_validade" }
+  | { status: "limite" }
+  | { status: "senha_invalida"; motivo: "obvio" | "formato" | "outro" };

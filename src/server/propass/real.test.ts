@@ -12,6 +12,8 @@ vi.stubEnv("ATTA_EMAIL_PEPPER", "11".repeat(32));
 const rpc = vi.fn();
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/lib/supabase/admin", () => ({ criarClienteAdmin: () => ({ schema: () => ({ rpc }) }) }));
+const envio = vi.hoisted(() => ({ conferirIdentidade: vi.fn(), enviarPropass: vi.fn() }));
+vi.mock("./envio", () => envio);
 const { portaPropassReal: porta } = await import("./real");
 
 const TENANT = "eeee0000-0000-4000-8000-000000000001";
@@ -90,5 +92,28 @@ describe("portaPropassReal.termo", () => {
     expect(await porta.termo(HASH, registro)).toMatchObject({ ok: false, error: { code: "NAO_ENCONTRADO" } });
     rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "ATTA-IN-0003", details: "legal_name" } });
     expect(await porta.termo(HASH, registro)).toMatchObject({ ok: false, error: { code: "CONFLITO" } });
+  });
+});
+
+describe("portaPropassReal: identidade e envio pelo servidor do Backend 4 (#247)", () => {
+  const ORIGEM = { ip: "203.0.113.7", userAgent: "Navegador de teste" };
+  it("identidade devolve só 'pedir_pin' ou 'usar_pin_existente'", async () => {
+    envio.conferirIdentidade.mockResolvedValue({ ok: true, data: { status: "usar_pin_existente" } });
+    const registro = { conselho: "crm" as const, uf: "SP", numero: "990001", cpf: "52998224725" };
+    expect(await porta.identidade(HASH, registro, ORIGEM)).toEqual({ ok: true, data: "usar_pin_existente" });
+    expect(envio.conferirIdentidade).toHaveBeenCalledWith(HASH, registro, ORIGEM);
+  });
+
+  it("enviar repassa dados, PNG, PIN, leitura e origem ao enviarPropass e devolve o status", async () => {
+    envio.enviarPropass.mockResolvedValue({ ok: true, data: { status: "ok" } });
+    const pedido = {
+      dados: { nome: "Bruna Reis", cpf: "52998224725", whatsapp: "11987654321", conselho: "crm" as const, numero: "990001", uf: "SP" },
+      assinaturaPng: Buffer.from([137, 80, 78, 71]), pin: null,
+      leitura: { abertoEm: new Date("2026-11-21T10:00:00Z"), rolagemCompletaEm: new Date("2026-11-21T10:01:00Z") }, origem: ORIGEM,
+    };
+    expect(await porta.enviar(HASH, pedido)).toEqual({ ok: true, data: { status: "ok" } });
+    expect(envio.enviarPropass).toHaveBeenCalledWith(HASH, pedido);
+    envio.enviarPropass.mockResolvedValue({ ok: false, error: { code: "LIMITE", message: "x" } });
+    expect(await porta.enviar(HASH, pedido)).toMatchObject({ ok: false, error: { code: "LIMITE" } });
   });
 });
