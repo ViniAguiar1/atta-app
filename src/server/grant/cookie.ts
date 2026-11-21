@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies, headers } from "next/headers";
-import { COOKIE_GRANT, type Finalidade, gerarSegredo, hashDoSegredo, opcoesDoCookie } from "./politica";
+import { caminhoDoCookie, COOKIE_GRANT, type Finalidade, gerarSegredo, hashDoSegredo, opcoesDoCookie } from "./politica";
 
 /**
  * Cookie `atta_grant` das server actions do check-in e do Boarding Check. O segredo nunca vai para o banco: só o hash.
@@ -21,6 +21,7 @@ export async function lerHash(): Promise<Buffer | null> {
   return valor ? hashDoSegredo(valor) : null;
 }
 
-export async function apagarGrant(): Promise<void> {
-  (await cookies()).delete({ name: COOKIE_GRANT, path: "/" });
+/** Apaga o cookie no caminho em que ele foi gravado (o do Boarding Check é /boarding). */
+export async function apagarGrant(finalidade: Finalidade = "patient_checkin"): Promise<void> {
+  (await cookies()).delete({ name: COOKIE_GRANT, path: caminhoDoCookie(finalidade) });
 }

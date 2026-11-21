@@ -31,16 +31,19 @@ export function hashDoSegredo(segredo: string): Buffer | null {
   return createHash("sha256").update(Buffer.from(segredo, "base64url")).digest();
 }
 
+/** O caminho do cookie: a sessão do Boarding Check só vai para /boarding (Segurança e TL no #273); o resto, Path=/. */
+export const caminhoDoCookie = (finalidade: Finalidade) => (finalidade === "professional_boarding" ? "/boarding" : "/");
+
 /**
- * Opções do cookie: HttpOnly, SameSite=Lax, Path=/ e sem Domain (fica só no host, ADR 0004 §3). Secure em https, como
- * o cookie da sessão (ADR 0001 §4): fixo, quebraria o http://127.0.0.1 local no Safari.
+ * Opções do cookie: HttpOnly, SameSite=Lax, sem Domain (fica só no host, ADR 0004 §3) e o caminho da finalidade.
+ * Secure em https, como o cookie da sessão (ADR 0001 §4): fixo, quebraria o http://127.0.0.1 local no Safari.
  */
 export function opcoesDoCookie(finalidade: Finalidade, https: boolean) {
   return {
     httpOnly: true,
     secure: https,
     sameSite: "lax" as const,
-    path: "/",
+    path: caminhoDoCookie(finalidade),
     maxAge: POLITICA[finalidade].tetoSeg,
   };
 }
