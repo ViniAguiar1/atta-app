@@ -2,9 +2,17 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { Subabas } from "@/components/ui/Subabas";
-import { buscarPacientes, listarPacientes } from "@/features/pacientes/actions";
+import { sessaoDoPainel } from "@/features/casca/sessao";
+import {
+  buscarPacientes,
+  cadastrarPaciente,
+  consultarCpfNaRede,
+  listarPacientes,
+  vincularPacienteDaRede,
+} from "@/features/pacientes/actions";
 import { CardsDePacientes } from "@/features/pacientes/components/CardsDePacientes";
 import { ListaDePacientes } from "@/features/pacientes/components/ListaDePacientes";
+import { NovoPaciente } from "@/features/pacientes/components/NovoPaciente";
 import { SUBABAS_DE_PACIENTES } from "@/features/pacientes/subabas";
 import { textos } from "@/features/pacientes/textos";
 
@@ -25,12 +33,19 @@ export default function Page() {
 
 async function Conteudo() {
   await connection(); // por requisição: a lista é da clínica da sessão
-  const inicial = await listarPacientes();
+  const [inicial, sessao] = await Promise.all([listarPacientes(), sessaoDoPainel()]);
+  // "+ Novo paciente" à direita da busca (captura 09); o modal das capturas 15 a 18
+  const novo = (
+    <NovoPaciente
+      clinica={sessao?.clinica ?? null}
+      acoes={{ consultar: consultarCpfNaRede, vincular: vincularPacienteDaRede, cadastrar: cadastrarPaciente }}
+    />
+  );
   // espaçamento da captura 09: ~37 px das subabas aos cards (gap da página + mt-3), ~16 px dos cards à busca
   return (
     <div className="flex flex-col gap-4">
       <CardsDePacientes total={inicial.ok ? inicial.data.total : null} />
-      <ListaDePacientes inicial={inicial} listar={listarPacientes} buscar={buscarPacientes} />
+      <ListaDePacientes acoes={novo} inicial={inicial} listar={listarPacientes} buscar={buscarPacientes} />
     </div>
   );
 }

@@ -84,3 +84,40 @@ test("a colaboradora da Alfa vê a mesma lista", async ({ page }) => {
   await page.goto("/painel/pacientes");
   await expect(page.getByRole("rowheader")).toHaveCount(DA_ALFA.length);
 });
+
+// Novo paciente (simulador, capturas 15 a 18; PDD §10.1 e decisão do dono de 20/11), por último no arquivo: o cadastro
+// muda a lista da Alfa. O CPF da busca vai no corpo da action; o cartão da rede chega com o contato mascarado.
+test.describe("Novo paciente", () => {
+  test.use({ storageState: SESSAO_DA_GESTORA });
+
+  test("já paciente, na rede (cartão da outra clínica, sem contato inteiro) e primeira vez na rede, com o cadastro", async ({ page }) => {
+    await page.goto("/painel/pacientes");
+    await page.getByRole("button", { name: "+ Novo paciente" }).click();
+    const dialogo = page.getByRole("dialog", { name: "Novo paciente" });
+    const cpf = dialogo.getByLabel("CPF", { exact: true });
+    const buscar = dialogo.getByRole("button", { name: "Buscar na rede" });
+
+    await cpf.fill("52998224725");
+    await buscar.click();
+    await expect(dialogo.getByText("Não é possível criar outro cadastro.")).toBeVisible();
+
+    await cpf.fill("47382169022"); // paciente só da Clínica Beta
+    await buscar.click();
+    await expect(dialogo.getByText("Já existe na rede", { exact: true })).toBeVisible();
+    await expect(dialogo).toContainText("Otávio Ramos");
+    await expect(dialogo).toContainText("(31) ·····-6655");
+    expect(await page.content()).not.toContain("98877-6655");
+    expect((await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+
+    await cpf.fill("98765432100"); // CPF gerado, fora da rede
+    await buscar.click();
+    await expect(dialogo.getByText("Consulta interna: este CPF ainda não existe na base ATTA.")).toBeVisible();
+    await dialogo.getByLabel("Nome civil").fill("Lucas Pereira");
+    await dialogo.getByLabel("Data de nascimento").fill("12/04/1991");
+    await dialogo.getByLabel("Celular").fill("(11) 98765-5566");
+    await dialogo.getByRole("button", { name: "Cadastrar paciente" }).click();
+    await expect(dialogo).toBeHidden();
+    await expect(page.getByRole("row", { name: /Lucas Pereira/ })).toContainText("(11) ·····-5566");
+    expect(page.url()).not.toContain("98765432100");
+  });
+});
