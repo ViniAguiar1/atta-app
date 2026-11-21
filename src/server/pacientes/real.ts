@@ -3,8 +3,10 @@ import { z } from "zod";
 import { falha, falhaDoBanco, ok, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { cpfHmac, isValidCpf, normalizeCpf } from "@/server/crypto/cpf";
-import { abrirContato, paraBytea } from "./contato";
+import type { Database } from "@/lib/supabase/database.types";
+import { cpfHmac, isValidCpf, isValidRne, maskCpf, maskRne, normalizeCpf, normalizeRne, rneHmac } from "@/server/crypto/cpf";
+import { normalizeEmail } from "@/server/crypto/email";
+import { abrirContato, paraBytea, selarColunas } from "./contato";
 import type { Identificacao, LinhaDePaciente, PortaPacientes } from "./porta";
 
 // Porta real de Pacientes (MIG-43) sobre o api.patient_* do MIG-12 (#12, #19). Cliente de servidor com a sessão do
@@ -65,6 +67,39 @@ const fichaSchema = z.object({
   is_verified: z.boolean(),
   verified_until: z.string().nullable(),
   origin: z.enum(["recepcao", "atta_me", "importacao"]),
+});
+
+type ArgsDoCadastro = Database["api"]["Functions"]["patient_register"]["Args"];
+
+// api.patient_lookup_by_cpf e api.patient_link_by_cpf (#150 do Backend 2): jsonb com status
+const consultaSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("nao_encontrado") }),
+  z.object({ status: z.literal("ja_paciente"), person_id: z.uuid() }),
+  z.object({
+    status: z.literal("na_rede"),
+    card: z.object({
+      person_id: z.uuid(),
+      full_name: z.string().min(1),
+      social_name: z.string().nullable(),
+      birth_date: z.string().nullable(),
+      cpf_masked: z.string().nullable(),
+      is_incomplete: z.boolean(),
+      is_verified: z.boolean(),
+      verified_until: z.string().nullable(),
+      phone_enc: z.string().nullable(),
+      email_enc: z.string().nullable(),
+      envelope_id: z.uuid().nullable(),
+      dek_wrapped: z.string().nullable(),
+      kek_version: z.number().int().nullable(),
+      health_forms_count: z.number().int().nonnegative(),
+    }),
+  }),
+]);
+
+const vinculoSchema = z.object({
+  status: z.enum(["vinculado", "nao_encontrado", "ja_paciente"]),
+  person_id: z.uuid().nullable(),
+  network_access: z.string().nullable(),
 });
 
 const identificacaoDe = (cpf: string | null, estrangeiro: string | null): Identificacao =>
@@ -206,10 +241,117 @@ export const portaPacientesReal: PortaPacientes = {
     }
   },
 
-  // O cadastro e a edição chegam com o MIG-12d (patient_lookup_by_cpf e patient_link_by_cpf; PDD §10.1, decisão do
-  // dono de 20/11) e com as telas deles. Nenhuma tela chama estes dois ainda.
-  async cadastrar() {
-    return falha("INDISPONIVEL", "Cadastro ainda não ligado.");
+  async consultarCpf(cpf) {
+    const normal = normalizeCpf(cpf);
+    if (!normal || !isValidCpf(normal)) return falha("VALIDACAO", "CPF inválido.", [{ campo: "cpf", code: "VALIDACAO" }]);
+    const { api } = await contexto();
+    let hmac: string;
+    try {
+      hmac = paraBytea(cpfHmac(normal));
+    } catch {
+      return malFormado("pacientes.hmac_indisponivel");
+    }
+    const { data, error } = await api.rpc("patient_lookup_by_cpf", { p_cpf_hmac: hmac });
+    if (error) return falhaDoBanco(error);
+    const lido = consultaSchema.safeParse(data);
+    if (!lido.success) return malFormado("pacientes.consulta_fora_do_formato");
+    const r = lido.data;
+    if (r.status === "nao_encontrado") return ok({ situacao: "nao_encontrado" });
+    if (r.status === "ja_paciente") return ok({ situacao: "ja_paciente", id: r.person_id });
+    const c = r.card;
+    try {
+      // o cartão é da pessoa da rede (network.person, tenant ''): abre aqui e só sai mascarado (Segurança, #150)
+      const contato = await abrirContato({ ...c, network_access: "granted" }, "");
+      const celular = celularMascarado(contato.celular);
+      const email = emailMascarado(contato.email);
+      return ok({
+        situacao: "na_rede",
+        cartao: {
+          id: c.person_id,
+          nome: c.social_name ?? c.full_name,
+          nomeCivil: c.full_name,
+          nomeSocial: c.social_name,
+          nascimento: c.birth_date,
+          identificacao: identificacaoDe(c.cpf_masked, null),
+          incompleto: c.is_incomplete,
+          contato: celular || email ? { celular, email } : null,
+          selo: c.is_verified && c.verified_until ? { validoAte: c.verified_until } : null,
+          respostasDeSaude: c.health_forms_count,
+        },
+      });
+    } catch {
+      return malFormado("pacientes.contato_nao_abriu");
+    }
+  },
+
+  async vincularPorCpf(cpf) {
+    const normal = normalizeCpf(cpf);
+    if (!normal || !isValidCpf(normal)) return falha("VALIDACAO", "CPF inválido.", [{ campo: "cpf", code: "VALIDACAO" }]);
+    const { api } = await contexto();
+    let hmac: string;
+    try {
+      hmac = paraBytea(cpfHmac(normal));
+    } catch {
+      return malFormado("pacientes.hmac_indisponivel");
+    }
+    const { data, error } = await api.rpc("patient_link_by_cpf", { p_cpf_hmac: hmac });
+    if (error) return falhaDoBanco(error);
+    const lido = vinculoSchema.safeParse(data);
+    if (!lido.success) return malFormado("pacientes.vinculo_fora_do_formato");
+    const v = lido.data;
+    if (v.status === "nao_encontrado" || !v.person_id) return falha("NAO_ENCONTRADO", "CPF fora da rede.");
+    return ok({ id: v.person_id, situacao: v.status });
+  },
+
+  async cadastrar(dados) {
+    const { api, tenantId } = await contexto();
+    if (!tenantId) return falha("NAO_AUTENTICADO", "Sem clínica na sessão.");
+    const id = crypto.randomUUID(); // gerado aqui: entra na AAD do envelope (ADR 0002 §6)
+    const doc = dados.documento;
+    const args: ArgsDoCadastro = {
+      p_id: id,
+      p_full_name: dados.nomeCivil,
+      p_social_name: dados.nomeSocial ?? undefined,
+      p_birth_date: dados.nascimento ?? undefined,
+      p_is_incomplete: doc.tipo !== "cpf", // sem CPF, o cadastro fica marcado como incompleto (RN-PAC-02)
+    };
+    const segredos: Record<"phone_enc" | "email_enc" | "cpf_enc" | "foreign_doc_enc", string | null> = {
+      phone_enc: dados.celular ? dados.celular.replace(/\D/g, "") : null,
+      email_enc: dados.email ? normalizeEmail(dados.email) : null,
+      cpf_enc: null,
+      foreign_doc_enc: null,
+    };
+    try {
+      if (doc.tipo === "cpf") {
+        const cpf = normalizeCpf(doc.numero);
+        if (!cpf || !isValidCpf(cpf)) return falha("VALIDACAO", "CPF inválido.", [{ campo: "cpf", code: "VALIDACAO" }]);
+        args.p_cpf_hmac = paraBytea(cpfHmac(cpf));
+        args.p_cpf_masked = maskCpf(cpf);
+        segredos.cpf_enc = cpf;
+      } else if (doc.tipo === "estrangeiro") {
+        const rne = normalizeRne(doc.numero);
+        if (!rne || !isValidRne(rne)) return falha("VALIDACAO", "RNE inválido.", [{ campo: "rne", code: "VALIDACAO" }]);
+        args.p_foreign_doc_type = doc.especie;
+        args.p_foreign_doc_hmac = paraBytea(rneHmac(rne));
+        args.p_foreign_doc_masked = maskRne(rne);
+        segredos.foreign_doc_enc = rne;
+      }
+      // um envelope só para a linha: documento e contato com a mesma DEK, cada um com a AAD da sua coluna
+      const envelope = await selarColunas(segredos, { tenant: "", tabela: "network.person" }, id);
+      args.p_cpf_enc = envelope.colunas.cpf_enc;
+      args.p_foreign_doc_enc = envelope.colunas.foreign_doc_enc;
+      args.p_phone_enc = envelope.colunas.phone_enc;
+      args.p_email_enc = envelope.colunas.email_enc;
+      args.p_dek_wrapped = envelope.dek_wrapped ?? undefined;
+      args.p_kek_version = envelope.kek_version ?? undefined;
+    } catch {
+      return malFormado("pacientes.cifra_indisponivel"); // pepper ou chave ausente: INTERNO, sem dado no log
+    }
+    const { data, error } = await api.rpc("patient_register", args);
+    if (error) return falhaDoBanco(error);
+    const lido = z.array(z.object({ person_id: z.uuid(), reused: z.boolean() })).length(1).safeParse(data);
+    if (!lido.success) return malFormado("pacientes.cadastro_fora_do_formato");
+    return ok({ id: lido.data[0]!.person_id, reaproveitado: lido.data[0]!.reused });
   },
   async atualizar() {
     return falha("INDISPONIVEL", "Edição ainda não ligada.");
