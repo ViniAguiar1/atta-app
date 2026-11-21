@@ -140,9 +140,11 @@ begin
     values (r.id, v_tenant, r.person_id, r.provisional_id, v_link, r.tipo,
       least(greatest(now() + r.desvio, v_inicio), v_fim), least(greatest(now() + r.desvio, v_inicio), v_fim) + interval '1 hour');
   end loop;
+  -- todos com o Serviço, para a coluna Procedimento não sair vazia (Frontend 4, ao ligar a Agenda); sem modelo de documento
+  -- no seed, todos continuam sem documento
   insert into atta_in.appointment_clinic_service (tenant_id, appointment_id, clinic_service_id)
-  values (v_tenant, 'eeee0000-0000-4000-8000-000000000502', 'eeee0000-0000-4000-8000-000000000401'),
-         (v_tenant, 'eeee0000-0000-4000-8000-000000000508', 'eeee0000-0000-4000-8000-000000000401');
+  select v_tenant, a.id, 'eeee0000-0000-4000-8000-000000000401'
+  from atta_in.appointment a where a.tenant_id = v_tenant and a.id::text like 'eeee0000-0000-4000-8000-0000000005%';
 
   -- os estados pela máquina de estados (a mesma função das ações da recepção e do check-in)
   perform atta_in.apply_transition('eeee0000-0000-4000-8000-000000000503', v_tenant, 'em_preenchimento');
