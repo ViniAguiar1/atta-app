@@ -46,22 +46,43 @@ export function mascararCelular(valor: string): string {
 /** Nome: mínimo de dois termos (§16.6). */
 export const nomeValido = (v: string) => v.trim().split(/\s+/).filter((p) => p.length > 1).length >= 2;
 
-// CNPJ, CEP e telefone fixo (Perfil da Clínica, PDD §10.4.1: "CNPJ (com máscara)", "CEP", "Telefone fixo").
-function digitoDoCnpj(base: string): number {
-  const pesos = base.length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-  const soma = [...base].reduce((total, d, i) => total + Number(d) * pesos[i]!, 0);
+// CNPJ, inclusive o alfanumérico (IN RFB 2.229/2024; decisão do CTO e contrato do TL na ADR 0001, §"CNPJ alfanumérico"):
+// 12 primeiros caracteres em [0-9A-Z] e os 2 dígitos verificadores numéricos. O DV é o módulo 11 de sempre, com o valor de
+// cada caractere = código ASCII − 48 (0–9 continuam 0–9; A=17 … Z=42), então o CNPJ só de dígitos não muda. Um lugar só:
+// a tela, o servidor do Next e o ATTA Sign usam estas funções.
+const PESOS_DV1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+const PESOS_DV2 = [6, ...PESOS_DV1];
+
+function dvDoCnpj(base: string, pesos: readonly number[]): number {
+  const soma = [...base].reduce((total, c, i) => total + (c.charCodeAt(0) - 48) * pesos[i]!, 0);
   const resto = soma % 11;
   return resto < 2 ? 0 : 11 - resto;
 }
 
+/** A forma guardada: maiúsculas, sem pontuação ("12.abc.345/01de-35" → "12ABC34501DE35"). */
+export const normalizarCnpj = (valor: string) => valor.toUpperCase().replace(/[^0-9A-Z]/g, "");
+
 export function cnpjValido(valor: string): boolean {
-  const cnpj = soDigitos(valor);
-  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
-  const d1 = digitoDoCnpj(cnpj.slice(0, 12));
-  const d2 = digitoDoCnpj(cnpj.slice(0, 12) + d1);
+  const cnpj = normalizarCnpj(valor);
+  if (!/^[0-9A-Z]{12}[0-9]{2}$/.test(cnpj) || /^(.)\1{13}$/.test(cnpj)) return false;
+  const d1 = dvDoCnpj(cnpj.slice(0, 12), PESOS_DV1);
+  const d2 = dvDoCnpj(cnpj.slice(0, 12) + d1, PESOS_DV2);
   return cnpj.endsWith(`${d1}${d2}`);
 }
 
+/** "AA.AAA.AAA/AAAA-DD", também enquanto digita (máscara progressiva, com letra nas 12 primeiras posições). */
+export function formatarCnpj(valor: string): string {
+  const c = normalizarCnpj(valor).slice(0, 14);
+  let s = c.slice(0, 2);
+  if (c.length > 2) s += `.${c.slice(2, 5)}`;
+  if (c.length > 5) s += `.${c.slice(5, 8)}`;
+  if (c.length > 8) s += `/${c.slice(8, 12)}`;
+  if (c.length > 12) s += `-${c.slice(12)}`;
+  return s;
+}
+
+// CEP, telefone fixo e e-mail do Perfil da Clínica (PDD §10.4.1). O mascararCnpj ainda é só numérico: a tela do Perfil passa
+// ao formatarCnpj (com letra) no PR seguinte, e ele sai daqui.
 /** Máscara de digitação: 00.000.000/0000-00. */
 export function mascararCnpj(valor: string): string {
   const d = soDigitos(valor).slice(0, 14);
