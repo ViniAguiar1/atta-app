@@ -11,8 +11,6 @@ export const SUBABAS_DE_DOCUMENTOS = [
 
 export function SubabasDeDocumentos({ ativa }: { ativa: (typeof SUBABAS_DE_DOCUMENTOS)[number]["href"] }) {
   return (
-    <div className="text-[0.8125rem]">
-      <Subabas rotulo={textos.subabas.rotulo} itens={SUBABAS_DE_DOCUMENTOS} ativa={ativa} />
-    </div>
+    <Subabas rotulo={textos.subabas.rotulo} itens={SUBABAS_DE_DOCUMENTOS} ativa={ativa} />
   );
 }
