@@ -49,7 +49,7 @@ export function DialogoVincular({ modelo, aoFechar, aoSalvar }: Props) {
           <legend className="sr-only">{textos.colunas.procedimentos}</legend>
           {servicos.map((s) => (
             <label key={s.id} className="flex min-h-11 items-center gap-3">
-              <input type="checkbox" checked={marcados.has(s.id)} onChange={() => alternar(s.id)} className="size-4" />
+              <input type="checkbox" checked={marcados.has(s.id)} onChange={() => alternar(s.id)} className="size-4 accent-brand" />
               <span>
                 {s.nome}
                 {!s.ativo && <span className="ml-2 text-xs text-text-secondary">{textos.vincular.inativo}</span>}
