@@ -3,8 +3,11 @@ begin;
 select plan(5);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A');
+insert into billing.checkout (tenant_id, reservation_id, reserved_at, window_start, attempts)
+values ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000c1', now(), now(), 1);
 select set_config('role', 'service_role', true);
-select api.billing_subscription_register('00000000-0000-4000-8000-00000000000a', 'asaas', 'cus_a', 'sub_a', 39900);
+select api.billing_subscription_register('00000000-0000-4000-8000-00000000000a', 'asaas', 'cus_a', 'sub_a', 39900,
+                                         '00000000-0000-4000-8000-0000000000c1');
 
 create function pg_temp.evento(p_id text, p_url text) returns text language sql as $$
   select api.billing_apply_event('asaas', p_id, 'PAYMENT_CREATED', 'sub_a', 'pay_' || p_id, 'pendente',

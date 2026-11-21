@@ -66,13 +66,18 @@ export type Database = {
 "billing_apply_event":
 { Args: { "p_due_date"?: string,"p_event_id": string,"p_event_type": string,"p_invoice_url"?: string,"p_payment_external_id"?: string,"p_payment_status"?: string,"p_provider": string,"p_subscription_external_id": string,"p_subscription_removed"?: boolean,"p_value_cents"?: number }; Returns: string
                            },
+"billing_checkout_begin":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "reservation_id": string,"subscription_id": string,"tenant_id": string
+            }[]
+                           },
 "billing_subscription_get":
 { Args: { "p_tenant_id": string }; Returns: {
               "customer_external_id": string,"id": string,"provider": string,"status": string,"subscription_external_id": string,"value_cents": number
             }[]
                            },
 "billing_subscription_register":
-{ Args: { "p_customer_external_id": string,"p_provider": string,"p_subscription_external_id": string,"p_tenant_id": string,"p_value_cents": number }; Returns: string
+{ Args: { "p_customer_external_id": string,"p_provider": string,"p_reservation_id": string,"p_subscription_external_id": string,"p_tenant_id": string,"p_value_cents": number }; Returns: string
                            },
 "billing_subscription_status":
 { Args: Record<PropertyKey, never>; Returns: {

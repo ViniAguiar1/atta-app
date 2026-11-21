@@ -43,6 +43,16 @@ returns text language sql as $$
   select api.billing_apply_event('asaas', p_evt, 'PAYMENT_X', p_sub, p_pay, p_status, date '2026-12-21', 39900,
                                  'https://sandbox.asaas.com/i/ficticio')
 $$;
+-- reserva da contratação como dona (o caminho do titular está no 03_checkout)
+create function pg_temp.reservar(p_tenant uuid) returns uuid language sql security definer as $$
+  insert into billing.checkout (tenant_id, reservation_id, reserved_at, window_start, attempts)
+  values (p_tenant, gen_random_uuid(), now(), now(), 1)
+  on conflict (tenant_id) do update set reservation_id = excluded.reservation_id, reserved_at = excluded.reserved_at
+  returning reservation_id
+$$;
+create function pg_temp.checkout_b() returns billing.checkout language sql security definer as $$
+  select * from billing.checkout where tenant_id = '00000000-0000-4000-8000-00000000000b'
+$$;
 do $$ begin
   execute format('grant execute on all functions in schema %I to service_role, authenticated', pg_my_temp_schema()::regnamespace);
 end $$;
@@ -57,7 +67,7 @@ select ok(not has_table_privilege('service_role', 'billing.subscription', 'SELEC
 select ok(not has_function_privilege('authenticated',
             'api.billing_apply_event(text, text, text, text, text, text, date, integer, text, boolean)', 'EXECUTE')
           and not has_function_privilege('authenticated',
-            'api.billing_subscription_register(uuid, text, text, text, integer)', 'EXECUTE')
+            'api.billing_subscription_register(uuid, text, text, text, integer, uuid)', 'EXECUTE')
           and not has_function_privilege('anon', 'api.billing_subscription_status()', 'EXECUTE'),
           'webhook e registro só para o servidor; status não abre para anon');
 
@@ -68,22 +78,25 @@ select is(pg_temp.cobranca('evt_1', 'pay_1', 'pendente'), 'repetido', 'o mesmo e
 
 -- registro -----------------------------------------------------------------------------------------------------------
 select ok(api.billing_subscription_register('00000000-0000-4000-8000-00000000000a', 'asaas', 'cus_ficticio_a',
-                                            'sub_ficticio_a', 39900) is not null, 'assinatura registrada');
+                                            'sub_ficticio_a', 39900,
+                                            pg_temp.reservar('00000000-0000-4000-8000-00000000000a')) is not null,
+          'assinatura registrada');
 select is((pg_temp.evt('evt_1')).state, 'aplicado', 'o evento pendente é aplicado no registro');
 select is(((pg_temp.pag('pay_1')).status, (pg_temp.pag('pay_1')).value_cents), ('pendente'::text, 39900),
           'e a 1ª cobrança aparece');
 select is((pg_temp.sub('00000000-0000-4000-8000-00000000000a')).status, 'aguardando_pagamento',
           'sem pagamento, a assinatura aguarda');
 select is(api.billing_subscription_register('00000000-0000-4000-8000-00000000000a', 'asaas', 'cus_ficticio_a',
-                                            'sub_ficticio_a', 39900),
+                                            'sub_ficticio_a', 39900, null),
           (pg_temp.sub('00000000-0000-4000-8000-00000000000a')).id, 'repetir o registro devolve o mesmo id');
 select throws_ok($$ select api.billing_subscription_register('00000000-0000-4000-8000-00000000000a', 'asaas',
-                    'cus_ficticio_a', 'sub_outra', 39900) $$, 'P0001', 'ATTA-IN-0002',
+                    'cus_ficticio_a', 'sub_outra', 39900, null) $$, 'P0001', 'ATTA-IN-0002',
                  'uma 2ª assinatura na mesma clínica é recusada');
 select throws_ok($$ select api.billing_subscription_register('00000000-0000-4000-8000-0000000000ff', 'asaas',
-                    'cus_x', 'sub_x', 39900) $$, 'P0001', 'ATTA-IN-0001', 'clínica inexistente é recusada');
+                    'cus_x', 'sub_x', 39900, gen_random_uuid()) $$, 'P0001', 'ATTA-IN-0001', 'clínica inexistente é recusada');
+select pg_temp.reservar('00000000-0000-4000-8000-00000000000b');
 select throws_ok($$ select api.billing_subscription_register('00000000-0000-4000-8000-00000000000b', 'asaas',
-                    'cus_b', 'sub_b', 0) $$, '23514', null, 'valor zero é recusado');
+                    'cus_b', 'sub_b', 0, (select reservation_id from pg_temp.checkout_b())) $$, '23514', null, 'valor zero é recusado');
 select is(pg_temp.trilha('billing.subscription_register'), 1, 'o registro vai para a trilha uma vez');
 
 -- pagamento, atraso e ordem dos eventos ------------------------------------------------------------------------------
