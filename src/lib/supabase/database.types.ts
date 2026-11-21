@@ -159,7 +159,7 @@ export type Database = {
                            },
 "professional_list":
 { Args: Record<PropertyKey, never>; Returns: {
-              "council": string,"council_number": string,"council_uf": string,"dek_wrapped": string,"display_name": string,"email_enc": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"invited_at": string,"kek_version": number,"link_id": string,"phone_enc": string,"professional_id": string,"status": string
+              "council": string,"council_number": string,"council_status": string,"council_uf": string,"dek_wrapped": string,"display_name": string,"email_enc": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"invited_at": string,"kek_version": number,"link_id": string,"phone_enc": string,"professional_id": string,"status": string
             }[]
                            },
 "professional_resend_invite":

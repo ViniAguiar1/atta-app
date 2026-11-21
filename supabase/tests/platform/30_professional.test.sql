@@ -1,7 +1,7 @@
 -- MIG-14a (1): profissional sem login. A clínica só convida pelo e-mail (cifrado no vínculo); os dados do profissional
 -- vêm do PROpass (MIG-14b), simulado aqui (PDD v206 §10.4.3; ADR 0001 §1). Dados fictícios: bytes e nomes inventados.
 begin;
-select plan(30);
+select plan(31);
 
 insert into platform.tenant (id, name) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'),
@@ -104,6 +104,9 @@ select ok((select status = 'cadastro_concluido' and display_name = 'Dra. Fictíc
            from api.professional_get('00000000-0000-4000-8000-0000000000c1')), 'depois do PROpass: nome, conselho, WhatsApp e CPF só mascarado');
 select ok((select phone_enc = '\x01a1' and email_enc = '\x01a2' from api.professional_list() where link_id = '00000000-0000-4000-8000-0000000000c1'),
           'a lista traz o WhatsApp e o e-mail (clicar copia)');
+select ok((select council_status is null from api.professional_list() where link_id = '00000000-0000-4000-8000-0000000000c1')
+          and (select council_status is null from api.professional_list() where professional_id is null limit 1) is not false,
+          'a lista traz o estado do conselho (aqui sem conferência), para o Novo agendamento e a Equipe (ADR 0006 §3)');
 select throws_ok($$ select api.professional_resend_invite('00000000-0000-4000-8000-0000000000c1', sha256('link-c1-3'::bytea), sha256('outro@x.test'::bytea), '\x01ee') $$,
                  'P0001', 'ATTA-IN-0001', 'depois do PROpass o e-mail é o do profissional, travado');
 select throws_ok($$ select api.professional_resend_invite('00000000-0000-4000-8000-0000000000c1', sha256('link-c1-4'::bytea)) $$,

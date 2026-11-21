@@ -15,6 +15,8 @@ insert into platform.professional (id, display_name, council, council_uf, counci
                                    email_enc, dek_wrapped, kek_version)
 values ('00000000-0000-4000-8000-0000000003f1', 'Dra. Fictícia Termos', 'cro', 'SP', '54321', sha256('cpf-prof-termos'::bytea),
         '···.···.000-01', '\x01', '\x01', '\x01', 1);
+-- conselho conferido: só regularizado recebe agendamento (ADR 0006 §3)
+update platform.professional set council_status = 'regularizado', council_verified_at = now() where council_status is null;
 insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
                                                envelope_id, dek_wrapped, kek_version, propass_completed_at,
                                                privacy_notice_version, privacy_notice_ack_at)
