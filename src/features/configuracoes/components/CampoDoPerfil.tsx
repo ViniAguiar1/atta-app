@@ -56,6 +56,10 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
   const caixa = useRef<HTMLDialogElement>(null);
   const entrada = useRef<HTMLInputElement>(null);
   const idDoTitulo = useId();
+  const idDoValor = useId();
+  const idDoAviso = useId();
+  // o último valor enviado e ainda sem resposta: Enter seguido de blur não manda o mesmo valor duas vezes
+  const enviando = useRef<string | null>(null);
 
   useEffect(() => {
     const d = caixa.current;
@@ -70,13 +74,15 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
 
   function salvar(texto: string, confirmado = false) {
     const normal = SO_DIGITOS.has(campo) ? soDigitos(texto) : texto.trim();
-    if (normal === salvoAte) return setErro(null);
+    if (normal === salvoAte || normal === enviando.current) return setErro(null);
     if (campo === "cnpj" && normal && !cnpjValido(normal)) return setErro(t.erros.cnpj);
     if (campo === "commercial_email" && normal && !emailValido(normal)) return setErro(t.erros.email);
     if (PROTEGIDOS.has(campo) && !salvoAte && normal && !confirmado) return setAConfirmar(normal);
     setSalvoEm(null);
+    enviando.current = normal;
     executar(async () => {
       const r = await salvarCampoDoPerfil({ campo, valor: normal || null });
+      enviando.current = null;
       if (!r.ok) return setErro(mensagem(r.error, campo));
       setErro(null);
       setSalvoAte(normal);
@@ -135,6 +141,7 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
         <dialog
           ref={caixa}
           aria-labelledby={idDoTitulo}
+          aria-describedby={`${idDoValor} ${idDoAviso}`}
           onCancel={(e) => {
             e.preventDefault();
             fecharConfirmacao();
@@ -144,8 +151,12 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
           <h2 id={idDoTitulo} className="text-titulo font-semibold">
             {t.confirmar.titulo(rotulo)}
           </h2>
-          <p className="mt-3 font-codigo text-sm">{mascara ? mascara(aConfirmar) : aConfirmar}</p>
-          <p className="mt-2 text-text-secondary">{t.confirmar.texto}</p>
+          <p id={idDoValor} className="mt-3 font-codigo text-sm">
+            {mascara ? mascara(aConfirmar) : aConfirmar}
+          </p>
+          <p id={idDoAviso} className="mt-2 text-text-secondary">
+            {t.confirmar.texto}
+          </p>
           <div className="mt-5 flex flex-wrap justify-end gap-2">
             <button type="button" onClick={fecharConfirmacao} className="min-h-11 rounded-md border border-border-functional px-4 font-medium medium:min-h-9">
               {t.confirmar.voltar}
