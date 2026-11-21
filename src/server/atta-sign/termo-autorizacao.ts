@@ -129,10 +129,32 @@ const iso = (d: Date) => d.toISOString(); // sempre em ms e UTC ("…T….mmmZ")
 const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const sha256 = (b: Uint8Array | string) => createHash("sha256").update(b).digest("hex");
 
-function chaveDoAmbiente(): { kid: string; privadaPem: string } {
-  const kid = process.env.ATTA_SEAL_KID;
-  const privadaPem = process.env.ATTA_SEAL_PRIVATE_KEY;
+/**
+ * Impressão digital (sha256 da SPKI DER) da chave de selo de TESTE do CI (tests/fixtures/selo-ci.ts), pública: a prévia
+ * e a produção a recusam, como a KEK de teste do Cofre (CI_TEST_KEK_FINGERPRINT).
+ */
+export const CI_TEST_SEAL_FINGERPRINT = "6fe9f4faa452e7824940aa01aaae15b4d1397df75d1eee2e8e04b15e927a4850";
+
+/**
+ * A chave do selo, do ambiente. Na nuvem (VERCEL_ENV preview ou production) recusa a chave de teste SÓ pela impressão
+ * digital da SPKI derivada da privada (o prefixo do kid não conta: a prévia pode usar um staging-seal-* real), e a chave
+ * ilegível, cuja impressão não dá para conferir. A mensagem nunca ecoa a chave (contrato do Tech Lead, 21/11).
+ */
+export function chaveDoAmbiente(env: Readonly<Record<string, string | undefined>> = process.env): { kid: string; privadaPem: string } {
+  const kid = env.ATTA_SEAL_KID;
+  const privadaPem = env.ATTA_SEAL_PRIVATE_KEY;
   if (!kid || !privadaPem) throw new Error("selo do ATTA Sign sem ATTA_SEAL_KID ou ATTA_SEAL_PRIVATE_KEY");
+  if (env.VERCEL_ENV === "production" || env.VERCEL_ENV === "preview") {
+    let impressao: string | null = null;
+    try {
+      impressao = createHash("sha256").update(createPublicKey(privadaPem).export({ type: "spki", format: "der" })).digest("hex");
+    } catch {
+      impressao = null;
+    }
+    if (impressao === null || impressao === CI_TEST_SEAL_FINGERPRINT) {
+      throw new Error("chave de selo de teste ou inválida não vale na prévia nem na produção");
+    }
+  }
   return { kid, privadaPem };
 }
 
