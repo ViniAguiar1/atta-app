@@ -64,6 +64,7 @@ describe("confirmarPin (action)", () => {
     mocks.confirmarPin.mockResolvedValue({ ok: true, data: { status: "indisponivel" } });
     expect(await confirmarPin({ pin: "2468" })).toEqual({ ok: true, data: { status: "indisponivel" } });
     expect(mocks.apagarGrant).toHaveBeenCalled();
+    expect(mocks.apagarGrant).toHaveBeenCalledWith("professional_boarding"); // o cookie da sessão vive em /boarding
     expect(mocks.apagarLink).toHaveBeenCalled();
   });
 

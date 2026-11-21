@@ -53,6 +53,6 @@ describe("política do grant", () => {
     const o = opcoesDoCookie("patient_checkin", true);
     expect(o).toEqual({ httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 7200 });
     expect("domain" in o).toBe(false);
-    expect(opcoesDoCookie("professional_boarding", false)).toMatchObject({ secure: false, maxAge: 28800 });
+    expect(opcoesDoCookie("professional_boarding", false)).toMatchObject({ secure: false, maxAge: 28800, path: "/boarding" });
   });
 });

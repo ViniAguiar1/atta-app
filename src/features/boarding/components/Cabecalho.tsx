@@ -13,7 +13,7 @@ export function Cabecalho({ resumo }: { resumo: ResumoDoAtendimento }) {
       <TituloDoPasso>{TEXTOS.titulo}</TituloDoPasso>
       <div className="flex flex-col gap-1">
         <p className="text-2xl font-medium">{paciente.nome}</p>
-        <p className="text-text-secondary">{TEXTOS.anos(paciente.idade)}</p>
+        {paciente.idade !== null && <p className="text-text-secondary">{TEXTOS.anos(paciente.idade)}</p>}
       </div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
         <dt className="text-text-secondary">{TEXTOS.rotuloHorario}</dt>

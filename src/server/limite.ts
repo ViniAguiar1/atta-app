@@ -38,6 +38,9 @@ export const LIMITES = {
   /** PROpass, envio dos dados e conferência do conselho: 10 por hora por IP. Junto da revogação do link na 5ª recusa
    * (api.propass_submit), impede que o link vire oráculo de CPF (Tech Lead e Segurança, revisão do #129). */
   propassEnvioPorIp: { bucket: "propass.submit.ip", limite: 10, janelaSegundos: 3600 },
+  /** Boarding Check, PIN: 20 tentativas a cada 15 min por IP, antes do subject e do confirm (Segurança e TL no #273).
+   * O limite por link (5 seguidas: 15 min; 10: revoga) fica no banco; este impede varrer muitos links do mesmo IP. */
+  boardingPinPorIp: { bucket: "boarding.pin.ip", limite: 20, janelaSegundos: 900 },
 } as const satisfies Record<string, PoliticaDeLimite>;
 
 const ROTULO = "atta.ratelimit.v1|";
