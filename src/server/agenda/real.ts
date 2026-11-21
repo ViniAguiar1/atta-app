@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
 import { falha, falhaDoBanco, MENSAGENS, ok, type ErroDoBanco } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import type { Database } from "@/lib/supabase/database.types";
 import { iniciais } from "@/lib/texto/iniciais";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { cpfHmac, normalizeCpf } from "@/server/crypto/cpf";
@@ -57,7 +59,8 @@ const diaDoBanco = z.object({
   local_date: z.iso.date(),
   today_local_date: z.iso.date(),
   timezone: z.string().min(1),
-  data: z.array(linhaDoBanco),
+  // cada linha é conferida à parte: uma linha fora do formato não derruba o dia inteiro
+  data: z.array(z.unknown()),
   page: z.object({ next_cursor: z.string().nullable() }),
 });
 
@@ -100,50 +103,79 @@ export function linhaDaTela(l: z.infer<typeof linhaDoBanco>): LinhaDaAgenda {
   };
 }
 
-// --- Cliente mínimo (o tipo exato vem do database.types.ts quando o MIG-11c entrar) -----------------------------------
+// --- Cliente mínimo ---------------------------------------------------------------------------------------------------
+// Os argumentos são conferidos contra os tipos gerados (database.types.ts, #130). O cliente em si entra por esta interface
+// mínima, que o teste substitui: a assinatura genérica do rpc do supabase-js não encaixa nela sem o cast lá embaixo.
+type FuncoesDaApi = Database["api"]["Functions"];
+type ArgsDoDia = FuncoesDaApi["agenda_day"]["Args"];
+type ArgsDoResumo = FuncoesDaApi["agenda_summary"]["Args"];
 type RespostaDoBanco = PromiseLike<{ data: unknown; error: ErroDoBanco | null }>;
 export type ClienteDaAgenda = {
-  schema(nome: "api"): { rpc(fn: string, args: Record<string, unknown>): RespostaDoBanco };
+  schema(nome: "api"): { rpc(fn: "agenda_day" | "agenda_summary", args: ArgsDoDia | ArgsDoResumo): RespostaDoBanco };
 };
 
-const respostaInvalida = () => falha("INTERNO", MENSAGENS.INTERNO);
+/** Resposta fora do contrato: INTERNO, com o evento no log e nunca o corpo (ele tem nome e CPF mascarado). */
+function foraDoFormato(evento: string) {
+  logger.error(evento, { code: "INTERNO" });
+  return falha("INTERNO", MENSAGENS.INTERNO);
+}
 
-/** Busca única (decisão do Tech Lead): CPF inteiro vira p_cpf_hmac; o resto com 2+ letras vai em p_search. */
-export function argumentosDaBusca(busca: string | undefined): Record<string, string> | null {
+export type Hmac = (cpf: string) => Buffer;
+
+/**
+ * Busca única (decisão do Tech Lead): CPF inteiro vira p_cpf_hmac; o resto com 2+ letras vai em p_search. Devolve null
+ * para termo que não sai (CPF pela metade, 1 letra) e "indisponivel" quando o HMAC falha (pepper ausente ou recusado).
+ */
+export function argumentosDaBusca(
+  busca: string | undefined,
+  hmac: Hmac = cpfHmac,
+): Pick<ArgsDoDia, "p_cpf_hmac" | "p_search"> | null | "indisponivel" {
   const termo = busca?.trim();
   if (!termo) return {};
   if (!termoPronto(termo)) return null; // CPF pela metade ou 1 letra nunca sai (nada de prefixo de CPF)
   const cpf = normalizeCpf(termo);
-  if (cpf) return { p_cpf_hmac: `\\x${cpfHmac(cpf).toString("hex")}` };
-  return { p_search: termo };
+  if (!cpf) return { p_search: termo };
+  try {
+    return { p_cpf_hmac: `\\x${hmac(cpf).toString("hex")}` };
+  } catch {
+    return "indisponivel";
+  }
 }
 
 /** O que já tem leitura real no banco (MIG-11c): o dia e os cards. Todos, Concluídos e avisos vêm depois. */
 export type PortaAgendaReal = Pick<PortaAgenda, "dia" | "resumo">;
 
-export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>): PortaAgendaReal {
+export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>, hmac: Hmac = cpfHmac): PortaAgendaReal {
   return {
     async dia(filtro) {
       const lido = filtroDoDiaSchema.safeParse(filtro);
       if (!lido.success) return falha("VALIDACAO", MENSAGENS.VALIDACAO, [{ campo: "filtro", code: "VALIDACAO" }]);
-      const busca = argumentosDaBusca(lido.data.busca);
+      const busca = argumentosDaBusca(lido.data.busca, hmac);
       if (busca === null) return falha("VALIDACAO", MENSAGENS.VALIDACAO, [{ campo: "busca", code: "VALIDACAO" }]);
-      const { data, error } = await (await cliente()).schema("api").rpc("agenda_day", {
+      if (busca === "indisponivel") return foraDoFormato("agenda.hmac_indisponivel"); // sem o termo no log
+      const args: ArgsDoDia = {
         ...(lido.data.dataLocal ? { p_local_date: lido.data.dataLocal } : {}),
         ...(lido.data.vinculoProfissionalId ? { p_professional_link_id: lido.data.vinculoProfissionalId } : {}),
         ...(lido.data.cursor ? { p_cursor: lido.data.cursor } : {}),
         ...(lido.data.status ? { p_status: lido.data.status } : {}),
         ...(lido.data.semDocumento ? { p_no_document: true } : {}),
         ...busca,
-      });
+      };
+      const { data, error } = await (await cliente()).schema("api").rpc("agenda_day", args);
       if (error) return falhaDoBanco(error);
       const dia = diaDoBanco.safeParse(data);
-      if (!dia.success) return respostaInvalida();
+      if (!dia.success) return foraDoFormato("agenda.dia_fora_do_formato");
+      const linhas = dia.data.data.flatMap((bruta) => {
+        const linha = linhaDoBanco.safeParse(bruta);
+        return linha.success ? [linhaDaTela(linha.data)] : [];
+      });
+      const descartadas = dia.data.data.length - linhas.length;
+      if (descartadas > 0) logger.error("agenda.linha_fora_do_formato", { code: "INTERNO", quantidade: descartadas });
       const resultado: DiaDaAgenda = {
         dataLocal: dia.data.local_date,
         hojeLocal: dia.data.today_local_date,
         fuso: dia.data.timezone,
-        linhas: dia.data.data.map(linhaDaTela),
+        linhas,
         proximoCursor: dia.data.page.next_cursor,
       };
       return ok(resultado);
@@ -152,10 +184,10 @@ export function criarPortaAgendaReal(cliente: () => Promise<ClienteDaAgenda>): P
     async resumo({ vinculoProfissionalId }) {
       const { data, error } = await (await cliente())
         .schema("api")
-        .rpc("agenda_summary", vinculoProfissionalId ? { p_professional_link_id: vinculoProfissionalId } : {});
+        .rpc("agenda_summary", (vinculoProfissionalId ? { p_professional_link_id: vinculoProfissionalId } : {}) satisfies ArgsDoResumo);
       if (error) return falhaDoBanco(error);
       const r = resumoDoBanco.safeParse(data);
-      if (!r.success) return respostaInvalida();
+      if (!r.success) return foraDoFormato("agenda.resumo_fora_do_formato");
       const resumo: ResumoDaAgenda = {
         hojeFaltam: r.data.today_remaining,
         hojeConcluidos: r.data.today_concluded,

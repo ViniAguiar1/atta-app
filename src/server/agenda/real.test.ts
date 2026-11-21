@@ -76,16 +76,23 @@ describe("porta real da agenda: dia", () => {
     expect(r.data.linhas[0]?.acoes).toEqual([{ acao: "editar", desabilitadaPor: "edit_after_checkin" }]);
   });
 
-  it("resposta fora do contrato (os dois ids do paciente, status desconhecido) é INTERNO, sem repassar o corpo", async () => {
-    for (const ruim of [
-      linha({ patient: { person_id: id(1), provisional_patient_id: id(2), display_name: "X Y", cpf_masked: null } }),
-      linha({ status: "liberado" }),
-    ]) {
-      const { porta } = clienteFalso({ data: dia([ruim]), error: null });
-      const r = await porta.dia({});
-      expect(r).toMatchObject({ ok: false, error: { code: "INTERNO" } });
-      expect(JSON.stringify(r)).not.toContain("liberado");
-    }
+  it("linha fora do contrato (os dois ids do paciente, status desconhecido) sai da lista sem derrubar o dia", async () => {
+    const ruins = [
+      linha({ id: id(2), patient: { person_id: id(1), provisional_patient_id: id(2), display_name: "X Y", cpf_masked: null } }),
+      linha({ id: id(3), status: "liberado" }),
+    ];
+    const { porta } = clienteFalso({ data: dia([linha(), ...ruins]), error: null });
+    const r = await porta.dia({});
+    if (!r.ok) throw new Error("esperava ok");
+    expect(r.data.linhas.map((l) => l.id)).toEqual([id(1)]);
+    expect(JSON.stringify(r)).not.toContain("liberado");
+  });
+
+  it("dia fora do contrato é INTERNO, sem repassar o corpo", async () => {
+    const { porta } = clienteFalso({ data: { local_date: "ontem", data: [linha()] }, error: null });
+    const r = await porta.dia({});
+    expect(r).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+    expect(JSON.stringify(r)).not.toContain("Mariana");
   });
 
   it("erro do banco sai por falhaDoBanco, com o reason", async () => {
@@ -108,6 +115,7 @@ describe("porta real da agenda: busca", () => {
   it("nome com 2+ letras vai em p_search; CPF inteiro vira HMAC em hex com \\x, nunca em claro", async () => {
     expect(argumentosDaBusca("Juliana")).toEqual({ p_search: "Juliana" });
     const cpf = argumentosDaBusca("431.572.801-20");
+    if (cpf === null || cpf === "indisponivel") throw new Error("esperava o HMAC");
     expect(Object.keys(cpf ?? {})).toEqual(["p_cpf_hmac"]);
     expect(cpf?.p_cpf_hmac).toMatch(/^\\x[0-9a-f]{64}$/);
     expect(JSON.stringify(cpf)).not.toContain("43157280120");
@@ -130,6 +138,26 @@ describe("porta real da agenda: busca", () => {
     expect(JSON.stringify(args)).not.toContain("43157280120");
     expect(args).toHaveProperty("p_cpf_hmac");
     expect(args).not.toHaveProperty("p_search");
+  });
+});
+
+describe("porta real da agenda: HMAC indisponível", () => {
+  const quebrado = () => {
+    throw new Error("ATTA_CPF_PEPPER ausente ou malformado");
+  };
+
+  it("pepper ausente ou recusado: a busca por CPF devolve INTERNO, sem chamar o banco e sem o CPF no resultado", async () => {
+    expect(argumentosDaBusca("431.572.801-20", quebrado)).toBe("indisponivel");
+    const rpc = vi.fn();
+    const porta = criarPortaAgendaReal(async () => ({ schema: () => ({ rpc }) }) as unknown as ClienteDaAgenda, quebrado);
+    const r = await porta.dia({ busca: "431.572.801-20" });
+    expect(r).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(JSON.stringify(r)).not.toMatch(/431|572|801/);
+  });
+
+  it("a busca por nome não depende do pepper", () => {
+    expect(argumentosDaBusca("Juliana", quebrado)).toEqual({ p_search: "Juliana" });
   });
 });
 
