@@ -84,4 +84,11 @@ describe("MenuDeAcoes", () => {
     render(<MenuDeAcoes itens={[]} paciente="X" aoEscolher={vi.fn()} />);
     expect(screen.queryByRole("button")).toBeNull();
   });
+
+  it("o ⋮ tem alvo de 44 px no celular e 36 px a partir de medium (regra dos padrões)", () => {
+    render(<MenuDeAcoes itens={itens} paciente="Mariana Costa Albuquerque" aoEscolher={vi.fn()} />);
+    const botao = screen.getByRole("button", { name: "Ações de Mariana Costa Albuquerque" });
+    expect(botao.className).toContain("size-11");
+    expect(botao.className).toContain("medium:size-9");
+  });
 });
