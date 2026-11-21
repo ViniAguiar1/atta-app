@@ -38,7 +38,7 @@ select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid
   'tenant_responsible com RLS forçada');
 select ok(not has_table_privilege('authenticated', 'platform.tenant_responsible', 'SELECT')
   and not has_table_privilege('anon', 'platform.tenant_responsible', 'SELECT'), 'responsáveis sem grant (só por função)');
-select ok(not has_function_privilege('anon', 'private.cnpj_is_valid(text)', 'EXECUTE') and not has_function_privilege('anon', 'api.clinic_profile()', 'EXECUTE')
+select ok(not has_function_privilege('authenticated', 'private.cnpj_is_valid(text)', 'EXECUTE') and not has_function_privilege('anon', 'api.clinic_profile()', 'EXECUTE')
   and not has_function_privilege('anon', 'api.clinic_profile_set(text, text)', 'EXECUTE'), 'anon não chama o Perfil');
 
 -- ---------------------------------------------------------------- CNPJ pelo dígito, nos dois formatos
@@ -49,7 +49,7 @@ select ok(not private.cnpj_is_valid('11111111111111'), 'todas as posições igua
 select ok(not private.cnpj_is_valid('12abc34501de35'), 'letra minúscula fica fora da forma guardada');
 select ok(private.cnpj_is_valid('AB12CD34000184') and private.cnpj_is_valid('9XYZ8765000122'), 'outros alfanuméricos gerados são válidos');
 select throws_ok($$ update platform.tenant set cnpj = '41827365000172' where id = '00000000-0000-4000-8000-0000000004f2' $$,
-  '23514', null, 'o próprio check da coluna recusa CNPJ com DV errado');
+  '23514', null, 'o gatilho da coluna recusa CNPJ com DV errado (qualquer caminho de escrita)');
 
 -- ---------------------------------------------------------------- quem lê e quem grava
 select pg_temp.entrar('00000000-0000-4000-8000-0000000004f1', 'COLABORADOR');
