@@ -9,7 +9,7 @@ const BarraDoPainel = (p: Omit<React.ComponentProps<typeof Barra>, "acaoSair">) 
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/painel/configuracoes/agendamentos" }));
 
-const sessao: SessaoDoPainel = { clinica: "Clínica Fictícia", pessoa: { nome: "Ana Exemplo" }, papel: "ADMIN", notificacoes: 3 };
+const sessao: SessaoDoPainel = { clinica: "Clínica Fictícia", pessoa: { nome: "Ana Exemplo" }, papel: "ADMIN", permissoes: [], notificacoes: 3 };
 const modulos = () => within(screen.getByRole("navigation", { name: "Módulos do painel" }));
 
 describe("barra do painel (MIG-40)", () => {

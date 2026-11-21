@@ -28,7 +28,7 @@ export function BarraDoPainel({ sessao, acaoSair, contadores = {} }: Props) {
   const [clara, setClara] = useState(false);
   const caminho = usePathname();
   const ativa = abaAtiva(caminho);
-  const abas = abasDoPapel(sessao.papel);
+  const abas = abasDoPapel(sessao.papel, sessao.permissoes);
 
   const barra = clara ? "border-b border-brand/32 bg-surface-app text-brand" : "bg-brand text-on-brand [&_:focus-visible]:outline-on-brand";
   const abaAtivaCls = clara ? "bg-brand/5 underline decoration-brand/45 decoration-1 underline-offset-8" : "bg-brand-active font-semibold text-on-brand";
