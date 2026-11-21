@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { SENHA, SESSAO_DA_GESTORA } from "./acesso";
+import { INICIO_DO_PAINEL, SENHA, SESSAO_DA_GESTORA } from "./acesso";
 
 // MIG-43: lista de Pacientes (PDD v206 §10, "Pacientes, lista", e §10.1) na porta real, contra o Supabase local com o
 // seed fictício (supabase/seed.sql: 5 pacientes da Clínica Alfa, 1 da Beta). Sem simulado: o contato abre pela KEK de
@@ -18,8 +18,7 @@ test.describe("gestora da Clínica Alfa", () => {
   test.use({ storageState: SESSAO_DA_GESTORA });
 
   test("a aba Pacientes aparece e a lista traz só os pacientes da clínica, em ordem de nome", async ({ page }) => {
-    await page.goto("/painel");
-    await expect(page).toHaveURL(/\/painel\/pacientes$/); // o primeiro módulo pronto
+    await page.goto("/painel/pacientes"); // o /painel abre em Agendamentos (§10.2.2); as abas aparecem sempre
     const aba = page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link", { name: "Pacientes" });
     await expect(aba).toHaveAttribute("aria-current", "page");
     const tabela = page.getByRole("table", { name: "Pacientes da clínica" });
@@ -77,6 +76,7 @@ test("a colaboradora da Alfa vê a mesma lista", async ({ page }) => {
   await page.getByLabel("E-mail").fill("colaboradora.ficticia@exemplo.test");
   await page.getByLabel("Senha", { exact: true }).fill(SENHA);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page).toHaveURL(/\/painel\/pacientes$/);
+  await expect(page).toHaveURL(INICIO_DO_PAINEL);
+  await page.goto("/painel/pacientes");
   await expect(page.getByRole("rowheader")).toHaveCount(DA_ALFA.length);
 });
