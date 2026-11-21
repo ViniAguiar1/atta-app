@@ -1,26 +1,61 @@
 import Link from "next/link";
+import { connection } from "next/server";
+import { Suspense } from "react";
+import { DataState } from "@/components/ui/DataState";
 import { Subabas } from "@/components/ui/Subabas";
+import { ErroDaPasta } from "@/features/pacientes/components/ErroDaPasta";
+import { PastaDoPaciente } from "@/features/pacientes/components/PastaDoPaciente";
+import { abrirPasta } from "@/features/pacientes/pasta";
 import { SUBABAS_DE_PACIENTES } from "@/features/pacientes/subabas";
 import { textos } from "@/features/pacientes/textos";
 
-// Pasta do Paciente sem paciente escolhido (subaba do Simulador ATTA-in, captura 09). A Pasta de um paciente (capturas
-// 12 a 14) entra no próximo item do MIG-43; até lá, a subaba abre o estado vazio, sem dado de mentira. Sem 404: as
-// abas do painel aparecem sempre (decisão do dono, 20/11).
-export default function Page() {
+// Pasta do Paciente (Simulador ATTA-in, capturas 09 e 12; PDD v206 §10: o nome na lista abre a Pasta). O paciente vem
+// em ?paciente=<id> (só o id, nunca nome ou CPF): a rota fica fixa, como as outras do painel. Sem paciente, o estado
+// vazio. Paciente de outra clínica, id qualquer ou id inválido dão o mesmo "não encontrado", sem dizer se a pessoa existe
+// na rede. Sem 404: as abas do painel aparecem sempre (decisão do dono, 20/11).
+type Props = { searchParams: Promise<{ paciente?: string | string[] }> };
+
+export default function Page({ searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="sr-only">{textos.subabas.pasta}</h1>
       <Subabas rotulo={textos.subabas.rotulo} itens={SUBABAS_DE_PACIENTES} ativa="/painel/pacientes/pasta" />
-      <section className="flex flex-col items-start gap-2 rounded-md border border-border bg-surface-raised p-6">
-        <p className="font-sub text-lg text-text-primary">{textos.pasta.vazioTitulo}</p>
-        <p className="text-text-secondary">{textos.pasta.vazioTexto}</p>
-        <Link
-          href="/painel/pacientes"
-          className="mt-2 inline-flex min-h-11 items-center rounded-md border border-border-functional px-5 font-medium text-text-primary hover:bg-surface-card"
-        >
-          {textos.pasta.irParaLista}
-        </Link>
-      </section>
+      <Suspense fallback={<Carregando />}>
+        <Conteudo searchParams={searchParams} />
+      </Suspense>
     </div>
+  );
+}
+
+async function Conteudo({ searchParams }: Props) {
+  await connection(); // por requisição: a ficha é da clínica da sessão, e cada abertura fica na Auditoria
+  const { paciente } = await searchParams;
+  if (paciente === undefined) return <Aviso titulo={textos.pasta.vazioTitulo} texto={textos.pasta.vazioTexto} />;
+  const ficha = await abrirPasta(paciente);
+  if (ficha.ok) return <PastaDoPaciente ficha={ficha.data} />;
+  if (ficha.error.code === "NAO_ENCONTRADO" || ficha.error.code === "VALIDACAO") return <Aviso titulo={textos.pasta.naoEncontrado} />;
+  return <ErroDaPasta codigo={ficha.error.code} />;
+}
+
+function Aviso({ titulo, texto }: { titulo: string; texto?: string }) {
+  return (
+    <section className="flex flex-col items-start gap-2 rounded-md border border-border bg-surface-raised p-6">
+      <p className="font-sub text-lg text-text-primary">{titulo}</p>
+      {texto && <p className="text-text-secondary">{texto}</p>}
+      <Link
+        href="/painel/pacientes"
+        className="mt-2 inline-flex min-h-11 items-center rounded-md border border-border-functional px-5 font-medium text-text-primary hover:bg-surface-card"
+      >
+        {textos.pasta.irParaLista}
+      </Link>
+    </section>
+  );
+}
+
+function Carregando() {
+  return (
+    <DataState estado={{ tipo: "carregando" }} rotulo={textos.pasta.estado} esqueleto={{ linhas: 8, alturaRem: 2.5 }} vazio={textos.vazio}>
+      {null}
+    </DataState>
   );
 }
