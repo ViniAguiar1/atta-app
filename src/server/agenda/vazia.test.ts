@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { diaSchema, resumoSchema } from "@/features/agenda/schema";
 import { escolherPortaAgenda } from "./porta";
+import { portaAgendaReal } from "./real";
 import { portaAgendaSimulada } from "./simulado";
 import { portaAgendaVazia } from "./vazia";
 
@@ -16,10 +17,19 @@ describe("porta vazia da agenda", () => {
 });
 
 describe("escolha da porta por ambiente", () => {
-  it("produção usa a vazia; prévia, local e CI usam a simulada", () => {
-    expect(escolherPortaAgenda("production")).toBe(portaAgendaVazia);
-    expect(escolherPortaAgenda("preview")).toBe(portaAgendaSimulada);
-    expect(escolherPortaAgenda("development")).toBe(portaAgendaSimulada);
-    expect(escolherPortaAgenda(undefined)).toBe(portaAgendaSimulada);
+  it("o dia e os cards vêm do banco em todos os ambientes", () => {
+    for (const ambiente of ["production", "preview", "development", undefined]) {
+      const porta = escolherPortaAgenda(ambiente);
+      expect(porta.dia).toBe(portaAgendaReal.dia);
+      expect(porta.resumo).toBe(portaAgendaReal.resumo);
+    }
+  });
+
+  it("sem leitura real (Todos, Concluídos, avisos): vazia na produção, simulada na prévia, no local e no CI", () => {
+    expect(escolherPortaAgenda("production").periodo).toBe(portaAgendaVazia.periodo);
+    expect(escolherPortaAgenda("production").avisos).toBe(portaAgendaVazia.avisos);
+    for (const ambiente of ["preview", "development", undefined]) {
+      expect(escolherPortaAgenda(ambiente).concluidos).toBe(portaAgendaSimulada.concluidos);
+    }
   });
 });

@@ -9,6 +9,7 @@ import type {
   ListaDaAgenda,
   ResumoDaAgenda,
 } from "@/features/agenda/schema";
+import { portaAgendaReal } from "./real";
 import { portaAgendaSimulada } from "./simulado";
 import { portaAgendaVazia } from "./vazia";
 
@@ -31,12 +32,14 @@ export type PortaAgenda = {
 };
 
 /**
- * Escolha da porta, só aqui e nunca na tela (regra de stage do Tech Lead Frontend): sem leitura real, a produção usa a
- * vazia (estado vazio do design, sem dado de mentira) e a prévia, o local e o CI usam a simulada. A porta real (MIG-11c)
- * entra no lugar das duas quando o api.agenda_day estiver na main.
+ * Escolha da porta, só aqui e nunca na tela (regra de stage do Tech Lead Frontend): o que já tem leitura real no banco
+ * (o dia e os cards, MIG-11c) usa a real em todos os ambientes; o resto (Todos, Concluídos e avisos, que esperam o
+ * api.agenda_range e o agenda_alerts do Backend 2) usa a vazia na produção (estado vazio do design, sem dado de mentira)
+ * e a simulada na prévia, no local e no CI.
  */
 export function escolherPortaAgenda(ambiente = process.env.VERCEL_ENV): PortaAgenda {
-  return ambiente === "production" ? portaAgendaVazia : portaAgendaSimulada;
+  const semLeituraReal = ambiente === "production" ? portaAgendaVazia : portaAgendaSimulada;
+  return { ...semLeituraReal, dia: portaAgendaReal.dia, resumo: portaAgendaReal.resumo };
 }
 
 export const portaAgenda: PortaAgenda = escolherPortaAgenda();
