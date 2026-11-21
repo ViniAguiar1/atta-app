@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { CartaoDeSecao } from "@/components/ui/CartaoDeSecao";
 import { DataState } from "@/components/ui/DataState";
 import type { Resultado } from "@/lib/errors";
 import type { ChaveDeParametro, Parametro } from "@/server/configuracoes/porta";
@@ -9,8 +10,8 @@ import type { DadosDeAgendamentos } from "../queries";
 import { textos as t } from "../textos";
 import { CaixaDeParametro } from "./CaixaDeParametro";
 import { CampoDeParametro } from "./CampoDeParametro";
-import { Cartao } from "./Cartao";
 import { CelularesDoFluxo } from "./CelularesDoFluxo";
+import { IconeAusencia, IconeConfirmacao, IconeFluxo, IconeLink, IconeMensagens } from "./icones";
 
 // Configurações › Agendamentos (MIG-42; PDD v206 §10.2.1, §15.5 e §16.3; Simulador ATTA-in, captura 02). Os valores vêm
 // do servidor (settings_screen), já com padrão e limites; a tela não repete regra. Ordem dos cartões do simulador
@@ -48,7 +49,7 @@ export function TelaAgendamentos({ resultado }: { resultado: Resultado<DadosDeAg
       </h2>
       <DataState estado={estado} rotulo={t.agendamentos.rotulo} esqueleto={{ linhas: 5, alturaRem: 12 }} vazio={{ titulo: t.agendamentos.vazio }}>
         <div className="flex flex-col gap-4">
-          <Cartao icone="link" titulo={t.link.titulo} subtitulo={t.link.subtitulo} texto={t.link.texto}>
+          <CartaoDeSecao nivel={3} icone={<IconeLink />} titulo={t.link.titulo} subtitulo={t.link.subtitulo} texto={t.link.texto}>
             <div className="grid gap-3 medium:grid-cols-2 large:grid-cols-4">
               {campo("link_envio_antecedencia_h", t.link.envio)}
               {campo("link_validade_apos_h", t.link.validade)}
@@ -59,21 +60,21 @@ export function TelaAgendamentos({ resultado }: { resultado: Resultado<DadosDeAg
               <strong className="font-semibold">{total.destaque}</strong>
               {total.detalhe}
             </p>
-          </Cartao>
-          <Cartao icone="confirmacao" titulo={t.confirmacao.titulo} texto={t.confirmacao.texto}>
+          </CartaoDeSecao>
+          <CartaoDeSecao nivel={3} icone={<IconeConfirmacao />} titulo={t.confirmacao.titulo} texto={t.confirmacao.texto}>
             <div className="max-w-xs">{campo("janela_de_confirmacao_h", t.confirmacao.campo)}</div>
-          </Cartao>
-          <Cartao icone="fluxo" titulo={t.fluxo.titulo} subtitulo={t.fluxo.subtitulo} texto={t.fluxo.texto}>
+          </CartaoDeSecao>
+          <CartaoDeSecao nivel={3} icone={<IconeFluxo />} titulo={t.fluxo.titulo} subtitulo={t.fluxo.subtitulo} texto={t.fluxo.texto}>
             {fluxo?.tipo === "bool" && (
               <CaixaDeParametro parametro={fluxo} rotulo={t.fluxo.habilitar} ajuda={t.fluxo.habilitado} aoSalvar={atualizar} />
             )}
             {resultado?.ok && <CelularesDoFluxo inicial={resultado.data.celulares} />}
-          </Cartao>
-          <Cartao icone="ausencia" titulo={t.ausencia.titulo} subtitulo={t.ausencia.subtitulo}>
+          </CartaoDeSecao>
+          <CartaoDeSecao nivel={3} icone={<IconeAusencia />} titulo={t.ausencia.titulo} subtitulo={t.ausencia.subtitulo}>
             <div className="max-w-sm">{campo("tolerancia_da_ausencia_min", t.ausencia.campo, t.ausencia.opcao)}</div>
             <p className="text-text-secondary">{t.ausencia.texto}</p>
-          </Cartao>
-          <Cartao icone="mensagens" titulo={t.envio.titulo} texto={t.envio.texto} />
+          </CartaoDeSecao>
+          <CartaoDeSecao nivel={3} icone={<IconeMensagens />} titulo={t.envio.titulo} texto={t.envio.texto} />
         </div>
       </DataState>
     </section>
