@@ -1,6 +1,6 @@
 -- MIG-11c: leitura da Agenda (api.agenda_day e api.agenda_summary) e "Confirmar agendamento". Dados fictícios.
 begin;
-select plan(29);
+select plan(30);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'), ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
 insert into network.person (id, full_name, social_name, cpf_hmac, cpf_masked, cpf_enc, dek_wrapped, kek_version)
@@ -59,6 +59,15 @@ create function pg_temp.hora(p_dias int, p_hora int) returns timestamptz languag
          at time zone 'America/Sao_Paulo'
 $$;
 -- agenda direto como postgres (o caminho do painel tem teste no 07_appointment)
+-- as linhas de hoje como a agenda as monta, com o Concluído (ele fica fora do agenda_day, mas as ações dele valem para a
+-- visão Concluídos)
+create function pg_temp.linhas_de_hoje() returns table (id uuid, row_json jsonb) language sql security definer as $$
+  select r.id, r.row_json
+  from private.agenda_rows('00000000-0000-4000-8000-00000000000a',
+                           ((now() at time zone 'America/Sao_Paulo')::date::timestamp at time zone 'America/Sao_Paulo'),
+                           (((now() at time zone 'America/Sao_Paulo')::date + 1)::timestamp at time zone 'America/Sao_Paulo'),
+                           null) r
+$$;
 create function pg_temp.agendar(p_id uuid, p_inicio timestamptz, p_type text default 'consulta',
                                 p_modality text default 'presencial',
                                 p_person uuid default '00000000-0000-4000-8000-0000000000e1', p_prov uuid default null)
@@ -112,7 +121,8 @@ select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'COLABORADOR');
 select ok((select (r ->> 'local_date')::date = (now() at time zone 'America/Sao_Paulo')::date
                   and r ->> 'timezone' = 'America/Sao_Paulo' and r -> 'page' ->> 'next_cursor' is null
            from api.agenda_day() r), 'o dia padrão é hoje no fuso da clínica, com timezone e página');
-select is((select jsonb_array_length(api.agenda_day() -> 'data')), 3, 'hoje: os 3 agendamentos do dia');
+select is((select jsonb_array_length(api.agenda_day() -> 'data')), 2,
+          'hoje: os 2 agendamentos do dia em aberto; o Concluído sai do Hoje (PDD §10.2.2)');
 select ok((select (e ->> 'late')::boolean from jsonb_array_elements(api.agenda_day() -> 'data') e
            where e ->> 'id' = '00000000-0000-4000-8000-00000000a001'), 'Agendado com o horário passado: atrasado (calculado no banco)');
 select ok((select e -> 'patient' ->> 'display_name' = 'Mari' and e -> 'patient' ->> 'cpf_masked' = '···.···.247-25'
@@ -129,9 +139,11 @@ select ok((select e -> 'allowed_actions' @> '[{"action": "marcar_ausente"}, {"ac
                   and not e -> 'allowed_actions' @> '[{"action": "concluir_pela_recepcao"}]'::jsonb
            from jsonb_array_elements(api.agenda_day() -> 'data') e
            where e ->> 'id' = '00000000-0000-4000-8000-00000000a001'), 'ações do Agendado de hoje pela tabela do §10.2.2');
-select ok((select e -> 'allowed_actions' = '[{"action": "envios_dos_links", "disabled_reason": null}, {"action": "enviar_termos", "disabled_reason": null}, {"action": "detalhes", "disabled_reason": null}]'::jsonb
-           from jsonb_array_elements(api.agenda_day() -> 'data') e
-           where e ->> 'id' = '00000000-0000-4000-8000-00000000a003'), 'ações do Concluído: envios, enviar termos e detalhes');
+select ok((select r.row_json -> 'allowed_actions' = '[{"action": "envios_dos_links", "disabled_reason": null}, {"action": "enviar_termos", "disabled_reason": null}, {"action": "detalhes", "disabled_reason": null}]'::jsonb
+           from pg_temp.linhas_de_hoje() r where r.id = '00000000-0000-4000-8000-00000000a003'),
+          'ações do Concluído (para a visão Concluídos): envios, enviar termos e detalhes');
+select throws_ok($$ select api.agenda_day(p_status => array['concluido']) $$, 'P0001', 'ATTA-IN-0001',
+                 'o Hoje não filtra por Concluído: ele está na visão Concluídos');
 select ok((select e -> 'allowed_actions' @> '[{"action": "fluxo_alternativo"}, {"action": "fluxo_impresso"}]'::jsonb
            from jsonb_array_elements(api.agenda_day() -> 'data') e
            where e ->> 'id' = '00000000-0000-4000-8000-00000000a002'),
@@ -145,8 +157,8 @@ select ok((select e -> 'allowed_actions' @> '[{"action": "fluxo_impresso"}]'::js
 select is((select jsonb_array_length(api.agenda_day(p_status => array['em_preenchimento']) -> 'data')), 1,
           'filtro por estado (card Check-in)');
 select is((select jsonb_array_length(api.agenda_day(p_search => 'Provis') -> 'data')), 1, 'busca por nome');
-select is((select jsonb_array_length(api.agenda_day(p_cpf_hmac => sha256('cpf-e1'::bytea)) -> 'data')), 2,
-          'busca por CPF (HMAC do servidor): os dois agendamentos de hoje da mesma paciente');
+select is((select jsonb_array_length(api.agenda_day(p_cpf_hmac => sha256('cpf-e1'::bytea)) -> 'data')), 1,
+          'busca por CPF (HMAC do servidor): o agendamento em aberto de hoje da paciente (o Concluído dela está nos Concluídos)');
 select throws_ok($$ select api.agenda_day(p_search => 'x') $$, 'P0001', 'ATTA-IN-0001', 'busca de 1 letra é recusada');
 select throws_ok($$ select api.agenda_day(p_status => array['outro']) $$, 'P0001', 'ATTA-IN-0001', 'estado fora dos 7');
 
