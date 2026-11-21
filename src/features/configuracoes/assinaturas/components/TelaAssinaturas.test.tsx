@@ -18,6 +18,7 @@ const DADOS: ConfiguracaoDeAssinatura = {
     cnpj: "11.222.333/0001-81",
     rt: { nome: "Dra. Ana Exemplo", conselho: "crm", uf: "SP", numero: "000000" },
   },
+  rtCompleto: true,
 };
 const abrir = (dados: ConfiguracaoDeAssinatura | null = DADOS) => render(<TelaAssinaturas resultado={{ ok: true, data: dados }} />);
 const preview = () => screen.getByRole("region", { name: "Preview do ATTA Sign" });
@@ -46,7 +47,7 @@ describe("Configurações › Assinaturas & Validade (PDD §10.4.2, captura 46)"
   });
 
   it("o que falta no Perfil aparece como —, nunca inventado", () => {
-    abrir({ modelo: null, chancela: { nomeFantasia: "Clínica Exemplo", razaoSocial: null, cnpj: null, rt: null } });
+    abrir({ modelo: null, chancela: { nomeFantasia: "Clínica Exemplo", razaoSocial: null, cnpj: null, rt: null }, rtCompleto: false });
     expect(preview()).toHaveTextContent("— · —");
     expect(preview()).toHaveTextContent("Responsável Técnico: —");
     expect(preview()).toHaveTextContent("Partes institucionais: —");
@@ -79,6 +80,16 @@ describe("Configurações › Assinaturas & Validade (PDD §10.4.2, captura 46)"
     await userEvent.click(screen.getByRole("radio", { name: /Profissional do Atendimento/ }));
     await waitFor(() => expect(hash()).not.toBe(antes));
     expect(hash()).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("sem RT no Perfil, avisa só quando o modelo inclui o RT; salvar continua permitido", async () => {
+    const semRt = { ...DADOS, rtCompleto: false, chancela: { ...DADOS.chancela, rt: null } };
+    acoes.salvarModelo.mockResolvedValue({ ok: true, data: { ...semRt, modelo: "profissional_apenas" } });
+    abrir(semRt);
+    expect(screen.getByRole("note")).toHaveTextContent("Falta o Responsável Técnico.");
+    await userEvent.click(screen.getByRole("radio", { name: /Profissional do Atendimento/ }));
+    expect(acoes.salvarModelo).toHaveBeenCalledWith({ modelo: "profissional_apenas" });
+    await waitFor(() => expect(screen.queryByRole("note")).toBeNull());
   });
 
   it("não há violação do axe", async () => {

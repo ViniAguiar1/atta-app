@@ -68,6 +68,10 @@ export const textos = {
     fimDoDocumento: "Fim do documento", // simulador
     semDado: "—", // regra do stage: o que falta aparece como travessão
   },
+  semRt: {
+    destaque: "Falta o Responsável Técnico.", // provisório (rt_complete = false; CTO, 21/11)
+    texto: "O modelo escolhido inclui a assinatura do RT, e o Perfil da Clínica ainda não tem RT. Os documentos só ficam definitivos depois que ele for cadastrado em Perfil da Clínica.", // provisório (PDD §10.4.1, CA-E01-02)
+  },
   salvo: "Modelo salvo", // provisório (anúncio para leitor de tela)
   erros: {
     SEM_PERMISSAO: "Só o gestor da clínica muda as Configurações.", // provisório (o mesmo das outras seções)

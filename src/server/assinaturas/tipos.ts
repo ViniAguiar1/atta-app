@@ -11,7 +11,13 @@ export type RtDaChancela = { nome: string | null; conselho: string | null; uf: s
 export type Chancela = { nomeFantasia: string | null; razaoSocial: string | null; cnpj: string | null; rt: RtDaChancela | null };
 
 export type ConfiguracaoDeAssinatura = {
-  /** null = clínica ainda sem modelo escolhido (o padrão de clínica nova está em aberto com o CTO) */
+  /** a clínica nova nasce com rt_profissional (PDD §16 e §10.4.2, conferido pelo Backend 6 e o CTO, 21/11) */
   modelo: ModeloDeAssinatura | null;
   chancela: Chancela;
+  /** rt_complete do banco: false = o Perfil ainda não tem RT. Salvar qualquer modelo é aceito; a trava fica na
+   *  consolidação do documento (PDD §10.4.1, CA-E01-02). A tela só avisa. */
+  rtCompleto: boolean;
 };
+
+/** modelos em que o RT assina: sem RT no Perfil, a tela avisa */
+export const MODELOS_COM_RT: readonly ModeloDeAssinatura[] = ["rt_apenas", "rt_profissional"];
