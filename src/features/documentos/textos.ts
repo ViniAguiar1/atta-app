@@ -79,7 +79,7 @@ export const textos = {
   },
   vincular: {
     titulo: (t: string) => `Procedimentos de "${t}"`, // provisório
-    texto: "O modelo vale para os procedimentos marcados (PDD recomenda um termo por procedimento).", // provisório (PDD §10.3.1)
+    texto: "O modelo vale para os procedimentos marcados.", // provisório (PDD §10.3.1)
     inativo: "inativo", // provisório
     semServicos: "A clínica ainda não tem Serviços cadastrados. Cadastre em Configurações › Serviços.", // provisório
     salvar: "Salvar procedimentos", // provisório
