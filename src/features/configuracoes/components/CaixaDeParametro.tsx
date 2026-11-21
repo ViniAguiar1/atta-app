@@ -35,7 +35,7 @@ export function CaixaDeParametro({ parametro, rotulo, ajuda, aoSalvar }: Props) 
   return (
     <div>
       {/* o label envolve a linha inteira: o alvo de clique vai além da caixa de 20 px (Guia §3, 44 px) */}
-      <label htmlFor={id} className="flex cursor-pointer items-start gap-3 rounded-md border border-border-functional bg-surface-card p-3">
+      <label htmlFor={id} className="flex items-start gap-3 rounded-md border border-border-functional bg-surface-card p-3">
         <input
           id={id}
           type="checkbox"

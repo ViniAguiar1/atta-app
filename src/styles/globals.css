@@ -60,6 +60,33 @@ main.sobre-marca {
     outline-offset: 2px;
   }
 
+  /* Mãozinha em tudo que é clicável: o Tailwind 4 tirou o cursor: pointer padrão dos botões (pedido do dono, 21/11).
+     :where() zera a especificidade, então uma utilidade (cursor-*) na peça sempre ganha. */
+  :where(
+      button,
+      [role="button"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="option"],
+      [role="checkbox"],
+      [role="switch"],
+      [role="radio"],
+      summary,
+      label[for],
+      select,
+      input[type="checkbox"],
+      input[type="radio"],
+      input[type="file"],
+      a[href]
+    ) {
+    cursor: pointer;
+  }
+
+  /* Desabilitado: "não permitido". Vem depois da regra acima e com a mesma especificidade (zero), então ganha dela. */
+  :where(:disabled, [aria-disabled="true"]) {
+    cursor: not-allowed;
+  }
+
   /* Movimento reduzido: toda transição e animação cai para ~0 ms (planning/05 §6 e §9). */
   @media (prefers-reduced-motion: reduce) {
     *,
