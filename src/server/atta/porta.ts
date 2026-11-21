@@ -11,7 +11,7 @@ export type ResumoDosDados = {
   membros: number | null; // api.team_list, só ADMIN (para o COLABORADOR, null)
   procedimentos: number | null; // atta_in.clinic_service vivos
   modelos: number | null; // api.atta_in_template_list
-  pacientes: number | null; // api.patient_list, total_active
+  pacientes: number | null; // api.patient_count (o total_active da lista, sem trazer linha nem gravar leitura na trilha)
   documentosAssinados: number | null; // sem API ainda (MIG-21)
   respostasDeSaude: number | null; // sem API ainda (MIG-22); só da clínica, nunca da rede
   registrosDeAuditoria: number | null; // sem API ainda
