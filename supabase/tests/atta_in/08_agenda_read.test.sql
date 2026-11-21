@@ -1,6 +1,6 @@
 -- MIG-11c: leitura da Agenda (api.agenda_day e api.agenda_summary) e "Confirmar agendamento". Dados fictícios.
 begin;
-select plan(30);
+select plan(31);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'), ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
 insert into network.person (id, full_name, social_name, cpf_hmac, cpf_masked, cpf_enc, dek_wrapped, kek_version)
@@ -15,6 +15,8 @@ insert into platform.professional (id, display_name, council, council_uf, counci
                                    email_enc, dek_wrapped, kek_version)
 values ('00000000-0000-4000-8000-0000000000f1', 'Dra. Fictícia', 'cro', 'SP', '12345', sha256('cpf-prof'::bytea),
         '···.···.000-01', '\x01', '\x01', '\x01', 1);
+-- conselho conferido: só regularizado recebe agendamento (ADR 0006 §3)
+update platform.professional set council_status = 'regularizado', council_verified_at = now() where council_status is null;
 insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
                                                envelope_id, dek_wrapped, kek_version, propass_completed_at,
                                                privacy_notice_version, privacy_notice_ack_at)
@@ -85,6 +87,10 @@ returns void language sql security definer as $$
                                    appointment_type, modality, starts_at, ends_at)
   values (p_id, '00000000-0000-4000-8000-00000000000a', p_person, p_prov, '00000000-0000-4000-8000-0000000000d1', p_type, p_modality, p_inicio,
           p_inicio + interval '1 hour')
+$$;
+create function pg_temp.conselho(p_status text) returns void language sql security definer as $$
+  update platform.professional set council_status = p_status,
+    council_verified_at = case when p_status = 'regularizado' then now() end where id = '00000000-0000-4000-8000-0000000000f1'
 $$;
 create function pg_temp.pausa() returns void language sql security definer as $$
   insert into atta_in.professional_break (tenant_id, professional_link_id, weekdays, starts_at, ends_at)
@@ -190,6 +196,10 @@ select ok((select n >= 0 from livres_antes), 'horários livres no mês calculado
 select pg_temp.pausa();
 select ok((select (r ->> 'month_free_slots')::int from api.agenda_summary() r) < (select n from livres_antes),
           'a pausa do profissional sai dos horários livres (§10.2.2)');
+select pg_temp.conselho('nao_consultado');
+select is((select (r ->> 'month_free_slots')::int from api.agenda_summary() r), 0,
+          'profissional aguardando conferência do conselho não tem horário livre (ADR 0006 §3)');
+select pg_temp.conselho('regularizado');
 select ok((select (r -> 'confirmation' ->> 'agendados')::int = 2 and (r -> 'confirmation' ->> 'a_confirmar')::int = 2
            from api.agenda_summary() r), 'Confirmação: os dois futuros dentro da janela de 72 h estão a confirmar');
 
