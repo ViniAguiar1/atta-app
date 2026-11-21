@@ -14,7 +14,8 @@ export const UFS = [
 ] as const;
 
 export const dadosSchema = z.object({
-  nome: z.string().trim().refine(nomeValido),
+  // sem "{{" nem "}}": o texto do termo usa esses marcadores, e o servidor recusaria (Segurança, revisão do #240)
+  nome: z.string().trim().refine(nomeValido).refine((n) => !n.includes("{{") && !n.includes("}}")),
   cpf: z.string().transform(soDigitos).refine(cpfValido),
   whatsapp: z.string().transform(soDigitos).refine(celularValido),
   conselho: z.enum(CONSELHOS),
