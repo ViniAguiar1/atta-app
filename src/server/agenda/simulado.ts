@@ -3,6 +3,7 @@ import { falhaDeValidacao, ok } from "@/lib/errors";
 import { iniciais } from "@/lib/texto/iniciais";
 import { maskCpf } from "@/server/crypto/cpf";
 import {
+  entradaDaAcaoSchema,
   filtroDoDiaSchema,
   filtroDoPeriodoSchema,
   filtroDosConcluidosSchema,
@@ -232,6 +233,13 @@ export const portaAgendaSimulada: PortaAgenda = {
     const hojeLocal = hojeNaClinica();
     const linhas = linhasConcluidas(hojeLocal, lido.data.periodo).filter((l) => casaNome(lido.data.busca, l));
     return ok({ hojeLocal, fuso: FUSO, linhas, proximoCursor: null });
+  },
+
+  // Sem estado no servidor (a Vercel não garante a mesma instância): a simulada só confere a entrada.
+  async acao(entrada) {
+    const lida = entradaDaAcaoSchema.safeParse(entrada);
+    if (!lida.success) return falhaDeValidacao(lida.error.issues);
+    return ok(null);
   },
 
   async avisos() {

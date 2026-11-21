@@ -4,6 +4,7 @@ import { falhaDeValidacao, type Resultado } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { portaAgenda } from "@/server/agenda/porta";
 import {
+  entradaDaAcaoSchema,
   filtroDoDiaSchema,
   filtroDoPeriodoSchema,
   filtroDosConcluidosSchema,
@@ -42,5 +43,14 @@ export async function buscarConcluidos(entrada: unknown): Promise<Resultado<List
   if (!filtro.success) return falhaDeValidacao(filtro.error.issues);
   const resultado = await portaAgenda.concluidos(filtro.data);
   if (!resultado.ok) logger.warn("agenda.concluidos_falhou", { code: resultado.error.code });
+  return resultado;
+}
+
+/** Ação da linha (PDD §10.2.2): Zod .strict na borda; o banco confere estado e permissão. Log só com a ação e o code. */
+export async function executarAcao(entrada: unknown): Promise<Resultado<null>> {
+  const lida = entradaDaAcaoSchema.safeParse(entrada);
+  if (!lida.success) return falhaDeValidacao(lida.error.issues);
+  const resultado = await portaAgenda.acao(lida.data);
+  if (!resultado.ok) logger.warn("agenda.acao_falhou", { acao: lida.data.acao, code: resultado.error.code });
   return resultado;
 }

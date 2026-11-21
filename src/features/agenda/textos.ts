@@ -6,6 +6,14 @@ import type { EstadoDoDocumento } from "./schema";
 /** Número que ainda não existe (porta vazia, sem leitura real): o traço do design (ORDEM do Tech Lead Frontend). */
 export const SEM_NUMERO = "—";
 
+/** Erro de uma ação da linha, pelo reason do banco (ADR 0001 §5) ou pelo code; todos provisórios. */
+const ERROS_DA_ACAO: Record<string, string> = {
+  "ATTA-IN-0003:status": "Este atendimento mudou de estado. A lista foi atualizada; confira antes de tentar de novo.", // provisório
+  "ATTA-IN-0003:absent_day": "Só dá para marcar como ausente no dia do atendimento.", // provisório
+  SEM_PERMISSAO: "Você não tem permissão para esta ação.", // provisório
+  NAO_ENCONTRADO: "Este atendimento não foi encontrado. Atualize a lista.", // provisório
+};
+
 export const textos = {
   titulo: "Agendamentos", // PDD §10.2 (h1 só para o leitor de tela; a aba já mostra o nome)
   rotuloDaLista: "Agendamentos de hoje", // provisório (nome da região para o leitor de tela)
@@ -41,6 +49,14 @@ export const textos = {
     todos: "Todos", // PDD §10.2.2
     concluidos: "Concluídos", // PDD §10.2.2
   },
+  acoes: {
+    feito: {
+      confirmar: "Agendamento confirmado.", // provisório
+      marcar_ausente: "Paciente marcado como ausente.", // provisório
+    },
+    erro: (codigo: string) =>
+      ERROS_DA_ACAO[codigo] ?? "Não foi possível concluir a ação. Atualize a lista e tente de novo.", // provisório
+  },
   cards: {
     rotulo: "Resumo do dia", // provisório (nome da região para o leitor de tela)
     hoje: {
@@ -70,6 +86,7 @@ export const textos = {
     profissional: "Profissional", // PDD §10.2.2
     documentos: "Documentos", // PDD §10.2.2
     status: "Status", // PDD §10.2.2
+    acoes: "Ações", // PDD §10.2.2 (coluna; nome só para o leitor de tela, como na captura 01)
   },
   status: textosDaAgenda.status, // PDD §10.2.2 (fonte única em src/components/agenda/textos.ts)
   atrasado: textosDaAgenda.atrasado, // PDD §10.2.2

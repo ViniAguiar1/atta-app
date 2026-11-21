@@ -102,6 +102,20 @@ export const resumoSchema = z.object({
 });
 export type ResumoDaAgenda = z.infer<typeof resumoSchema>;
 
+/**
+ * Ações que gravam (PDD §10.2.2, "Ações por estado"), contrato aprovado pelo Tech Lead: união por ação, .strict e id
+ * uuid. O banco confere de novo se a ação vale para o estado (ATTA-IN-0003:status). Cancelar e Concluir pela recepção
+ * (com motivo e justificativa) e Reabrir preenchimento (motivo obrigatório) entram nos PRs seguintes.
+ */
+export const entradaDaAcaoSchema = z.discriminatedUnion("acao", [
+  z.object({ acao: z.literal("confirmar"), id: z.uuid() }).strict(),
+  z.object({ acao: z.literal("marcar_ausente"), id: z.uuid() }).strict(),
+]);
+export type EntradaDaAcao = z.infer<typeof entradaDaAcaoSchema>;
+
+/** Ações com destino na tela (as outras do allowed_actions esperam a RPC e não viram botão). */
+export const ACOES_COM_DESTINO = ["confirmar", "marcar_ausente"] as const satisfies readonly EntradaDaAcao["acao"][];
+
 /** Avisos do topo da lista (§10.2.2). O ✓ confirma; o aviso volta quando a impressão digital muda. */
 export const TIPOS_DE_AVISO = ["sem_documento", "atrasado", "pronto_sem_boarding_check", "ausentes"] as const;
 export const avisoSchema = z.object({
