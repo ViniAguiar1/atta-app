@@ -14,6 +14,9 @@ export type Database = {
             "agenda_day":
 { Args: { "p_cpf_hmac"?: string,"p_cursor"?: string,"p_local_date"?: string,"p_no_document"?: boolean,"p_professional_link_id"?: string,"p_search"?: string,"p_status"?: (string)[] }; Returns: Json
                            },
+"agenda_range":
+{ Args: { "p_cpf_hmac"?: string,"p_cursor"?: string,"p_from"?: string,"p_no_document"?: boolean,"p_period"?: string,"p_professional_link_id"?: string,"p_search"?: string,"p_status"?: (string)[],"p_to"?: string,"p_view": string }; Returns: Json
+                           },
 "agenda_summary":
 { Args: { "p_professional_link_id"?: string }; Returns: Json
                            },
