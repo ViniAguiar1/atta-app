@@ -27,7 +27,7 @@ describe("profissionais fictícios da agenda da nuvem", () => {
       expect(isValidCpf(cpfDe(p.cpfBase))).toBe(true);
       expect(cpfsPacientes.has(p.cpfBase)).toBe(false);
       expect(p.email).toMatch(/@exemplo\.test$/);
-      expect(p.registro).toMatch(/^000\d{3}$/);
+      expect(p.registro).toMatch(/^9999\d{2}$/);
     }
   });
 
@@ -45,6 +45,7 @@ describe("profissionais fictícios da agenda da nuvem", () => {
       expect(cpfHmac).toBe(`\\x${hex(cpfHmacWith(pepperCpf, cpf))}`);
       expect(emailHmac).toBe(`\\x${hex(emailHmacWith(pepperCpf, p.email))}`);
       expect(mascara).toBe(maskCpf(cpf));
+      expect(prof.slice(-2)).toEqual(["regularizado", "now()"]);
       const dek = await cofre.unwrapDataKey({ kekVersion: Number(kekVersion), blob: Buffer.from(dekWrapped!.slice(2), "hex") },
         { tenant_id: "", table: "platform.professional", column: "dek", id: p.id });
       const abrir = (v: string, col: string) => open(Buffer.from(v.slice(2), "hex"), dek, columnAad("", "platform.professional", col, p.id)).toString("utf8");
