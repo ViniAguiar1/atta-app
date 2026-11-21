@@ -101,6 +101,60 @@ end;
 $$;
 revoke all on function private.grant_use(uuid, text) from public, anon, authenticated, service_role;
 
+-- O emissor e o leitor genéricos (#59) não servem ao download dos PDFs: o grant nasce só no api.propass_submit e cada
+-- uso passa pelo private.grant_use. Mesma assinatura e mesmos grants; só as linhas da trava são novas.
+create or replace function api.grant_issue(
+  p_purpose text,
+  p_secret_hash bytea,
+  p_tenant_id uuid,
+  p_appointment_id uuid,
+  p_person_id uuid default null,
+  p_professional_link_id uuid default null
+) returns uuid
+language plpgsql volatile security definer set search_path = ''
+as $$
+declare
+  v_ceiling interval := (select ceiling from private.grant_policy(p_purpose));
+  v_id uuid;
+begin
+  -- o emissor genérico é só dos links de atendimento; PROpass e download dos PDFs nascem nas funções deles (convite e
+  -- api.propass_submit), presos ao vínculo (Segurança, revisão do #312)
+  if v_ceiling is null or p_purpose not in ('patient_checkin', 'professional_boarding') then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'purpose';
+  end if;
+  if p_secret_hash is null or octet_length(p_secret_hash) <> 32 or p_tenant_id is null or p_appointment_id is null then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'grant';
+  end if;
+  insert into platform.access_grant (purpose, tenant_id, person_id, professional_link_id, appointment_id, secret_hash,
+                                     expires_at)
+  values (p_purpose, p_tenant_id, p_person_id, p_professional_link_id, p_appointment_id, p_secret_hash, now() + v_ceiling)
+  returning id into v_id;
+  perform audit.record_event('grant.issue', 'platform.access_grant', v_id,
+    jsonb_build_object('purpose', p_purpose, 'appointment_id', p_appointment_id), null, null, p_tenant_id);
+  return v_id;
+end;
+$$;
+
+create or replace function api.grant_resolve(p_secret_hash bytea, p_purpose text)
+returns table (grant_id uuid, tenant_id uuid, person_id uuid, professional_link_id uuid, appointment_id uuid,
+               expires_at timestamptz)
+language plpgsql volatile security definer set search_path = ''
+as $$
+#variable_conflict use_column
+declare
+  v platform.access_grant;
+begin
+  select * into v from platform.access_grant g where g.secret_hash = p_secret_hash;
+  -- o download dos PDFs conta cada uso pelo private.grant_use (teto de 20); resolver sem contar não é caminho dele
+  -- (Segurança, revisão do #312): a mesma resposta de vencido
+  if not found or p_purpose = 'propass_download' or not private.grant_is_valid(v.id, p_purpose) then
+    raise exception using errcode = '42501', message = 'ATTA-AUTH-0004', detail = 'grant';
+  end if;
+  update platform.access_grant g set last_used_at = now() where g.id = v.id;
+  return query select v.id, v.tenant_id, v.person_id, v.professional_link_id, v.appointment_id, v.expires_at;
+end;
+$$;
+
 -- api.propass_submit ganha p_download_secret_hash (no fim, com default): mudar a assinatura pede drop + create. O corpo
 -- é o do 20261121114105, mais a conferência do tamanho do hash e a emissão do grant no envio gravado.
 drop function api.propass_submit(bytea, uuid, text, text, text, text, bytea, text, bytea, bytea, bytea, bytea, bytea,
