@@ -132,3 +132,8 @@ function Aviso({ titulo, texto }: { titulo: string; texto?: string }) {
 export function SemValidade() {
   return <Aviso titulo={TEXTOS.linkSemValidade} texto={TEXTOS.linkSemValidadeAjuda} />;
 }
+
+/** Falha do servidor ao abrir o convite (INTERNO, INDISPONIVEL): aviso genérico, sem código, e não "convite não vale". */
+export function Indisponivel() {
+  return <Aviso titulo={TEXTOS.indisponivel} />;
+}
