@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PUT } from "@/app/api/importacao/simulado/route";
 import { escolherPortaImportacao } from "./porta";
-import { portaImportacaoSimulada } from "./simulado";
+import { FORA_DO_MODELO, portaImportacaoSimulada } from "./simulado";
 import { portaImportacaoVazia } from "./vazia";
 
 describe("escolha da porta", () => {
@@ -64,7 +64,7 @@ describe("porta simulada", () => {
     if (!pequeno.ok) throw new Error();
     expect(await s.previa(pequeno.data.import_id)).toMatchObject({
       ok: false,
-      error: { code: "VALIDACAO", message: "fora_do_modelo", fields: [{ campo: "arquivo" }] },
+      error: { code: "VALIDACAO", message: FORA_DO_MODELO, fields: [{ campo: "arquivo" }] },
     });
   });
 });

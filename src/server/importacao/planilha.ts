@@ -54,7 +54,8 @@ function normalizarNascimento(valor: string, hoje: Date): string | undefined {
   m = m ? null : /^(\d{4})-(\d{2})-(\d{2})/.exec(t);
   if (m) iso = `${m[1]}-${m[2]}-${m[3]}`;
   // data que o Excel virou número de série (dias desde 30/12/1899)
-  if (!iso && /^\d{4,5}$/.test(t))
+  // 5 dígitos = número de série do Excel (de 1927 em diante); 4 dígitos é um ano solto e vai em branco
+  if (!iso && /^\d{5}$/.test(t))
     iso = new Date(Date.UTC(1899, 11, 30) + Number(t) * 86_400_000).toISOString().slice(0, 10);
   if (!iso) return undefined;
   const d = new Date(`${iso}T00:00:00Z`);
@@ -101,6 +102,8 @@ export function analisarPlanilha(
     const nomeCompleto = celula(iNome).replace(/\s+/g, " ");
     const cpfCru = celula(iCpf);
     if (!nomeCompleto) return void errors.push({ line, code: "nome_ausente" });
+    // o mesmo teto do cadastro na rede (2 a 200 caracteres)
+    if (nomeCompleto.length < 2 || nomeCompleto.length > 200) return void errors.push({ line, code: "nome_invalido" });
     if (!cpfCru) return void errors.push({ line, code: "cpf_ausente" });
     const cpf = normalizarCpf(cpfCru);
     if (!cpfValido(cpf)) return void errors.push({ line, code: "cpf_invalido" });

@@ -10,6 +10,8 @@ import type { PortaImportacao } from "./porta";
  * prévia passa uma planilha fictícia (CPFs gerados, nomes inventados) pela mesma validação da real.
  */
 const PREFIXO_FORA = "sim-fora-do-modelo-";
+/** Mensagem em português e sem dado (ADR 0001 §5); a tela reconhece o caso pelo campo "arquivo". */
+export const FORA_DO_MODELO = "A planilha está fora do modelo. Baixe o modelo de novo e preencha a aba Pacientes.";
 const HOJE = new Date("2026-11-21T12:00:00Z");
 
 // planilha fictícia: 6 linhas que cobrem os casos do PDD §10.1 (CPFs gerados, válidos só pelo dígito)
@@ -70,9 +72,12 @@ export const portaImportacaoSimulada: PortaImportacao = {
   },
   async previa(importId) {
     if (importId.startsWith(PREFIXO_FORA))
-      return falha("VALIDACAO", "fora_do_modelo", [{ campo: "arquivo", code: "VALIDACAO" }]);
+      return falha("VALIDACAO", FORA_DO_MODELO, [{ campo: "arquivo", code: "VALIDACAO" }]);
     const a = analisarPlanilha(["Leia primeiro", "Pacientes"], CABECALHO, LINHAS, HOJE);
-    if (!a.ok) return falha("VALIDACAO", a.motivo, [{ campo: "arquivo", code: "VALIDACAO" }]);
+    if (!a.ok)
+      return a.motivo === "linhas_demais"
+        ? falha("LIMITE", "A planilha passa do limite de linhas.")
+        : falha("VALIDACAO", FORA_DO_MODELO, [{ campo: "arquivo", code: "VALIDACAO" }]);
     return ok({ total: a.total, valid: a.validos.length, errors: a.errors, blanked: a.blanked });
   },
   async confirmar() {
