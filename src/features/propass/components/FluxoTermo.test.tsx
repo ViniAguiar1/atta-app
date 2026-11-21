@@ -46,7 +46,7 @@ describe("PROpass: termo, senha e envio", () => {
   afterEach(cleanup);
 
   it("sem assinatura não segue; com assinatura e senha, envia tudo de uma vez e conclui", async () => {
-    acoes.enviarPropass.mockResolvedValue({ ok: true, data: { status: "ok" } });
+    acoes.enviarPropass.mockResolvedValue({ ok: true, data: { status: "ok", codigoAtta: "ATTA-7K3M-Q9PX-2HDV" } });
     await ateOTermo();
     await userEvent.click(screen.getByRole("button", { name: "Assinar o termo" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Desenhe sua assinatura no quadro.");
@@ -70,6 +70,11 @@ describe("PROpass: termo, senha e envio", () => {
     const { leitura } = acoes.enviarPropass.mock.calls[0]![0];
     expect(Date.parse(leitura.abertoEm)).toBeLessThanOrEqual(Date.parse(leitura.rolagemCompletaEm)); // os momentos do "Leia até o fim"
     expect(screen.getByText(/só agenda seus atendimentos depois dessa conferência/)).toBeInTheDocument();
+    // o Código ATTA do Termo, com o link para a verificação pública (§18); sem a trava, o envio vai sem versão do Aviso
+    const codigo = screen.getByRole("region", { name: "Código ATTA do seu Termo de Autorização" });
+    expect(codigo).toHaveTextContent("ATTA-7K3M-Q9PX-2HDV");
+    expect(screen.getByRole("link", { name: "Conferir na verificação pública" })).toHaveAttribute("href", "/verificar/ATTA-7K3M-Q9PX-2HDV");
+    expect(acoes.enviarPropass.mock.calls[0]![0].avisoDePrivacidade).toBeNull();
   });
 
   it("recusa de identidade fica na senha com o aviso; falha ao carregar o termo é erro genérico, sem quadro", async () => {
@@ -99,7 +104,7 @@ describe("PROpass: termo, senha e envio", () => {
   });
 
   it("quem já tem a senha do Boarding Check conclui do próprio termo, sem o passo da senha", async () => {
-    acoes.enviarPropass.mockResolvedValue({ ok: true, data: { status: "ok" } });
+    acoes.enviarPropass.mockResolvedValue({ ok: true, data: { status: "ok", codigoAtta: "ATTA-7K3M-Q9PX-2HDV" } });
     await ateOTermo();
     // o passo 2 do servidor disse para usar a senha que já existe
     cleanup();

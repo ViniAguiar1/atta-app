@@ -11,6 +11,8 @@ const HASH_DO_LINK = hashDoSegredo(LINK_PROPASS_SIMULADO) as Buffer;
 const REGISTRO_QUE_NAO_CONFERE = "999999";
 const REGISTRO_NAO_CONSULTADO = "888888"; // o que a produção devolve enquanto a R20 estiver aberta
 const REGISTRO_COM_FALHA = "777777"; // simula uma falha do servidor ao montar o termo (erro genérico)
+/** Código no formato do ATTA Sign, fictício: não verifica nada. */
+const CODIGO_FICTICIO = "ATTA-0000-0000-0000";
 const CPF_RECUSADO = "11144477735"; // simula a recusa de identidade no envio
 const REGISTRO_COM_SENHA = "666666"; // simula o profissional que já tem a senha do Boarding Check
 const valido = (hash: Buffer) => timingSafeEqual(hash, HASH_DO_LINK);
@@ -39,7 +41,7 @@ export const portaPropassSimulada: PortaPropass = {
   async enviar(hashDoLink, envio) {
     if (!valido(hashDoLink)) return SEM_LINK;
     if (envio.dados.cpf === CPF_RECUSADO) return ok({ status: "recusado" });
-    return ok({ status: "ok" });
+    return ok({ status: "ok", codigoAtta: CODIGO_FICTICIO });
   },
 };
 
