@@ -41,6 +41,10 @@ export const LIMITES = {
   /** Boarding Check, PIN: 20 tentativas a cada 15 min por IP, antes do subject e do confirm (Segurança e TL no #273).
    * O limite por link (5 seguidas: 15 min; 10: revoga) fica no banco; este impede varrer muitos links do mesmo IP. */
   boardingPinPorIp: { bucket: "boarding.pin.ip", limite: 20, janelaSegundos: 900 },
+  /** Boarding Check, abrir o atendimento: 60 a cada 15 min por sessão. Cada abertura grava boarding.open na trilha; a
+   * sessão é um segredo de 256 bits (sem varredura), então o limite só evita que um recarregar em laço encha a trilha
+   * (nota do TL no #330). Um profissional de verdade abre poucas vezes. */
+  boardingAbrirPorSessao: { bucket: "boarding.open.session", limite: 60, janelaSegundos: 900 },
 } as const satisfies Record<string, PoliticaDeLimite>;
 
 const ROTULO = "atta.ratelimit.v1|";

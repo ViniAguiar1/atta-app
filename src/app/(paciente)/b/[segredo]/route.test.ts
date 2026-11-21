@@ -8,11 +8,12 @@ const chamar = () => GET(new Request(`http://127.0.0.1/b/${SEGREDO}`), { params:
 afterEach(() => vi.unstubAllEnvs());
 
 describe("GET /b/[segredo]", () => {
-  it("na produção, com a porta simulada, responde 404 sem cookie", async () => {
+  it("na produção, com a porta real, guarda o link e manda para /boarding", async () => {
     vi.stubEnv("VERCEL_ENV", "production");
     const r = await chamar();
-    expect(r.status).toBe(404);
-    expect(r.headers.get("set-cookie")).toBeNull();
+    expect(r.status).toBe(303);
+    expect(r.headers.get("location")).toBe("/boarding");
+    expect(r.headers.get("set-cookie")).toMatch(/atta_boarding_link=.*Path=\/boarding/i);
   });
 
   it("na prévia, guarda o link e manda para /boarding", async () => {

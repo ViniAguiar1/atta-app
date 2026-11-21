@@ -196,3 +196,36 @@ select private.propass_issue('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0
 insert into documents.seal_key (kid, public_key_spki, valid_from)
 values ('staging-seal-ci-teste', '\x302a300506032b6570032100985fbf55b622f0072959e4d53a9c52d0729b6dc42027c153db8b90ecfea96834', '2026-01-01T00:00:00Z')
 on conflict (kid) do nothing;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- MIG-23 (parte 3b): um Boarding Check pronto para o e2e contra o banco no CI e o `pnpm dev` (no molde do convite do
+-- PROpass acima). Segredo do link e PIN FIXOS e conhecidos (o repo é público), em tests/fixtures/boarding-local.ts; aqui
+-- só o sha256 do segredo e o pin_mac. Vale só no local e no CI: o pin_mac é do pepper de TESTE do PIN, que a prévia e a
+-- produção recusam, e src/server/boarding/seed-local.test.ts prova as travas.
+-- - PIN da Dra. Renata Albuquerque: pin_mac = HMAC(pepper de teste, 'atta.pin.v1|<professional_id>|<PIN>'), pelo
+--   src/server/pin, versão 1 (a mesma que o api.boarding_confirm_pin confere).
+-- - Consulta de AMANHÃ às 10:00 no fuso da clínica, da Carla Siqueira, levada a Pronto pela máquina de estados: fora de
+--   "Hoje", para não mexer nos números do e2e da Agenda.
+-- - O link sai pelas funções do app (api.grant_issue e api.grant_mark_sent, que a fila de mensagens chama quando o
+--   WhatsApp sai): vale 8 h a partir do reset, e o PIN certo o consome (um fluxo completo por `db reset`).
+-- ---------------------------------------------------------------------------------------------------------------
+insert into platform.professional_pin (professional_id, pin_mac, pin_mac_version) values
+  ('eeee0000-0000-4000-8000-000000000301', '\x57e5f04848c55c3fa9b25ba4106b5f7f288572a8950c2524681ec5a3aee923a5', 1);
+
+do $$
+declare
+  v_tenant constant uuid := 'eeee0000-0000-4000-8000-000000000001';
+  v_atendimento constant uuid := 'eeee0000-0000-4000-8000-000000000509';
+  v_inicio timestamptz;
+begin
+  select ((now() at time zone t.timezone)::date + 1 + time '10:00') at time zone t.timezone into v_inicio
+  from platform.tenant t where t.id = v_tenant;
+  insert into atta_in.appointment (id, tenant_id, person_id, professional_link_id, appointment_type, starts_at, ends_at)
+  values (v_atendimento, v_tenant, 'eeee0000-0000-4000-8000-000000000102', 'eeee0000-0000-4000-8000-000000000311',
+          'consulta', v_inicio, v_inicio + interval '1 hour');
+  perform atta_in.apply_transition(v_atendimento, v_tenant, 'em_preenchimento');
+  perform atta_in.apply_transition(v_atendimento, v_tenant, 'pronto');
+  perform api.grant_mark_sent(api.grant_issue('professional_boarding',
+    '\xa632f6278309962ec53414733d0e9c0194b98f882abcdc0508cfd935528cae96'::bytea, v_tenant, v_atendimento, null,
+    'eeee0000-0000-4000-8000-000000000311'));
+end $$;

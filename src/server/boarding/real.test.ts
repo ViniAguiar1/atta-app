@@ -120,6 +120,14 @@ describe("confirmarPin", () => {
 });
 
 describe("abrir", () => {
+  it("o limite leve por sessão vem antes do banco; passou dele, nem abre (e o hash não vai cru ao limitador)", async () => {
+    const { p, chamadas } = porta({}, { limite: false });
+    expect(await p.abrir(SESSAO)).toMatchObject({ ok: false, error: { code: "LIMITE" } });
+    expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit"]);
+    expect(chamadas[0]!.args).toMatchObject({ p_bucket: "boarding.open.session", p_limit: 60, p_window_seconds: 900 });
+    expect(JSON.stringify(chamadas[0]!.args)).not.toContain(SESSAO.toString("hex"));
+  });
+
   const linha = {
     clinic_name: "Clínica Fictícia Sessão", patient_name: "Paciente Social Fictícia", patient_age: 34,
     starts_at_local: "10:00", appointment_type: "avaliacao", attended_count: 2, absent_count: 1, status: "em_atendimento",
@@ -137,7 +145,8 @@ describe("abrir", () => {
         comparecimento: { atendimentos: 2, ausencias: 1 },
       },
     });
-    expect(chamadas).toEqual([{ fn: "boarding_open", args: { p_session_hash: hex(SESSAO) } }]);
+    expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit", "boarding_open"]); // o limite leve vem antes
+    expect(chamadas[1]).toEqual({ fn: "boarding_open", args: { p_session_hash: hex(SESSAO) } });
   });
 
   it("sem data de nascimento, a idade fica nula", async () => {

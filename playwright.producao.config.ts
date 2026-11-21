@@ -1,8 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // e2e de PRODUÇÃO (job "build + e2e com axe", depois do e2e normal): o app buildado e servido com
-// VERCEL_ENV=production. Prova o que só existe na produção, como as rotas com porta simulada (check-in, Boarding
-// Check, /b) responderem 404 (S3-4; stage = produção). Specs em e2e/producao/, uma por jornada, sem login.
+// VERCEL_ENV=production. Prova o que só existe na produção, como as rotas com porta simulada (check-in) responderem
+// 404 e as com porta real (PROpass, Boarding Check) abrirem (S3-4; stage = produção). Specs em e2e/producao/, uma por
+// jornada, sem login.
 // Rodar: VERCEL_ENV=production pnpm build && pnpm test:e2e:producao
 const porta = Number(process.env.PORT_PRODUCAO ?? 3100);
 

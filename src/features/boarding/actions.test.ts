@@ -6,10 +6,12 @@ const mocks = vi.hoisted(() => ({
   gravarGrant: vi.fn(),
   apagarGrant: vi.fn(),
   confirmarPin: vi.fn(),
+  noAr: vi.fn(),
 }));
 vi.mock("@/server/boarding/cookies", () => ({ lerHashDoLink: mocks.lerHashDoLink, apagarLink: mocks.apagarLink }));
 vi.mock("@/server/grant/cookie", () => ({ gravarGrant: mocks.gravarGrant, apagarGrant: mocks.apagarGrant }));
 vi.mock("@/server/boarding/porta", () => ({ portaBoarding: { confirmarPin: mocks.confirmarPin } }));
+vi.mock("@/server/boarding/disponivel", () => ({ boardingNoAr: mocks.noAr }));
 
 import { confirmarPin } from "./actions";
 
@@ -22,6 +24,7 @@ describe("confirmarPin (action)", () => {
     vi.clearAllMocks();
     mocks.lerHashDoLink.mockResolvedValue(HASH_LINK);
     mocks.gravarGrant.mockResolvedValue(HASH_SESSAO);
+    mocks.noAr.mockReturnValue(true);
   });
 
   it("recusa PIN fora do formato sem chamar a porta nem gravar sessão", async () => {
@@ -68,8 +71,8 @@ describe("confirmarPin (action)", () => {
     expect(mocks.apagarLink).toHaveBeenCalled();
   });
 
-  it("na produção, com a porta simulada, recusa sem ler cookie nem chamar a porta", async () => {
-    vi.stubEnv("VERCEL_ENV", "production");
+  it("fora de MODULOS_PRONTOS (a guarda da produção), recusa sem ler cookie nem chamar a porta", async () => {
+    mocks.noAr.mockReturnValue(false);
     expect(await confirmarPin({ pin: "2468" })).toMatchObject({ ok: false, error: { code: "NAO_ENCONTRADO" } });
     expect(mocks.lerHashDoLink).not.toHaveBeenCalled();
     expect(mocks.confirmarPin).not.toHaveBeenCalled();

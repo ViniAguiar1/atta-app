@@ -15,7 +15,7 @@ import { lerHash } from "@/server/grant/cookie";
 export const metadata: Metadata = { title: "Boarding Check · ATTA-in", robots: { index: false, follow: false } };
 
 export default function Pagina() {
-  // porta simulada: 404 na produção, fora do Suspense, antes de qualquer esqueleto (o ambiente é o do build; como na
+  // fora de MODULOS_PRONTOS: 404 na produção, fora do Suspense, antes de qualquer esqueleto (o ambiente é o do build; como na
   // Agenda e em Pacientes)
   if (!boardingNoAr()) notFound();
   return (

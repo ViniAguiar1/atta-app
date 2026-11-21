@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Pagina from "./page";
 
-// Stage = produção (PLANO; S3-4 da Segurança): com a porta simulada, a produção responde 404 antes de qualquer
-// esqueleto; a prévia, o local e o CI abrem a tela, para o QA e os e2e.
+// Stage = produção (PLANO; S3-4 da Segurança): o Boarding Check usa a porta real (MIG-23 parte 3b) e está em
+// MODULOS_PRONTOS, então /boarding abre também na produção. A guarda continua: fora da lista, a produção volta ao 404.
 afterEach(() => vi.unstubAllEnvs());
 
 describe("guarda do /boarding", () => {
-  it("na produção, com a porta simulada, responde 404", () => {
+  it("na produção, com a porta real, abre a tela", () => {
     vi.stubEnv("VERCEL_ENV", "production");
-    expect(() => Pagina()).toThrow();
+    expect(Pagina()).toBeTruthy();
   });
 
   it("na prévia e no local, abre a tela", () => {

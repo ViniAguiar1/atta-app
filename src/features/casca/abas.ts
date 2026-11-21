@@ -26,7 +26,8 @@ export const ABAS: Aba[] = [
  * PLANO "Abas e fidelidade ao simulador"), e a tela sem dado real mostra o estado vazio do design pela porta vazia
  * (modelo: src/server/agenda/porta.ts, #142), sem 404 e sem dado de mentira.
  */
-export const MODULOS_PRONTOS: readonly string[] = ["/propass"]; // PROpass com a porta real (MIG-55, #247)
+// PROpass (MIG-55, #247) e Boarding Check (MIG-23 parte 3b) com a porta real
+export const MODULOS_PRONTOS: readonly string[] = ["/propass", "/boarding"];
 
 /**
  * Se uma tela de fora do painel pode abrir: na produção, só com a porta real (está em MODULOS_PRONTOS); fora da

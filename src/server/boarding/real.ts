@@ -16,8 +16,8 @@ import type { ConferenciaDoPin, PortaBoardingCheck, ResumoDoAtendimento } from "
 //   profissional do link (api.boarding_pin_subject), o pin_mac (src/server/pin, ATTA_PIN_PEPPER; o banco nunca vê o
 //   PIN) e api.boarding_confirm_pin, que conta as tentativas (5 seguidas: 15 min; 10: revoga). Link sem profissional
 //   responde como os outros: 'indisponivel'.
-// - abrir: api.boarding_open (Pronto → Em atendimento na primeira abertura; trilha boarding.open). Sessão inválida =
-//   NAO_AUTENTICADO. O Formulário de Saúde não sai daqui: a leitura é a função única do MIG-22 (Backend 3) e entra
+// - abrir: limite leve por sessão (60 a cada 15 min, para não encher a trilha), depois api.boarding_open (Pronto → Em
+//   atendimento na primeira abertura; trilha boarding.open). Sessão inválida = NAO_AUTENTICADO. O Formulário de Saúde não sai daqui: a leitura é a função única do MIG-22 (Backend 3) e entra
 //   quando existir; até lá, a tela fica sem a seção (sem dado de mentira).
 // - concluir: api.boarding_complete (trava dos termos; revoga o link). A trava = CONFLITO.
 // Nunca vai ao log: PIN, mac, hashes nem dado do paciente.
@@ -125,7 +125,11 @@ export function criarPortaBoardingReal(deps: DependenciasDoBoarding = {}): Porta
     },
 
     async abrir(hashDaSessao): Promise<Resultado<ResumoDoAtendimento>> {
-      const r = await cliente().schema("api").rpc("boarding_open", { p_session_hash: bytea(hashDaSessao) });
+      const c = cliente();
+      // antes do banco, por sessão (a chave do limite é o HMAC do hash, nunca o hash cru; nota do TL no #330)
+      const limite = await consumirLimite(LIMITES.boardingAbrirPorSessao, hashDaSessao.toString("hex"), c as unknown as ClienteDoLimite);
+      if (!limite.ok) return limite;
+      const r = await c.schema("api").rpc("boarding_open", { p_session_hash: bytea(hashDaSessao) });
       if (r.error) return semSessao(r.error) ?? falhaDoBanco(r.error);
       const lida = resumoSchema.safeParse(primeira(r.data));
       if (!lida.success) {

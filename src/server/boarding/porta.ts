@@ -1,7 +1,6 @@
 import "server-only";
 import type { Resultado } from "@/lib/errors";
-import { portaBoardingSimulada } from "./simulado";
-// A porta real (./real.ts, MIG-23 parte 3) entra no lugar desta no PR seguinte, junto do seed do CI e dos e2e.
+import { portaBoardingReal } from "./real";
 
 // Contrato entre as telas do Boarding Check (MIG-53, Frontend 6) e o domínio (MIG-23, Backend 3; transições do
 // Backend 2). PDD v206 §10.2.3, RN-FIC-07 e §13.4; ADR 0004 §3. O profissional não tem login: o link do WhatsApp
@@ -38,4 +37,6 @@ export type PortaBoardingCheck = {
   concluir(hashDaSessao: Buffer): Promise<Resultado<{ concluidoEm: string }>>;
 };
 
-export const portaBoarding: PortaBoardingCheck = portaBoardingSimulada;
+// Porta real em todo ambiente (MIG-23 parte 3b): o local e o CI usam o Boarding Check fictício do supabase/seed.sql
+// (tests/fixtures/boarding-local.ts). A simulada (simulado.ts) fica só para os testes da tela.
+export const portaBoarding: PortaBoardingCheck = portaBoardingReal;
