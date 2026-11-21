@@ -33,6 +33,7 @@ function montar(consulta: Awaited<ReturnType<Parameters<typeof NovoPaciente>[0][
     consultar: vi.fn(async () => consulta),
     vincular: vi.fn(async () => ok({ id: cartao.id, situacao: "vinculado" as const })),
     cadastrar: vi.fn(async () => ok({ id: "5a5a0000-0000-4000-8000-000000000123", reaproveitado: false })),
+    cartao: vi.fn(async () => ok({ ...cartao, nome: "Juliana Prates", nomeCivil: "Juliana Prates", respostasDeSaude: null })),
   };
   render(<NovoPaciente clinica="Clínica Alfa Estética" acoes={acoes} />);
   return acoes;
@@ -85,11 +86,15 @@ describe("Novo paciente (simulador, capturas 15 a 18)", () => {
     expect(acoes.cadastrar).not.toHaveBeenCalled();
   });
 
-  it("já paciente daqui: avisa que não cria outro e não oferece o Cadastrar", async () => {
-    montar(ok({ situacao: "ja_paciente", id: cartao.id }));
+  it("já paciente daqui: mostra o cartão dele acima do aviso (captura 16), não cria outro e não oferece o Cadastrar", async () => {
+    const acoes = montar(ok({ situacao: "ja_paciente", id: cartao.id }));
     const dialogo = await abrir();
     await buscarCpf(dialogo);
     expect(await within(dialogo).findByText("Não é possível criar outro cadastro.")).toBeInTheDocument();
+    expect(acoes.cartao).toHaveBeenCalledWith({ id: cartao.id });
+    expect(await within(dialogo).findAllByText("Juliana Prates")).toHaveLength(2); // no cartão e no resumo
+    expect(dialogo).toHaveTextContent("(11) ·····-5566");
+    expect(dialogo).not.toHaveTextContent("Respostas de saúde"); // a ficha não traz a contagem
     expect(within(dialogo).queryByRole("button", { name: "Cadastrar paciente" })).toBeNull();
   });
 
