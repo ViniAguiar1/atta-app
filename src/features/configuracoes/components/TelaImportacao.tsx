@@ -68,7 +68,7 @@ export function TelaImportacao({
       <h2 id="titulo-importacao" className="sr-only">
         {t.titulo}
       </h2>
-      <FaixaInformativa destaque={t.quem.destaque}>{t.quem.texto}</FaixaInformativa>
+      <FaixaInformativa tom="neutro" destaque={t.quem.destaque}>{t.quem.texto}</FaixaInformativa>
       {estado.tipo !== "pronto" || !resultado?.ok ? (
         <DataState
           estado={estado.tipo === "carregando" ? { tipo: "carregando" } : { tipo: "erro", codigo: resultado && !resultado.ok ? resultado.error.code : undefined, tentarDeNovo: () => router.refresh() }}
