@@ -178,3 +178,12 @@ insert into platform.professional_tenant_link (id, tenant_id, invite_email_hmac,
 
 select private.propass_issue('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-000000000321',
   '\xaf178a5f8eb71983f61a109ae84377bdf7a06bbee169d70b5067d7ad57ec97fe'::bytea);
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- MIG-21: chave de selo de TESTE do ATTA Sign (pública e fictícia, tests/fixtures/selo-ci.ts), para o e2e do PROpass
+-- assinar o Termo de Autorização no local e no CI (pedido do Frontend 6; contrato do Tech Lead, 21/11). Só aqui no
+-- seed: nunca em migration nem em scripts/seed-nuvem, e o servidor a recusa na prévia e na produção (chaveDoAmbiente).
+-- ---------------------------------------------------------------------------------------------------------------
+insert into documents.seal_key (kid, public_key_spki, valid_from)
+values ('staging-seal-ci-teste', '\x302a300506032b6570032100985fbf55b622f0072959e4d53a9c52d0729b6dc42027c153db8b90ecfea96834', '2026-01-01T00:00:00Z')
+on conflict (kid) do nothing;
