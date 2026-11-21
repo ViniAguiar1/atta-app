@@ -25,8 +25,8 @@ function Linha({ titulo, detalhe, estado }: { titulo: string; detalhe?: string |
 export function ComoChegam({ canais, configurar }: { canais: Canais; configurar: string | null }) {
   const sem = c.semConfiguracao;
   return (
-    <aside aria-labelledby="como-chegam" className="flex flex-col gap-3 rounded-md border border-border bg-surface-app p-4 text-[0.8125rem]">
-      <h2 id="como-chegam" className="text-[0.6875rem] font-semibold tracking-wide text-status-info uppercase">
+    <aside aria-labelledby="como-chegam" className="flex flex-col gap-3 rounded-md border border-border bg-surface-app p-4 text-corpo">
+      <h2 id="como-chegam" className="text-rotulo font-semibold tracking-wide text-status-info uppercase">
         {c.titulo}
       </h2>
       <ul className="flex flex-col gap-2">
