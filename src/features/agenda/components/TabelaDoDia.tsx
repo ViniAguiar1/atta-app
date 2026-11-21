@@ -1,7 +1,7 @@
 import type { LinhaDaAgenda } from "../schema";
 import { dataCurta, finalDoCpf, horario } from "../formatos";
 import { textos } from "../textos";
-import { ChipDeStatus, SeloAtrasado } from "./ChipDeStatus";
+import { ChipDeStatus, SeloAtrasado } from "@/components/agenda/ChipDeStatus";
 
 // Títulos de coluna na fonte do corpo, sem maiúsculas, no verde do ATTA-in (PDD v206 §10, padrões visuais).
 // Tabela das visões da Agenda (PDD v206 §10.2.2): Horário ↑, Paciente, Procedimento, Profissional, Documentos e

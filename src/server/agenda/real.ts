@@ -3,24 +3,18 @@ import { z } from "zod";
 import { falha, falhaDoBanco, MENSAGENS, ok, type ErroDoBanco } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import type { Database } from "@/lib/supabase/database.types";
-import { iniciais } from "@/lib/texto/iniciais";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { cpfHmac, normalizeCpf } from "@/server/crypto/cpf";
 import {
-  ACOES,
-  CONFIRMACOES,
-  ESTADOS_DO_DOCUMENTO,
-  STATUS,
-  TIPOS,
   filtroDoDiaSchema,
   filtroDoPeriodoSchema,
   filtroDosConcluidosSchema,
   termoPronto,
   type DiaDaAgenda,
-  type LinhaDaAgenda,
   type ListaDaAgenda,
   type ResumoDaAgenda,
 } from "@/features/agenda/schema";
+import { lerLinhas } from "./linha";
 import type { PortaAgenda } from "./porta";
 
 // Porta real da Agenda (MIG-41) sobre api.agenda_day, api.agenda_summary (MIG-11c, #130) e api.agenda_range (Todos e
@@ -30,34 +24,6 @@ import type { PortaAgenda } from "./porta";
 // vira HMAC no servidor (p_cpf_hmac, bytea em hex com \x), nunca em claro, na URL ou no log.
 
 // --- Formato do banco (snake_case) ------------------------------------------------------------------------------------
-const dataHora = z.iso.datetime({ offset: true });
-
-const linhaDoBanco = z
-  .object({
-    id: z.uuid(),
-    starts_at: dataHora,
-    duration_min: z.number().int().positive(),
-    appointment_type: z.enum(TIPOS),
-    modality: z.enum(["presencial", "online"]),
-    patient: z.object({
-      person_id: z.uuid().nullable(),
-      provisional_patient_id: z.uuid().nullable(),
-      display_name: z.string().min(1),
-      cpf_masked: z.string().nullable(),
-    }),
-    services: z.array(z.object({ id: z.uuid(), name: z.string().min(1) })),
-    professional: z.object({ link_id: z.uuid(), display_name: z.string().min(1) }),
-    documents: z.array(
-      z.object({ id: z.uuid(), name: z.string().min(1), optional: z.boolean(), state: z.enum(ESTADOS_DO_DOCUMENTO) }),
-    ),
-    status: z.enum(STATUS),
-    late: z.boolean(),
-    confirmation: z.enum(CONFIRMACOES),
-    boarding_check_sent_at: dataHora.nullable(),
-    allowed_actions: z.array(z.object({ action: z.enum(ACOES), disabled_reason: z.string().nullish() })),
-  })
-  // exatamente um dos dois ids do paciente (ADR 0005 §4)
-  .refine((l) => (l.patient.person_id === null) !== (l.patient.provisional_patient_id === null));
 
 const diaDoBanco = z.object({
   local_date: z.iso.date(),
@@ -91,33 +57,6 @@ const resumoDoBanco = z.object({
 });
 
 
-// --- Mapeamento para o tipo da tela -----------------------------------------------------------------------------------
-export function linhaDaTela(l: z.infer<typeof linhaDoBanco>): LinhaDaAgenda {
-  const provisorio = l.patient.provisional_patient_id;
-  return {
-    id: l.id,
-    inicio: l.starts_at,
-    duracaoMin: l.duration_min,
-    tipo: l.appointment_type,
-    modalidade: l.modality,
-    paciente: {
-      tipo: provisorio ? "provisorio" : "pessoa",
-      id: provisorio ?? l.patient.person_id ?? "",
-      nomeExibicao: l.patient.display_name,
-      cpfMascarado: l.patient.cpf_masked,
-      iniciais: iniciais(l.patient.display_name),
-    },
-    servicos: l.services.map((s) => ({ id: s.id, nome: s.name })),
-    profissional: { vinculoId: l.professional.link_id, nomeExibicao: l.professional.display_name },
-    documentos: l.documents.map((d) => ({ id: d.id, nome: d.name, opcional: d.optional, estado: d.state })),
-    status: l.status,
-    atrasado: l.late,
-    confirmacao: l.confirmation,
-    boardingCheckEnviadoEm: l.boarding_check_sent_at,
-    acoes: l.allowed_actions.map((a) => (a.disabled_reason ? { acao: a.action, desabilitadaPor: a.disabled_reason } : { acao: a.action })),
-  };
-}
-
 // --- Cliente mínimo ---------------------------------------------------------------------------------------------------
 // Os argumentos são conferidos contra os tipos gerados (database.types.ts, #130). O cliente em si entra por esta interface
 // mínima, que o teste substitui: a assinatura genérica do rpc do supabase-js não encaixa nela sem o cast lá embaixo.
@@ -140,16 +79,6 @@ function foraDoFormato(evento: string) {
 
 export type Hmac = (cpf: string) => Buffer;
 
-/** Cada linha conferida à parte: a fora do formato sai da lista (log com a quantidade, nunca o corpo). */
-function lerLinhas(brutas: unknown[]): LinhaDaAgenda[] {
-  const linhas = brutas.flatMap((bruta) => {
-    const linha = linhaDoBanco.safeParse(bruta);
-    return linha.success ? [linhaDaTela(linha.data)] : [];
-  });
-  const descartadas = brutas.length - linhas.length;
-  if (descartadas > 0) logger.error("agenda.linha_fora_do_formato", { code: "INTERNO", quantidade: descartadas });
-  return linhas;
-}
 
 /** Resposta do agenda_range no tipo da tela; fora do formato, INTERNO com o evento no log. */
 function listaDoRange(data: unknown) {
