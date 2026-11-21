@@ -43,18 +43,9 @@ do $$ begin
   execute format('grant execute on all functions in schema %I to authenticated', pg_my_temp_schema()::regnamespace);
 end $$;
 
--- o seed do dono (como a migration do Backend 3 fará) passa pela trava -------------------------------------------
-select lives_ok($$
-  insert into documents.template (tenant_id, kind, title, frequency, required, draft_body)
-  values ('00000000-0000-4000-8000-00000000010a', 'termo_de_autorizacao', 'Termo de Autorização de Uso de Imagem de Assinatura',
-          'unica', true, 'Texto fictício da autorização.');
-  insert into documents.template_version (tenant_id, template_id, version, kind, title, frequency, required, body,
-                                          body_sha256, published_by)
-  select t.tenant_id, t.id, 1, t.kind, t.title, t.frequency, t.required, t.draft_body,
-         encode(sha256(convert_to(t.draft_body, 'UTF8')), 'hex'), gen_random_uuid()
-  from documents.template t where t.kind = 'termo_de_autorizacao';
-  update documents.template set status = 'ativo', current_version = 1 where kind = 'termo_de_autorizacao'
-$$, 'o dono (postgres) publica o modelo de sistema por seed');
+-- o seed do dono (MIG-21c, gatilho na clínica nova) passa pela trava -------------------------------------------
+select ok(private.authorization_template_ready('00000000-0000-4000-8000-00000000010a'),
+          'a clínica nova já nasce com o modelo de sistema (seed do Backend 3, MIG-21c)');
 
 -- a clínica não cria nem mexe ------------------------------------------------------------------------------------
 select pg_temp.entrar('00000000-0000-4000-8000-00000000010a');
@@ -79,7 +70,7 @@ select is((select allowed_actions from api.atta_in_template_list() where kind = 
           'na lista, sem nenhuma ação');
 select is((select status || ' v' || current_version || ' ' || current_required from api.atta_in_template_list()
            where kind = 'termo_de_autorizacao'), 'ativo v1 true', 'na lista, Ativo na versão do seed');
-select is((select title from documents.template where id = pg_temp.termo()), 'Termo de Autorização de Uso de Imagem de Assinatura',
+select is((select title from documents.template where id = pg_temp.termo()), 'Termo de Autorização de Uso de Imagem de Assinatura Digital',
           'o texto e o título do seed não mudaram');
 select isnt((select allowed_actions from api.atta_in_template_list() where title = 'Personalizado fictício'), '[]'::jsonb,
             'os outros modelos continuam com as ações');

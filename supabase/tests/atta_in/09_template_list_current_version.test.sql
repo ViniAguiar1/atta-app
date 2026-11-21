@@ -66,7 +66,7 @@ select is((select current_required is null and current_frequency is null and cur
 select api.template_deactivate(pg_temp.modelo('Política fictícia'));
 select is((select current_required from api.atta_in_template_list() where title = 'Política fictícia'), false,
           'Inativo: current_* da última versão publicada');
-select is((select count(*)::int from api.atta_in_template_list()), 2, 'as linhas não mudam');
+select is((select count(*)::int from api.atta_in_template_list() where title <> 'Termo de Autorização de Uso de Imagem de Assinatura Digital'), 2, 'as linhas não mudam');  -- sem o termo de sistema (MIG-21c)
 
 select * from finish();
 rollback;
