@@ -50,7 +50,8 @@ values ('staging-seal-teste-propass', '\x302a300506032b6570032100'::bytea || sha
 -- montado sobre o modelo de sistema da clínica (seed, Backend 3). p_codigo troca o Código ATTA (pacote com defeito).
 create function pg_temp.enviar(p_segredo text, p_email text, p_cpf text, p_numero text,
                                p_conselho text default 'regularizado', p_nome text default null,
-                               p_aviso text default 'v1', p_codigo text default null) returns text
+                               p_aviso text default 'v1', p_codigo text default null,
+                               p_com_pin boolean default true) returns text
 language plpgsql security definer as $$
 declare
   v_link uuid; v_tenant uuid; v_doc uuid := gen_random_uuid(); v_payload bytea; tv record;
@@ -78,7 +79,8 @@ begin
   )::text, 'UTF8');
   return api.propass_submit(sha256(p_segredo::bytea), gen_random_uuid(), coalesce(p_nome, 'Dra. Fictícia ' || p_numero),
     'cro', 'SP', p_numero, sha256(p_cpf::bytea), '···.···.000-00', '\x01aa', '\x01a1', sha256(p_email::bytea), '\x01a2',
-    '\x01bb', 1::smallint, p_conselho, sha256(('pin-' || p_numero)::bytea), 1::smallint, v_doc, v_payload,
+    '\x01bb', 1::smallint, p_conselho, case when p_com_pin then sha256(('pin-' || p_numero)::bytea) end,
+    case when p_com_pin then 1::smallint end, v_doc, v_payload,
     coalesce(p_codigo, private.atta_code_from_sha256(encode(sha256(v_payload), 'hex'))), 'staging-seal-teste-propass',
     sha512('selo-ficticio'::bytea),
     jsonb_build_object('storage_path', coalesce(v_tenant::text, gen_random_uuid()::text) || '/' || v_doc || '/assinatura.png',
@@ -203,7 +205,8 @@ select ok(pg_temp.ciencia('00000000-0000-4000-8000-0000000000c1'), 'a ciência d
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000b', 'ADMIN');
 select pg_temp.convidar('00000000-0000-4000-8000-0000000000c2', 'dra1@clinica-ficticia.test', 'link-b1');
 select pg_temp.servidor();
-select is(pg_temp.enviar('link-b1', 'dra1@clinica-ficticia.test', 'cpf-1', '1001', 'regularizado', 'Outro Nome Fictício'), 'ok',
+select is(pg_temp.enviar('link-b1', 'dra1@clinica-ficticia.test', 'cpf-1', '1001', 'regularizado', 'Outro Nome Fictício',
+                         'v1', null, false), 'ok',
           'mesmo conselho, mesmo CPF e mesmo e-mail: liga ao existente');
 select is(pg_temp.profissionais(), 1, 'não nasce outro profissional');
 select is(pg_temp.nome_global('1001'), 'Dra. Fictícia 1001', 'os dados globais não mudam por um convite de outra clínica');

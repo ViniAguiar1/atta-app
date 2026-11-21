@@ -117,11 +117,14 @@ begin
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'propass_done';
   end if;
   if num_nulls(p_professional_id, p_display_name, p_council, p_council_uf, p_council_number, p_cpf_hmac, p_cpf_masked,
-               p_cpf_enc, p_phone_enc, p_email_hmac, p_email_enc, p_dek_wrapped, p_kek_version, p_pin_mac,
-               p_pin_mac_version, p_document_id, p_payload_canonical, p_atta_code, p_seal_kid, p_seal, p_stroke) > 0 then
+               p_cpf_enc, p_phone_enc, p_email_hmac, p_email_enc, p_dek_wrapped, p_kek_version,
+               p_document_id, p_payload_canonical, p_atta_code, p_seal_kid, p_seal, p_stroke) > 0 then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'propass_fields';
   end if;
-  if octet_length(p_pin_mac) <> 32 or p_pin_mac_version <> 1 then   -- versão 1 = ATTA_PIN_PEPPER atual (revisão do Backend 2)
+  -- o PIN é opcional aqui: só vai junto quando um PIN vai ser criado (decidido abaixo, depois da identidade). Quando vai,
+  -- 32 bytes e a versão 1 (= ATTA_PIN_PEPPER atual; revisões do Backend 2 e do Tech Lead no #208 e no #247)
+  if (p_pin_mac is null) <> (p_pin_mac_version is null)
+     or (p_pin_mac is not null and (octet_length(p_pin_mac) <> 32 or p_pin_mac_version <> 1)) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'pin';
   end if;
   if p_email_hmac is distinct from v_link.invite_email_hmac then
@@ -158,6 +161,17 @@ begin
     return 'recusado';
   end if;
 
+  -- PIN, pela identidade (Tech Lead e Backend 2 no #247): o profissional novo e o reaproveitado ainda sem PIN criam o
+  -- dele agora, e então o pin_mac é obrigatório (no reaproveitado, calculado com o id dele, que só o passo 2 dá); o
+  -- reaproveitado que já tem PIN usa o dele, e então nenhum PIN pode vir junto. Fora disso: ATTA-IN-0001 pin.
+  v_reused := v_by_council.id is not null;
+  v_pin_set := not v_reused
+               or not exists (select 1 from platform.professional_pin pp where pp.professional_id = v_by_council.id);
+  if (v_pin_set and (p_pin_mac is null or (v_reused and p_professional_id is distinct from v_by_council.id)))
+     or (not v_pin_set and p_pin_mac is not null) then
+    raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'pin';
+  end if;
+
   if v_by_council.id is not null then
     -- o mesmo profissional, já homologado por outra clínica: liga sem mexer nos dados globais dele
     v_prof := v_by_council.id;
@@ -186,15 +200,10 @@ begin
   perform private.document_insert_signed_authorization(v_link.tenant_id, v_link.id, p_document_id, p_payload_canonical,
                                                         p_atta_code, p_seal_kid, p_seal, p_stroke);
 
-  -- PIN: o profissional novo cria o dele aqui. O reaproveitado mantém o que já tem; se ainda não tem, cria agora, desde
-  -- que o servidor tenha calculado o pin_mac com o id dele (o api.propass_identity_check devolve o id só nesse caso, com
-  -- a identidade inteira conferida, e o servidor nunca o mostra). Nunca sobrescreve um PIN que já existe.
-  if not v_reused
-     or (p_professional_id = v_prof
-         and not exists (select 1 from platform.professional_pin pp where pp.professional_id = v_prof)) then
+  -- PIN (a decisão foi tomada acima, antes de gravar qualquer coisa). Nunca sobrescreve um PIN que já existe.
+  if v_pin_set then
     insert into platform.professional_pin (professional_id, pin_mac, pin_mac_version)
     values (v_prof, p_pin_mac, p_pin_mac_version);
-    v_pin_set := true;
     perform audit.record_event('professional.pin_set', 'platform.professional_pin', v_prof,
       jsonb_build_object('via', 'propass'), null, null, v_link.tenant_id);
   end if;

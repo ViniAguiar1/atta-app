@@ -1,6 +1,6 @@
 -- MIG-14b (3): passo 2 (identidade, sem oráculo) e PIN do reaproveitado, sobre o cenário do 41_propass. Antes: (PDD v206 §10.4.3; ADR 0004 §3). Dados fictícios: bytes e nomes inventados.
 begin;
-select plan(17);
+select plan(20);
 
 insert into platform.tenant (id, name, legal_name, cnpj) values
   ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A', 'Clínica Fictícia A Ltda', '00000000004101'),
@@ -86,7 +86,7 @@ begin
     p_aviso);
 end $$;
 create function pg_temp.enviar_com(p_segredo text, p_email text, p_cpf text, p_numero text, p_prof uuid,
-                                   p_versao smallint default 1) returns text
+                                   p_versao smallint default 1, p_com_pin boolean default true) returns text
 language plpgsql security definer as $$
 declare
   v_link uuid; v_tenant uuid; v_doc uuid := gen_random_uuid(); v_payload bytea; tv record;
@@ -111,7 +111,8 @@ begin
   )::text, 'UTF8');
   return api.propass_submit(sha256(p_segredo::bytea), p_prof, 'Dra. Fictícia ' || p_numero, 'cro', 'SP', p_numero,
     sha256(p_cpf::bytea), '···.···.000-00', '\x01aa', '\x01a1', sha256(p_email::bytea), '\x01a2', '\x01bb', 1::smallint,
-    'nao_consultado', sha256(('pin-' || p_numero)::bytea), p_versao, v_doc, v_payload,
+    'nao_consultado', case when p_com_pin then sha256(('pin-' || p_numero)::bytea) end, case when p_com_pin then p_versao end,
+    v_doc, v_payload,
     private.atta_code_from_sha256(encode(sha256(v_payload), 'hex')), 'staging-seal-teste-propass', sha512('selo-ficticio'::bytea),
     jsonb_build_object('storage_path', v_tenant::text || '/' || v_doc || '/assinatura.png', 'sha256_plain', repeat('a', 64),
                        'size_bytes', 2048, 'dek_wrapped', 'abcd', 'kek_version', 1), null);
@@ -180,6 +181,9 @@ select pg_temp.convidar('00000000-0000-4000-8000-0000000000c1', 'dra1@clinica-fi
 select pg_temp.servidor();
 select is(pg_temp.identidade('link-a1', 'cpf-1', '1001'), '{"status": "pedir_pin", "professional_id": null}'::jsonb,
           'profissional novo: pedir a senha, sem id');
+select throws_ok($$ select pg_temp.enviar_com('link-a1', 'dra1@clinica-ficticia.test', 'cpf-1', '1001',
+                                              '00000000-0000-4000-8000-0000000000f1', 1::smallint, false) $$,
+                 'P0001', 'ATTA-IN-0001', 'profissional novo sem PIN: recusado (ele precisa criar a senha)');
 select is(pg_temp.enviar_com('link-a1', 'dra1@clinica-ficticia.test', 'cpf-1', '1001', '00000000-0000-4000-8000-0000000000f1'), 'ok',
           'A conclui o PROpass e cria o PIN');
 
@@ -194,6 +198,10 @@ select is(pg_temp.identidade('link-b1', 'cpf-2', '1001'), '{"status": "pedir_pin
 select is(pg_temp.identidade('link-b1', 'cpf-1', '2002'), '{"status": "pedir_pin", "professional_id": null}'::jsonb,
           'conselho novo com o CPF de outro: também a mesma resposta');
 select is(pg_temp.falhas('link-b1'), 0, 'o passo 2 não conta tentativa nem grava nada (a recusa é do envio)');
+select throws_ok($$ select pg_temp.enviar_com('link-b1', 'dra1@clinica-ficticia.test', 'cpf-1', '1001', gen_random_uuid()) $$,
+                 'P0001', 'ATTA-IN-0001', 'quem já tem PIN não manda PIN junto (o dele não é trocado por aqui)');
+select is(pg_temp.enviar_com('link-b1', 'dra1@clinica-ficticia.test', 'cpf-1', '1001', gen_random_uuid(), null, false), 'ok',
+          'quem já tem PIN conclui sem PIN, e usa o dele');
 
 -- C: um profissional que já existe SEM PIN (homologado antes do PIN; fictício, direto como dono)
 select set_config('role', 'postgres', true);
@@ -226,9 +234,9 @@ values ('00000000-0000-4000-8000-0000000000f4', 'Dr. Fictício 4004', 'cro', 'SP
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000d', 'ADMIN');
 select pg_temp.convidar('00000000-0000-4000-8000-0000000000c5', 'dr4@clinica-ficticia.test', 'link-d1');
 select pg_temp.servidor();
-select is(pg_temp.enviar_com('link-d1', 'dr4@clinica-ficticia.test', 'cpf-4', '4004', gen_random_uuid()), 'ok',
-          'reaproveitado sem PIN com outro id: o envio conclui');
-select ok(not pg_temp.pin_de('00000000-0000-4000-8000-0000000000f4'), 'mas nenhum PIN é criado com um mac que não é dele');
+select throws_ok($$ select pg_temp.enviar_com('link-d1', 'dr4@clinica-ficticia.test', 'cpf-4', '4004', gen_random_uuid()) $$,
+                 'P0001', 'ATTA-IN-0001', 'reaproveitado sem PIN com um mac de outro id: recusado (ninguém fica sem PIN)');
+select ok(not pg_temp.pin_de('00000000-0000-4000-8000-0000000000f4'), 'e nada foi gravado');
 
 -- limite por link no passo 2 (Tech Lead): 10 por hora; a 11ª conferência é recusada com LIMITE
 select pg_temp.entrar('00000000-0000-4000-8000-00000000000a', 'ADMIN');
@@ -239,11 +247,11 @@ do $$ begin
 end $$;
 select throws_ok($$ select pg_temp.identidade('link-a2', 'cpf-1', '1001') $$, '54000', 'ATTA-IN-0003',
                  'a 11ª conferência no mesmo link é recusada (o link não vira oráculo de CPF)');
-select is(pg_temp.identidade('link-b1', 'cpf-1', '1001'), '{"status": "usar_pin_existente"}'::jsonb,
+select is(pg_temp.identidade('link-c2', 'cpf-3', '3003'), '{"status": "pedir_pin", "professional_id": null}'::jsonb,
           'o limite é por link: o outro convite segue respondendo');
 
 -- A existente com PIN continua com o mesmo PIN (nunca sobrescreve)
-select is(pg_temp.pins(), 2, 'dois PINs: o da A e o do reaproveitado sem PIN; o da B não foi sobrescrito');
+select is(pg_temp.pins(), 2, 'dois PINs: o da A e o do reaproveitado sem PIN; o da A não foi sobrescrito pela B');
 
 select * from finish();
 rollback;
