@@ -268,6 +268,12 @@ export type Database = {
 "template_set_services":
 { Args: { "p_service_ids": (string)[],"p_template_id": string }; Returns: number
                            },
+"tenant_consent_set":
+{ Args: { "p_granted": boolean,"p_key": string }; Returns: Json
+                           },
+"tenant_consents_get":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "webhook_first_time":
 { Args: { "p_event_id": string,"p_provider": string }; Returns: boolean
                            }
@@ -927,6 +933,26 @@ isOneToOne: false
                     {
       foreignKeyName: "tenant_parent_tenant_id_fkey"
       columns: ["parent_tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenant"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"tenant_consent": {
+                  Row: {
+                    "granted": boolean,"key": string,"tenant_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "granted": boolean,"key": string,"tenant_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "granted"?: boolean,"key"?: string,"tenant_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tenant_consent_tenant_id_fkey"
+      columns: ["tenant_id"]
 isOneToOne: false
       referencedRelation: "tenant"
       referencedColumns: ["id"]
