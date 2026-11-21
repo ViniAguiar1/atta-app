@@ -68,13 +68,30 @@ interface PagamentoAsaas {
 const texto = (v: unknown): v is string => typeof v === "string" && v.length > 0;
 const paraCentavos = (reais: number) => Math.round(reais * 100);
 
+/** Link de fatura só do Asaas (asaas.com ou subdomínio), em https: outro host na tela da clínica seria phishing. */
+export function linkDoAsaas(valor: string): boolean {
+  if (valor.length > 300) return false;
+  try {
+    const u = new URL(valor);
+    return (
+      u.protocol === "https:" &&
+      u.username === "" &&
+      u.password === "" &&
+      u.port === "" &&
+      (u.hostname === "asaas.com" || u.hostname.endsWith(".asaas.com"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 function traduzirCobranca(evento: string, p: PagamentoAsaas): CobrancaDoEvento | null {
   if (!texto(p.id) || !ID.test(p.id) || !texto(p.dueDate) || !DATA.test(p.dueDate)) return null;
   if (typeof p.value !== "number" || !Number.isFinite(p.value) || p.value < 0) return null;
   const status: StatusCobranca | undefined =
     evento === "PAYMENT_DELETED" || p.deleted === true ? "removida" : texto(p.status) ? STATUS[p.status] : undefined;
   if (!status) return null;
-  const link = texto(p.invoiceUrl) && /^https:\/\//.test(p.invoiceUrl) && p.invoiceUrl.length <= 300;
+  const link = texto(p.invoiceUrl) && linkDoAsaas(p.invoiceUrl);
   return {
     idExterno: p.id,
     vencimento: p.dueDate,
@@ -179,9 +196,24 @@ export class GatewayAsaas implements GatewayCobranca {
       : falhaProvedor("transitoria", "resposta_invalida", "asaas: status desconhecido");
   }
 
+  async buscarCobranca(
+    id: string,
+  ): Promise<ResultadoProvedor<{ readonly idAssinaturaExterna: string; readonly cobranca: CobrancaDoEvento } | null>> {
+    if (!ID.test(id)) return falhaProvedor("permanente", "id_invalido", "asaas: id de cobrança inválido");
+    const r = await this.chamar<PagamentoAsaas>("GET", `/payments/${encodeURIComponent(id)}`);
+    if (!r.ok) return r;
+    const sub = r.valor.subscription;
+    if (!texto(sub) || !ID.test(sub)) return okProvedor(null);
+    const cobranca = traduzirCobranca("", r.valor);
+    return okProvedor(cobranca ? { idAssinaturaExterna: sub, cobranca } : null);
+  }
+
+  autenticarWebhook(cabecalhos: RequisicaoWebhook["cabecalhos"]): boolean {
+    return iguaisEmTempoConstante(cabecalhos["asaas-access-token"] ?? "", this.config.webhookToken);
+  }
+
   interpretarWebhook(req: RequisicaoWebhook): ResultadoProvedor<EventoCobranca | null> {
-    const token = req.cabecalhos["asaas-access-token"] ?? "";
-    if (!iguaisEmTempoConstante(token, this.config.webhookToken))
+    if (!this.autenticarWebhook(req.cabecalhos))
       return falhaProvedor("permanente", "assinatura_invalida", "asaas: token não confere");
 
     let dados: { id?: unknown; event?: unknown; payment?: PagamentoAsaas; subscription?: { id?: unknown } };
