@@ -21,7 +21,7 @@ export function TelaPrivacidade({ clinica, resumo }: { clinica: string | null; r
   return (
     <div className="flex flex-col gap-4">
       <FaixaInformativa destaque={t.faixa.destaque}>{t.faixa.texto(clinica)}</FaixaInformativa>
-      <div className="grid gap-3 px-0 medium:grid-cols-2 large:grid-cols-4 large:px-5">
+      <div className="grid gap-3 px-0 medium:grid-cols-2 large:grid-cols-4 large:px-5 large:pt-4">
         <CardDeResumo valor={4} rotulo={t.cards.categorias.rotulo} legenda={t.cards.categorias.legenda} icone={<IconeCamadas />} />
         <CardDeResumo valor={resumo.documentosAssinados} rotulo={t.cards.documentos.rotulo} legenda={t.cards.documentos.legenda} icone={<IconeDocumento />} />
         <CardDeResumo
@@ -35,11 +35,11 @@ export function TelaPrivacidade({ clinica, resumo }: { clinica: string | null; r
       <CartaoDeSecao titulo={t.transparencia.titulo} subtitulo={t.transparencia.subtitulo} icone="🔍">
         <ul className="grid gap-4 expanded:grid-cols-2">
           {categorias.map((cat) => (
-            <li key={cat.titulo} className="flex flex-col gap-1 rounded-md border border-border p-4">
+            <li key={cat.titulo} className="flex flex-col gap-0.5 rounded-md border border-border px-4 py-3.5">
               <h3 className="text-[0.9375rem] font-medium">{cat.titulo}</h3>
               <p className="text-[0.8125rem] text-text-secondary">{cat.texto}</p>
-              <p className="mt-1.5 text-[0.9375rem] font-semibold">{cat.numeros}</p>
-              <p className="mt-1 text-[0.8125rem] text-text-secondary">{cat.base}</p>
+              <p className="mt-1 text-[0.9375rem] font-semibold">{cat.numeros}</p>
+              <p className="mt-0.5 text-[0.8125rem] text-text-secondary">{cat.base}</p>
             </li>
           ))}
         </ul>
