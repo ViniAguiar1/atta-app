@@ -166,10 +166,9 @@ begin
                           or (p_channel = 'whatsapp' and p_address_masked ~ '^\(\d{2}\) •••••-••\d{2}$'))) then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0001', detail = 'address';
   end if;
-  -- o campo do endereço só edita com o canal ligado (simulador: "Ligue o canal para editar"; Tech Lead): endereço novo
-  -- com o canal desligado e continuando desligado é recusado
-  if v_troca and not p_active and not exists (select 1 from atta_in.notification_channel n
-                                              where n.tenant_id = v_tenant and n.channel = p_channel and n.active) then
+  -- o campo do endereço só edita com o canal ligado (simulador: "Ligue o canal para editar"; Tech Lead e #286):
+  -- endereço novo numa chamada que deixa o canal desligado é recusado
+  if v_troca and not p_active then
     raise exception using errcode = 'P0001', message = 'ATTA-IN-0003', detail = 'estado';
   end if;
   v_tem_endereco := v_troca or exists (select 1 from atta_in.notification_channel n
