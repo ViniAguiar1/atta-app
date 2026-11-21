@@ -47,13 +47,14 @@ describe("Pasta do Paciente, topo (captura 12)", () => {
   });
 
   it("sem nome social a linha some; selo válido e selo expirado com a data", () => {
-    const { unmount } = render(<PastaDoPaciente ficha={ficha({ nomeSocial: null, selo: { validoAte: "2027-06-30T00:00:00Z" } })} />);
+    const { unmount } = render(<PastaDoPaciente ficha={ficha({ nomeSocial: null, selo: { validoAte: "2027-06-30T15:00:00Z" } })} />);
     expect(screen.queryByText("Nome social", { selector: "dt" })).toBeNull();
     expect(valor("Identidade verificada")).toHaveTextContent("Com selo");
     expect(valor("Identidade verificada")).toHaveTextContent("30/06/2027");
     unmount();
-    render(<PastaDoPaciente ficha={ficha({ seloExpirouEm: "2026-06-01T00:00:00Z" })} />);
-    expect(valor("Identidade verificada")).toHaveTextContent("Selo expirado em 01/06/2026 (vale 1 ano)");
+    // 01/06 às 01:30 UTC ainda é 31/05 em São Paulo: a data sai no fuso da clínica, não no UTC
+    render(<PastaDoPaciente ficha={ficha({ seloExpirouEm: "2026-06-01T01:30:00+00:00" })} />);
+    expect(valor("Identidade verificada")).toHaveTextContent("Selo expirado em 31/05/2026 (vale 1 ano)");
   });
 
   it("Resumo do paciente: situação Completo ou Incompleto e os números ainda sem fonte em —", () => {
