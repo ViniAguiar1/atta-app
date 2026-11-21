@@ -20,6 +20,8 @@ Node 24 (`.nvmrc`), pnpm (versão no `packageManager`), Docker e o CLI do Supaba
 (`brew install supabase/tap/supabase`).
 
 ## Supabase local: uma instância por agente
+
+> **Mac compartilhado:** `pnpm test`, `pnpm test:e2e` e `supabase start` (pelo `scripts/supabase-local.sh`) param com "máquina cheia; use o CI ou espere" quando a carga de 1 minuto passa de 20 (`scripts/carga-ok.sh`; limite em `ATTA_CARGA_MAX`). Fora do CI, o vitest usa 2 workers (`VITEST_MAX_WORKERS` para mudar) e o Playwright, 1. Pare o seu Supabase (`pnpm db stop`) assim que terminar.
 Os agentes dividem a mesma máquina, e as portas padrão do Supabase (54321–54327) já são de outro projeto. Por isso,
 **cada um sobe a sua instância pelo script, com a sua sigla**. O script passa ao CLI um `project_id` e um bloco de
 portas próprios por variável de ambiente; o `supabase/config.toml` versionado não muda.

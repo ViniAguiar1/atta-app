@@ -8,9 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run",
-    "test:e2e": "playwright test",
-    "test:e2e:producao": "playwright test -c playwright.producao.config.ts",
+    "test": "sh scripts/carga-ok.sh && vitest run",
+    "test:e2e": "sh scripts/carga-ok.sh && playwright test",
+    "test:e2e:producao": "sh scripts/carga-ok.sh && playwright test -c playwright.producao.config.ts",
     "db": "sh scripts/supabase-local.sh"
   },
   "dependencies": {
