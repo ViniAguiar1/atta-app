@@ -96,7 +96,7 @@ export const textos = {
       NAO_ENCONTRADO: "Este CPF não está mais na rede. Busque de novo.", // provisório
       outro: "Não foi possível concluir agora. Tente de novo.", // provisório
     },
-    sucesso: "Paciente cadastrado.", // provisório (anúncio para o leitor de tela)
+    reaproveitado: "Este CPF entrou na rede enquanto o cadastro era feito: o paciente foi vinculado com o cadastro da rede. Confira os dados abaixo.", // provisório
   },
   colunas: {
     paciente: "Paciente", // simulador, captura 09
