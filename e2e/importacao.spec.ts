@@ -25,6 +25,11 @@ test.describe("ADMIN", () => {
     const arquivo = dialogo.getByLabel("Escolher a planilha (.xlsx)");
     await expect(arquivo).toBeDisabled(); // o envio só libera depois da declaração (PDD §10.1)
     await dialogo.getByRole("checkbox").check();
+    // pelo teclado: o Tab chega ao campo de arquivo e o anel de foco aparece no rótulo (WCAG 2.4.7)
+    await dialogo.getByRole("checkbox").focus();
+    await page.keyboard.press("Tab");
+    await expect(arquivo).toBeFocused();
+    expect(await arquivo.evaluate((el) => getComputedStyle(el.closest("label")!).outlineStyle)).not.toBe("none");
     await arquivo.setInputFiles(xlsx("pequena.xlsx", 100));
     await expect(dialogo.getByRole("alert")).toContainText("Baixe a planilha modelo de novo");
 

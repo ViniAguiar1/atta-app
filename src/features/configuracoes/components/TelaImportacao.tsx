@@ -1,6 +1,6 @@
 "use client";
 
-
+import { useRouter } from "next/navigation";
 import { CartaoDeSecao } from "@/components/ui/CartaoDeSecao";
 import { DataState } from "@/components/ui/DataState";
 import { FaixaInformativa } from "@/components/ui/FaixaInformativa";
@@ -51,13 +51,17 @@ export function TelaImportacao({
   resultado,
   acoes,
   hoje,
+  fuso,
 }: {
   /** null enquanto carrega */
   resultado: Resultado<SituacaoDaImportacao> | null;
   acoes: AcoesDaImportacao;
   /** data de hoje (AAAA-MM-DD) no fuso da clínica, para saber se a cota dos 3 meses ainda vale */
   hoje: string;
+  /** fuso da clínica (platform.tenant.timezone), para o prazo da importação */
+  fuso: string;
 }) {
+  const router = useRouter();
   const estado = resultado === null ? { tipo: "carregando" as const } : resultado.ok ? { tipo: "pronto" as const } : { tipo: "erro" as const };
   return (
     <section aria-labelledby="titulo-importacao" className="flex flex-col gap-4">
@@ -67,7 +71,7 @@ export function TelaImportacao({
       <FaixaInformativa destaque={t.quem.destaque}>{t.quem.texto}</FaixaInformativa>
       {estado.tipo !== "pronto" || !resultado?.ok ? (
         <DataState
-          estado={estado.tipo === "carregando" ? { tipo: "carregando" } : { tipo: "erro", codigo: resultado && !resultado.ok ? resultado.error.code : undefined, tentarDeNovo: () => window.location.reload() }}
+          estado={estado.tipo === "carregando" ? { tipo: "carregando" } : { tipo: "erro", codigo: resultado && !resultado.ok ? resultado.error.code : undefined, tentarDeNovo: () => router.refresh() }}
           rotulo={t.titulo}
           esqueleto={{ linhas: 2, alturaRem: 12 }}
           vazio={{ titulo: t.titulo }}
@@ -75,13 +79,14 @@ export function TelaImportacao({
           {null}
         </DataState>
       ) : (
-        <Cartoes s={resultado.data} acoes={acoes} hoje={hoje} />
+        // depois de "Importação recebida", a cota e as importações relidas do servidor (o chip não fica velho)
+        <Cartoes s={resultado.data} acoes={acoes} hoje={hoje} fuso={fuso} aoConcluir={() => router.refresh()} />
       )}
     </section>
   );
 }
 
-function Cartoes({ s, acoes, hoje }: { s: SituacaoDaImportacao; acoes: AcoesDaImportacao; hoje: string }) {
+function Cartoes({ s, acoes, hoje, fuso, aoConcluir }: { s: SituacaoDaImportacao; acoes: AcoesDaImportacao; hoje: string; fuso: string; aoConcluir: () => void }) {
   const proxima = proximaIncluida(s, hoje);
   return (
     <>
@@ -94,7 +99,7 @@ function Cartoes({ s, acoes, hoje }: { s: SituacaoDaImportacao; acoes: AcoesDaIm
         <p className="text-corpo text-text-primary">
           {t.modelo.texto(dataBr(s.subscription_since), dataBr(s.quota_until), s.price_per_import_cents, s.full_import_price_cents)}
         </p>
-        <FluxoDeImportacao acoes={acoes} />
+        <FluxoDeImportacao acoes={acoes} fuso={fuso} aoConcluir={aoConcluir} />
       </CartaoDeSecao>
       <CartaoDeSecao titulo={t.completa.titulo} subtitulo={t.completa.subtitulo} icone={<IconeAtta />}>
         <div className="flex flex-wrap gap-2">
