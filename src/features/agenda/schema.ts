@@ -104,8 +104,8 @@ export type ResumoDaAgenda = z.infer<typeof resumoSchema>;
 
 /**
  * Ações que gravam (PDD §10.2.2, "Ações por estado"), contrato aprovado pelo Tech Lead: união por ação, .strict e id
- * uuid. O banco confere de novo se a ação vale para o estado (ATTA-IN-0003:status).
- * Reabrir preenchimento (Ausente → Agendado, motivo obrigatório) entra no PR seguinte, depois do #283.
+ * uuid. O banco confere de novo se a ação vale para o estado (ATTA-IN-0003:status). O nome de cada ação é o mesmo do
+ * allowed_actions da linha, para o menu ⋮ não precisar de tradução.
  */
 /** Motivos de cancelamento (PDD §10.2.2): antes da chegada (Agendado, Ausente), decididos; depois da chegada (Em
  *  preenchimento, Pronto, Em atendimento), os 5 propostos (🔵). Códigos do #96; o banco confere a lista pelo estado. */
@@ -120,6 +120,12 @@ export const MOTIVOS_CANCELAR_DEPOIS = [
 /** Motivos do "Concluir pela recepção" (PDD §10.2.3), em chip; a justificativa tem no mínimo 50 caracteres. */
 export const MOTIVOS_CONCLUIR = ["profissional_inacessivel", "emergencia_clinica", "falha_tecnica_no_acesso"] as const;
 export const JUSTIFICATIVA_MINIMA = 50;
+/** Motivos do "Reabrir preenchimento" de um Ausente (PDD §10.2.2, decisão da PO de 18/11/2026); códigos do #283. */
+export const MOTIVOS_REABRIR = [
+  "paciente_chegou_atrasado",
+  "paciente_avisou_clinica_ajustou_horario",
+  "ausente_por_engano",
+] as const;
 
 export const entradaDaAcaoSchema = z.discriminatedUnion("acao", [
   z.object({ acao: z.literal("confirmar"), id: z.uuid() }).strict(),
@@ -139,6 +145,8 @@ export const entradaDaAcaoSchema = z.discriminatedUnion("acao", [
       justificativa: z.string().trim().min(JUSTIFICATIVA_MINIMA).max(1000),
     })
     .strict(),
+  // Ausente → Agendado, só no dia (o banco recusa com ATTA-IN-0003:reopen_day)
+  z.object({ acao: z.literal("reabrir_preenchimento"), id: z.uuid(), motivo: z.enum(MOTIVOS_REABRIR) }).strict(),
 ]);
 export type EntradaDaAcao = z.infer<typeof entradaDaAcaoSchema>;
 
@@ -148,6 +156,7 @@ export const ACOES_COM_DESTINO = [
   "marcar_ausente",
   "cancelar",
   "concluir_pela_recepcao",
+  "reabrir_preenchimento",
 ] as const satisfies readonly EntradaDaAcao["acao"][];
 
 /** Avisos do topo da lista (§10.2.2). O ✓ confirma; o aviso volta quando a impressão digital muda. */
