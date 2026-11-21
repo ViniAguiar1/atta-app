@@ -2,8 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { SESSAO_DA_GESTORA } from "./acesso";
 
-// MIG-42 (PDD v206 §10.4.1; simulador, captura 42): Configurações › Perfil da Clínica da gestora. No CI a porta é a
-// simulada (só dado fictício); na produção, a vazia (teste de unidade da porta). Sem texto de ambiente.
+// MIG-42 (PDD v206 §10.4.1; simulador, captura 42): Configurações › Perfil da Clínica da gestora, pela porta real (#296)
+// contra o banco local do CI, com a clínica Alfa do seed (CNPJ gerado). Sem texto de ambiente.
 const PROIBIDO = /ambiente de valida|fict[ií]ci|\bdemo|demonstra[çc]|\bteste\b|migra[çc]/i;
 
 test.describe("Perfil da Clínica da gestora", () => {
@@ -15,7 +15,7 @@ test.describe("Perfil da Clínica da gestora", () => {
     await expect(page).toHaveURL(/\/painel\/configuracoes\/perfil$/);
     const main = page.getByRole("main");
     await expect(main.getByRole("note")).toContainText("Sem botão de salvar.");
-    await expect(main.getByLabel("CNPJ")).toHaveValue("48.309.271/0001-50");
+    await expect(main.getByLabel("CNPJ")).toHaveValue("63.049.587/0001-43");
     await main.getByLabel("Inscrição estadual/municipal (opcional)").fill("123456");
     await main.getByLabel("Inscrição estadual/municipal (opcional)").press("Enter");
     await expect(main.getByText(/^Salvo às \d{2}:\d{2}\.$/)).toBeVisible();
