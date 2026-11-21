@@ -103,7 +103,7 @@ export function DialogoDeMotivo({
                   }}
                   className="peer sr-only"
                 />
-                <span className="flex min-h-11 cursor-pointer items-center rounded-full border border-border-functional px-3 text-corpo peer-checked:border-brand peer-checked:bg-brand peer-checked:text-on-brand peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus-ring medium:min-h-8">
+                <span className="flex min-h-11 cursor-pointer items-center rounded-full border border-border-functional px-3 py-2 text-corpo peer-checked:border-brand peer-checked:bg-brand peer-checked:text-on-brand peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus-ring medium:min-h-8">
                   {textos.motivos[codigo] ?? textos.dialogo.motivoSemTexto}
                 </span>
               </label>
