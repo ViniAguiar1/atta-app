@@ -10,9 +10,17 @@ import { NOMES_DOS_CONSELHOS, TEXTOS } from "../textos";
 // que o backend devolveu. Sem comprovante: o PDD diz que "não há envio de comprovante do conselho pelo profissional"
 // (o simulador pede um; divergência levada ao CTO). A consulta à base do conselho é externa e espera a PO (R20).
 // `consultadoEm` só existe com consulta real; sem ela (nao_consultado, R20), a tela não afirma a regularidade.
-type Props = { dados: DadosDoProfissional; consultadoEm: string | null; fuso: string; aoVoltar: () => void };
+type Props = {
+  dados: DadosDoProfissional;
+  consultadoEm: string | null;
+  fuso: string;
+  ocupado: boolean;
+  erro: string | null;
+  aoVoltar: () => void;
+  aoContinuar: () => void;
+};
 
-export function PassoConselho({ dados, consultadoEm, fuso, aoVoltar }: Props) {
+export function PassoConselho({ dados, consultadoEm, fuso, ocupado, erro, aoVoltar, aoContinuar }: Props) {
   const conselho = NOMES_DOS_CONSELHOS[dados.conselho as keyof typeof NOMES_DOS_CONSELHOS] ?? dados.conselho;
   return (
     <section className="flex flex-col gap-6">
@@ -37,7 +45,15 @@ export function PassoConselho({ dados, consultadoEm, fuso, aoVoltar }: Props) {
       ) : (
         <p className="rounded-md border border-border-functional px-4 py-3">{TEXTOS.naoConsultado}</p>
       )}
-      <Botao variante="secundario" onClick={aoVoltar}>
+      {erro && (
+        <p role="alert" className="text-status-negative">
+          {erro}
+        </p>
+      )}
+      <Botao onClick={aoContinuar} disabled={ocupado}>
+        {ocupado ? TEXTOS.carregando : TEXTOS.continuar}
+      </Botao>
+      <Botao variante="secundario" onClick={aoVoltar} disabled={ocupado}>
         {TEXTOS.voltar}
       </Botao>
     </section>
