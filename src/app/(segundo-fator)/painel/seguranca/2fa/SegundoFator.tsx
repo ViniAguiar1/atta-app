@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { Resultado } from "@/lib/errors";
-import { sair } from "../../../login/actions";
+import { sair } from "@/app/(clinica)/login/actions";
 import { type Ativacao, confirmarCodigo, iniciarAtivacao } from "./actions";
 
 export type Passo = { tipo: "ativar" } | { tipo: "confirmar"; factorId: string } | { tipo: "ativo" };
