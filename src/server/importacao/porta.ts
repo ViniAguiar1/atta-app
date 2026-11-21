@@ -19,6 +19,7 @@ export type StatusImportacao = "recebida" | "processando" | "concluida" | "recus
 /** Por que a linha não entra (PDD §10.1: nome completo e CPF são obrigatórios; sem CPF não importa). */
 export type MotivoLinha =
   | "nome_ausente"
+  | "nome_invalido" // com menos de 2 ou mais de 200 caracteres
   | "cpf_ausente"
   | "cpf_invalido"
   | "cpf_repetido_na_planilha" // o mesmo CPF de novo, com os mesmos dados: fica a primeira linha
