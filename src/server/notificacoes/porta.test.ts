@@ -18,4 +18,9 @@ describe("porta do sino (MIG-45)", () => {
       expect(r.data.itens.map((n) => `${n.titulo} ${n.corpo}`).join(" ")).not.toMatch(/sa[úu]de|diagn|alerg|medica|doen[çc]a|toxina|preenchimento/i);
     }
   });
+
+  it("fuso inválido não passa pelo schema (nota do Frontend 2): a tela cai no erro, não num RangeError", () => {
+    expect(caixaSchema.safeParse({ itens: [], canais: CANAIS_VAZIOS, fuso: "America/Lugar_Nenhum" }).success).toBe(false);
+    expect(caixaSchema.safeParse({ itens: [], canais: CANAIS_VAZIOS, fuso: "America/Sao_Paulo" }).success).toBe(true);
+  });
 });

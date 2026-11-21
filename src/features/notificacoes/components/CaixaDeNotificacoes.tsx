@@ -33,7 +33,7 @@ export function CaixaDeNotificacoes({ itens }: { itens: ItemDaCaixa[] }) {
   const estado = itens.length === 0 ? { tipo: "vazio" as const } : visiveis.length === 0 ? { tipo: "sem-resultado" as const, limparFiltros: () => setBusca("") } : { tipo: "pronto" as const };
 
   return (
-    <div className="flex min-w-0 flex-col gap-3 text-[0.8125rem]">
+    <div className="flex min-w-0 flex-col gap-3 text-corpo">
       {itens.length > 0 && (
         <div role="search" className="flex items-center gap-2">
           <label htmlFor={idDaBusca} className="sr-only">{t.busca.rotulo}</label>
@@ -53,7 +53,7 @@ export function CaixaDeNotificacoes({ itens }: { itens: ItemDaCaixa[] }) {
           if (doGrupo.length === 0) return null;
           return (
             <section key={grupo} aria-labelledby={`grupo-${grupo}`} className="flex flex-col gap-2">
-              <h2 id={`grupo-${grupo}`} className="text-[0.6875rem] font-semibold tracking-wide text-status-info uppercase">
+              <h2 id={`grupo-${grupo}`} className="text-rotulo font-semibold tracking-wide text-status-info uppercase">
                 {t.grupos[grupo]} <span className="ml-1">{doGrupo.length}</span>
               </h2>
               <ul className="flex flex-col gap-2">
