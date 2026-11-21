@@ -57,4 +57,35 @@ describe("RespostasDoFormulario (leitura)", () => {
     const { container } = render(<RespostasDoFormulario perguntas={PERGUNTAS} respostas={RESPOSTAS} destaques={{ [id(1)]: "Alergia informada" }} />);
     expect(await violacoesDoAxe(container)).toEqual([]);
   });
+
+  it("condicional em cadeia: a resposta guardada de uma pergunta escondida não abre a que depende dela", () => {
+    const cadeia: Pergunta[] = [
+      { id: id(1), texto: "Fuma?", tipo: "sim_nao", obrigatoria: true },
+      { id: id(2), texto: "Há quanto tempo?", tipo: "aberta", obrigatoria: false, condicao: { perguntaId: id(1), resposta: "sim" } },
+      { id: id(3), texto: "Pensa em parar?", tipo: "sim_nao", obrigatoria: false, condicao: { perguntaId: id(2), resposta: "sim" } },
+    ];
+    const respostas: Resposta[] = [
+      { perguntaId: id(1), recusada: false, valor: { tipo: "sim_nao", valor: false } },
+      { perguntaId: id(2), recusada: false, valor: { tipo: "aberta", texto: "x" } },
+    ];
+    render(<RespostasDoFormulario perguntas={cadeia} respostas={respostas} />);
+    expect(screen.queryByText("Há quanto tempo?")).toBeNull();
+    expect(screen.queryByText("Pensa em parar?")).toBeNull();
+  });
+
+  it("opção sem rótulo na definição mostra '—', nunca o id; com título da tela, usa aria-labelledby", () => {
+    render(
+      <>
+        <h2 id="titulo-saude">Formulário de Saúde do paciente</h2>
+        <RespostasDoFormulario
+          rotuladoPor="titulo-saude"
+          perguntas={[PERGUNTAS[3]!]}
+          respostas={[{ perguntaId: id(4), recusada: false, valor: { tipo: "opcoes", valores: ["sumiu"] } }]}
+        />
+      </>,
+    );
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.queryByText("sumiu")).toBeNull();
+    expect(screen.getByLabelText("Formulário de Saúde do paciente").tagName).toBe("DL");
+  });
 });
