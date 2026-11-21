@@ -59,8 +59,11 @@ function dvDoCnpj(base: string, pesos: readonly number[]): number {
   return resto < 2 ? 0 : 11 - resto;
 }
 
-/** A forma guardada: maiúsculas, sem pontuação ("12.abc.345/01de-35" → "12ABC34501DE35"). */
-export const normalizarCnpj = (valor: string) => valor.toUpperCase().replace(/[^0-9A-Z]/g, "");
+/**
+ * A forma guardada: maiúsculas, sem a pontuação da máscara ("12.abc.345/01de-35" → "12ABC34501DE35"). Tira só ponto,
+ * barra, hífen e espaço: qualquer outro símbolo continua no texto e o cnpjValido recusa (nota do Frontend 2 no #291).
+ */
+export const normalizarCnpj = (valor: string) => valor.toUpperCase().replace(/[.\/\-\s]/g, "");
 
 export function cnpjValido(valor: string): boolean {
   const cnpj = normalizarCnpj(valor);
@@ -72,7 +75,8 @@ export function cnpjValido(valor: string): boolean {
 
 /** "AA.AAA.AAA/AAAA-DD", também enquanto digita (máscara progressiva, com letra nas 12 primeiras posições). */
 export function formatarCnpj(valor: string): string {
-  const c = normalizarCnpj(valor).slice(0, 14);
+  // na digitação, o que não é [0-9A-Z] some; a validação é o cnpjValido
+  const c = valor.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 14);
   let s = c.slice(0, 2);
   if (c.length > 2) s += `.${c.slice(2, 5)}`;
   if (c.length > 5) s += `.${c.slice(5, 8)}`;

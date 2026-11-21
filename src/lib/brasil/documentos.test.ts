@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { celularValido, cpfValido, mascararCelular, mascararCpf, nomeValido } from "./documentos";
+import { celularValido, cnpjValido, cpfValido, formatarCnpj, mascararCelular, mascararCpf, nomeValido, normalizarCnpj } from "./documentos";
 
 // CPFs e celulares gerados para teste (ninguém real).
 describe("documentos", () => {
@@ -21,23 +21,24 @@ describe("documentos", () => {
 });
 
 // Vetores gerados (ninguém real), numéricos e alfanuméricos; o "12ABC34501DE35" é o exemplo publicado pela Receita.
-describe("CNPJ alfanumérico (IN RFB 2.229/2024; ADR 0001)", async () => {
-  const { cnpjValido, formatarCnpj, normalizarCnpj } = await import("./documentos");
-
+describe("CNPJ alfanumérico (IN RFB 2.229/2024; ADR 0001)", () => {
   it("válidos, numéricos e com letras, com ou sem pontuação e em minúsculas", () => {
     for (const c of ["48309271000150", "48.309.271/0001-50", "12ABC34501DE35", "12.ABC.345/01DE-35", "12.abc.345/01de-35", "A1B2C3D4E5F668", "ZZZZZZZZ000191"]) {
       expect(cnpjValido(c), c).toBe(true);
     }
   });
 
-  it("inválidos: DV errado, letra no DV, tamanho, caractere repetido e símbolo", () => {
-    for (const c of ["48309271000151", "12ABC34501DE36", "12ABC34501DE3A", "12ABC34501DE3", "12ABC34501DE355", "00000000000000", "AAAAAAAAAAAAAA", "12ABC34501D!35"]) {
+  it("inválidos: DV errado, letra no DV, tamanho, caractere repetido e símbolo fora da máscara", () => {
+    // "12ABC34501DE!35" e "12ABC34501D!35": o símbolo não sai na normalização, e o CNPJ é recusado (nota do FE2 no #291)
+    for (const c of ["48309271000151", "12ABC34501DE36", "12ABC34501DE3A", "12ABC34501DE3", "12ABC34501DE355", "00000000000000", "AAAAAAAAAAAAAA", "12ABC34501DE!35", "12ABC34501D!35", "12ABC_34501DE35"]) {
       expect(cnpjValido(c), c).toBe(false);
     }
   });
 
   it("normaliza (maiúsculas, sem pontuação) e formata, inclusive enquanto digita", () => {
     expect(normalizarCnpj("12.abc.345/01de-35")).toBe("12ABC34501DE35");
+    expect(normalizarCnpj("12 ABC 345 01DE 35")).toBe("12ABC34501DE35");
+    expect(normalizarCnpj("12ABC34501DE!35")).toBe("12ABC34501DE!35");
     expect(formatarCnpj("12abc34501de35")).toBe("12.ABC.345/01DE-35");
     expect(formatarCnpj("48309271000150")).toBe("48.309.271/0001-50");
     expect(formatarCnpj("12ab")).toBe("12.AB");
