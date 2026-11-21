@@ -106,8 +106,12 @@ export const portaPropassReal: PortaPropass = {
     const api = criarClienteAdmin(await headers()).schema("api");
     const { data, error } = await api.rpc("propass_authorization_context", { p_secret_hash: paraBytea(hashDoLink) });
     if (error) return error.code === "42501" ? SEM_LINK : falhaDoBanco(error);
+    if (!Array.isArray(data) || data.length === 0) return SEM_LINK; // nenhuma linha = link sem validade
     const contexto = z.array(contextoSchema).length(1).safeParse(data);
-    if (!contexto.success) return SEM_LINK;
+    if (!contexto.success) {
+      logger.error("propass.termo_fora_do_contrato", { code: "INTERNO" }); // defeito do servidor, não link vencido
+      return falha("INTERNO", "Algo deu errado. Tente de novo.");
+    }
     try {
       const { nome, conselho, uf, numero } = registro;
       return ok(emParagrafos(preencherTermo(contexto.data[0]! as ContextoDoTermo, { nome, conselho, uf, numero })));
