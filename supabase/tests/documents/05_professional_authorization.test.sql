@@ -21,8 +21,8 @@ select is(private.atta_code_from_sha256('4ca2539340575ba8069afdc607b8884d8bafa9d
 select is(private.atta_code_from_sha256('não é hash'), null, 'entrada fora do formato: nulo');
 
 insert into platform.tenant (id, name, legal_name, cnpj) values
-  ('00000000-0000-4000-8000-0000000005a1', 'Clínica Fictícia Autorização A', 'Clínica Fictícia Autorização A Ltda', '00000000000501'),
-  ('00000000-0000-4000-8000-0000000005b1', 'Clínica Fictícia Autorização B', 'Clínica Fictícia Autorização B Ltda', '00000000000502');
+  ('00000000-0000-4000-8000-0000000005a1', 'Clínica Fictícia Autorização A', 'Clínica Fictícia Autorização A Ltda', '00000000050105'),
+  ('00000000-0000-4000-8000-0000000005b1', 'Clínica Fictícia Autorização B', 'Clínica Fictícia Autorização B Ltda', '00000000050296');
 
 -- seed ---------------------------------------------------------------------------------------------------------------
 select ok(private.authorization_template_ready('00000000-0000-4000-8000-0000000005a1'),
@@ -145,7 +145,7 @@ update platform.tenant set legal_name = 'Clínica Fictícia Autorização A Ltda
 select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000000005c9',
             pg_temp.payload('00000000-0000-4000-8000-0000000005c9')) $$), 'cnpj',
           'clínica sem CNPJ: nada se assina');
-update platform.tenant set cnpj = '00000000000501' where id = '00000000-0000-4000-8000-0000000005a1';
+update platform.tenant set cnpj = '00000000050105' where id = '00000000-0000-4000-8000-0000000005a1';
 -- revisões do #192 e do #208 (MIG-21c parte 2)
 select is(pg_temp.detalhe($$ select pg_temp.gravar('00000000-0000-4000-8000-0000000005c9',
             pg_temp.payload('00000000-0000-4000-8000-0000000005c9', p_council => 'CRM-RJ 99999')) $$), 'payload',

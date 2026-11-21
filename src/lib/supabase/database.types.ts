@@ -87,6 +87,12 @@ export type Database = {
 "boarding_pin_subject":
 { Args: { "p_link_hash": string }; Returns: string
                            },
+"clinic_profile":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"clinic_profile_set":
+{ Args: { "p_field": string,"p_value": string }; Returns: string
+                           },
 "delivery_apply_status":
 { Args: { "p_at": string,"p_billable"?: boolean,"p_channel": string,"p_code"?: string,"p_external_id": string,"p_state": string }; Returns: string
                            },
@@ -841,19 +847,39 @@ isOneToOne: false
                   ]
                 },"tenant": {
                   Row: {
-                    "cnpj": string | null,"created_at": string,"deleted_at": string | null,"id": string,"kind": string,"legal_name": string | null,"name": string,"parent_tenant_id": string | null,"timezone": string,"updated_at": string
+                    "address_cep": string | null,"address_city": string | null,"address_complement": string | null,"address_number": string | null,"address_street": string | null,"address_uf": string | null,"clinic_whatsapp": string | null,"cnpj": string | null,"commercial_email": string | null,"created_at": string,"deleted_at": string | null,"id": string,"kind": string,"legal_name": string | null,"main_specialty": string | null,"name": string,"parent_tenant_id": string | null,"phone": string | null,"profile_saved_at": string | null,"tax_registration": string | null,"timezone": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cnpj"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"legal_name"?: string | null,"name": string,"parent_tenant_id"?: string | null,"timezone"?: string,"updated_at"?: string
+                    "address_cep"?: string | null,"address_city"?: string | null,"address_complement"?: string | null,"address_number"?: string | null,"address_street"?: string | null,"address_uf"?: string | null,"clinic_whatsapp"?: string | null,"cnpj"?: string | null,"commercial_email"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"legal_name"?: string | null,"main_specialty"?: string | null,"name": string,"parent_tenant_id"?: string | null,"phone"?: string | null,"profile_saved_at"?: string | null,"tax_registration"?: string | null,"timezone"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "cnpj"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"legal_name"?: string | null,"name"?: string,"parent_tenant_id"?: string | null,"timezone"?: string,"updated_at"?: string
+                    "address_cep"?: string | null,"address_city"?: string | null,"address_complement"?: string | null,"address_number"?: string | null,"address_street"?: string | null,"address_uf"?: string | null,"clinic_whatsapp"?: string | null,"cnpj"?: string | null,"commercial_email"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"legal_name"?: string | null,"main_specialty"?: string | null,"name"?: string,"parent_tenant_id"?: string | null,"phone"?: string | null,"profile_saved_at"?: string | null,"tax_registration"?: string | null,"timezone"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
       foreignKeyName: "tenant_parent_tenant_id_fkey"
       columns: ["parent_tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenant"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"tenant_responsible": {
+                  Row: {
+                    "council": string | null,"council_number": string | null,"council_uf": string | null,"cpf_enc": string | null,"cpf_hmac": string | null,"cpf_masked": string | null,"created_at": string,"dek_wrapped": string,"email_enc": string | null,"email_masked": string | null,"envelope_id": string,"full_name": string | null,"id": string,"kek_version": number,"phone_enc": string | null,"phone_masked": string | null,"role": string,"same_as_manager": boolean,"tenant_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "council"?: string | null,"council_number"?: string | null,"council_uf"?: string | null,"cpf_enc"?: string | null,"cpf_hmac"?: string | null,"cpf_masked"?: string | null,"created_at"?: string,"dek_wrapped": string,"email_enc"?: string | null,"email_masked"?: string | null,"envelope_id": string,"full_name"?: string | null,"id"?: string,"kek_version": number,"phone_enc"?: string | null,"phone_masked"?: string | null,"role": string,"same_as_manager"?: boolean,"tenant_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "council"?: string | null,"council_number"?: string | null,"council_uf"?: string | null,"cpf_enc"?: string | null,"cpf_hmac"?: string | null,"cpf_masked"?: string | null,"created_at"?: string,"dek_wrapped"?: string,"email_enc"?: string | null,"email_masked"?: string | null,"envelope_id"?: string,"full_name"?: string | null,"id"?: string,"kek_version"?: number,"phone_enc"?: string | null,"phone_masked"?: string | null,"role"?: string,"same_as_manager"?: boolean,"tenant_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tenant_responsible_tenant_id_fkey"
+      columns: ["tenant_id"]
 isOneToOne: false
       referencedRelation: "tenant"
       referencedColumns: ["id"]
