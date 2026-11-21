@@ -94,3 +94,20 @@ test("rota fora do painel continua na página de não encontrada, sem indexar", 
   await expect(page.getByRole("heading", { level: 1, name: "Página não encontrada" })).toBeVisible();
   await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
 });
+
+// S2 da QA no stage (21/11): o acesso do Colaborador é módulo a módulo (PDD §10.4.3). A colaboradora do seed tem o padrão
+// do convite (Agendamentos e Pacientes completos, ATTA ver; Termos & Docs nenhum).
+test("a colaboradora com o padrão do convite não vê Termos & Docs, e a rota mostra o \"sem acesso\"", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("E-mail").fill("colaboradora.ficticia@exemplo.test");
+  await page.getByLabel("Senha", { exact: true }).fill(SENHA);
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page).toHaveURL(INICIO_DO_PAINEL);
+  const abas = page.getByRole("navigation", { name: "Módulos do painel" }).getByRole("link");
+  await expect(abas).toHaveText(["Agendamentos", "Pacientes", "ATTA"]);
+  await page.goto("/painel/documentos");
+  await expect(page.getByRole("main").getByText("Você não tem acesso a este módulo")).toBeVisible();
+  await expect(page.getByRole("main")).not.toContainText("SEM_PERMISSAO");
+  expect((await axe(page)).violations).toEqual([]);
+});
+

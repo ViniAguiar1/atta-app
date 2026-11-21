@@ -1,3 +1,4 @@
+import { cleanup, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessaoDoPainel } from "@/features/casca/sessao";
 
@@ -33,10 +34,14 @@ describe("guarda de Métricas (MIG-46)", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it("o Colaborador sem metrics.view, e quem está sem sessão, voltam ao /painel", async () => {
+  it("o Colaborador sem metrics.view, e quem está sem sessão, veem o \"sem acesso\", sem a tela de Métricas", async () => {
     for (const s of [{ ...base, permissoes: ["appointments.view", "atta.view"] }, null]) {
       sessao.mockResolvedValue(s);
-      await expect(abrir()).rejects.toThrow("redirect:/painel");
+      render((await abrir()) as React.ReactElement);
+      expect(screen.getByText("Você não tem acesso a este módulo")).toBeInTheDocument();
+      expect(screen.queryByText("painel")).toBeNull();
+      cleanup();
     }
+    expect(redirect).not.toHaveBeenCalled();
   });
 });

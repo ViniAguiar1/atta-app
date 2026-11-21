@@ -94,6 +94,9 @@ export function DataState({ estado, rotulo, esqueleto, vazio, children }: Props)
       );
 
     case "erro":
+      // Sem permissão não é falha: o banco recusou porque o módulo não foi liberado (PDD §10.4.3). Mostra o "sem acesso",
+      // sem código técnico nem "tentar de novo" (S2 da QA no stage, 21/11).
+      if (estado.codigo === "SEM_PERMISSAO") return <SemAcesso rotulo={rotulo} />;
       // Nunca parecido com o vazio (planning/05 §4.5): papel alert, borda e ícone de status negativo, e a ação é
       // tentar de novo, não criar. Quem vê uma lista vazia por erro acha que perdeu os dados.
       return (
@@ -116,6 +119,16 @@ export function DataState({ estado, rotulo, esqueleto, vazio, children }: Props)
   }
 }
 
+/** O "sem acesso" do módulo: o mesmo quadro do vazio, com o texto de quem libera o acesso (o gestor). */
+export function SemAcesso({ rotulo }: { rotulo: string }) {
+  return (
+    <Quadro estado="sem-acesso" papel="status" rotulo={rotulo}>
+      <p className="font-sub text-lg text-text-primary">{textos.semAcesso.titulo}</p>
+      <p className="text-text-secondary">{textos.semAcesso.texto}</p>
+    </Quadro>
+  );
+}
+
 function Quadro({
   estado,
   papel,
@@ -123,7 +136,7 @@ function Quadro({
   className = "border border-border",
   children,
 }: {
-  estado: "vazio" | "sem-resultado" | "erro";
+  estado: "vazio" | "sem-resultado" | "erro" | "sem-acesso";
   papel: "status" | "alert";
   rotulo: string;
   className?: string;
