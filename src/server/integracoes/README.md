@@ -8,5 +8,6 @@ Integrações externas do ATTA (MIG-30 a MIG-34, trilha Integrações), sempre a
 - `mensageria/montagem.ts`: escolhe simulador ou real por variável de ambiente.
 - `mensageria/envio-permitido.ts`: enquanto a nuvem só tem dado fictício, todo provedor real só envia para destino cujo HMAC está em `ATTA_ENVIO_PERMITIDOS`; o resto volta como `bloqueado_stage`, e `@exemplo.test` nunca sai (ADR 0005 §1).
 - `agenda/`: porta da agenda externa da clínica (Google Agenda e Outlook, PDD §10.4.5), OAuth com PKCE, só leitura, e o simulador (MIG-33).
+- `cobranca/`: gateway da assinatura da clínica (MIG-32): porta, adaptador do Asaas (só sandbox nesta fase; chave de produção recusada), webhook pelo `asaas-access-token` e simulador sem webhook HTTP. Nenhum dado de cartão passa pelo ATTA.
 - `comum/`: `ResultadoProvedor`, o resultado interno dos adaptadores, com o tipo da falha (transitória, permanente ou de configuração) e sem dado pessoal; não sai desta pasta (o das bordas é o de `@/lib/errors`, ADR 0005 §3).
 - O destinatário entra por referência (pessoa, paciente provisório, profissional ou membro); o endereço é resolvido no servidor (ADR 0005 §1).
