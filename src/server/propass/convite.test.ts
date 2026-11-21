@@ -52,7 +52,7 @@ describe("envelope do convite (vínculo, ADR 0001 §1)", () => {
 
 describe("envelope do profissional (PROpass)", () => {
   it("cifra CPF, celular e e-mail com a AAD de cada coluna; CPF mascarado e HMACs", async () => {
-    const p = await selarProfissional({ cpf: "529.982.247-25", celular: "11990010001", email: "Dra@Exemplo.test" },
+    const p = await selarProfissional({ cpf: "529.982.247-25", celular: "(11) 99001-0001", email: "Dra@Exemplo.test" },
                                       { cofre, hmacDoCpf, hmacDoEmail });
     expect(p.cpf_masked).toBe("\u00b7\u00b7\u00b7.\u00b7\u00b7\u00b7.247-25");
     expect(deBytea(p.cpf_hmac).equals(hmacDoCpf("52998224725"))).toBe(true);
@@ -74,5 +74,9 @@ describe("envelope do profissional (PROpass)", () => {
     await expect(selarProfissional({ cpf: "111.111.111-11", celular: "11990010001", email: "a@exemplo.test" }, deps)).rejects.toThrow(RangeError);
     await expect(selarProfissional({ cpf: "52998224725", celular: "11990010001", email: "x" }, deps)).rejects.toThrow(RangeError);
     await expect(selarProfissional({ cpf: "52998224725", celular: "abc", email: "a@exemplo.test" }, deps)).rejects.toThrow(RangeError);
+    // §16.6: DDD válido e 9 na frente, 11 dígitos (como o celular do paciente)
+    for (const celular of ["1199001000", "+55 11 99001-0001", "20990010001", "11890010001"]) {
+      await expect(selarProfissional({ cpf: "52998224725", celular, email: "a@exemplo.test" }, deps), celular).rejects.toThrow(RangeError);
+    }
   });
 });
