@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConfiguracaoAusente } from "../mensageria/montagem";
-import { AmbienteAsaasRecusado, BASE_SANDBOX, GatewayAsaas } from "./asaas";
+import { AmbienteAsaasRecusado, BASE_SANDBOX, GatewayAsaas, linkDoAsaas } from "./asaas";
 import { montarGatewayCobranca } from "./montagem";
 import { SimuladorCobranca } from "./simulador";
 
@@ -291,5 +291,57 @@ describe("simulador e montagem", () => {
       montarGatewayCobranca({ ...real, ATTA_ASAAS_AMBIENTE: "sandbox", ATTA_ASAAS_WEBHOOK_TOKEN: "curto" }),
     ).toThrow(ConfiguracaoAusente);
     expect(montarGatewayCobranca({ ...real, ATTA_ASAAS_AMBIENTE: "sandbox" }).nome).toBe("asaas");
+  });
+});
+
+describe("Asaas: busca da cobrança e link", () => {
+  it("busca a cobrança na API e traduz; sem assinatura volta nulo", async () => {
+    const pagamento = {
+      id: "pay_1",
+      subscription: "sub_ficticia",
+      dueDate: "2026-12-21",
+      value: 399,
+      status: "RECEIVED",
+      invoiceUrl: "https://sandbox.asaas.com/i/ficticio",
+    };
+    const fetch = respostas([200, pagamento], [200, { ...pagamento, subscription: null }]);
+    const g = new GatewayAsaas({ ...CONFIG, fetch });
+    expect(await g.buscarCobranca("pay_1")).toEqual({
+      ok: true,
+      valor: {
+        idAssinaturaExterna: "sub_ficticia",
+        cobranca: {
+          idExterno: "pay_1",
+          vencimento: "2026-12-21",
+          valorCentavos: 39900,
+          status: "paga",
+          linkPagamento: "https://sandbox.asaas.com/i/ficticio",
+        },
+      },
+    });
+    expect(urlDe(fetch, 0)).toBe(`${BASE_SANDBOX}/payments/pay_1`);
+    expect(await g.buscarCobranca("pay_1")).toEqual({ ok: true, valor: null });
+    expect(await g.buscarCobranca("../customers")).toMatchObject({ falha: { codigo: "id_invalido" } });
+  });
+
+  it("autentica o webhook só pelo cabeçalho", () => {
+    const g = new GatewayAsaas(CONFIG);
+    expect(g.autenticarWebhook({ "asaas-access-token": TOKEN })).toBe(true);
+    expect(g.autenticarWebhook({ "asaas-access-token": "outro" })).toBe(false);
+    expect(g.autenticarWebhook({})).toBe(false);
+  });
+
+  it("link de fatura só do Asaas, em https", () => {
+    for (const ok of ["https://www.asaas.com/i/abc", "https://sandbox.asaas.com/i/abc", "https://asaas.com/c/x"])
+      expect(linkDoAsaas(ok), ok).toBe(true);
+    for (const ruim of [
+      "http://www.asaas.com/i/abc",
+      "https://asaas.com.golpe.test/i/abc",
+      "https://golpe-asaas.com/i/abc",
+      "https://user:senha@www.asaas.com/i/abc",
+      "https://www.asaas.com:8443/i/abc",
+      "não é url",
+    ])
+      expect(linkDoAsaas(ruim), ruim).toBe(false);
   });
 });

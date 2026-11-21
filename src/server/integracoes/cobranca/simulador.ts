@@ -9,6 +9,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { falhaProvedor, okProvedor, type ResultadoProvedor } from "../comum/resultado-provedor";
 import type {
+  CobrancaDoEvento,
   DadosCliente,
   EventoCobranca,
   GatewayCobranca,
@@ -29,7 +30,10 @@ export class SimuladorCobranca implements GatewayCobranca {
   readonly nome = "simulador" as const;
   private readonly clientes = new Map<string, string>(); // tenantId → idCliente
   private readonly assinaturas = new Map<string, AssinaturaSimulada>(); // idAssinatura → assinatura
-  private readonly cobrancas = new Map<string, { idAssinatura: string; vencimento: string; valorCentavos: number }>();
+  private readonly cobrancas = new Map<
+    string,
+    { idAssinatura: string; vencimento: string; valorCentavos: number; status: StatusCobranca }
+  >();
 
   async criarCliente(c: DadosCliente): Promise<ResultadoProvedor<{ readonly idCliente: string }>> {
     if (c.cnpj.endsWith("0000")) return falhaProvedor("permanente", "sim_cnpj_recusado", "simulador: cliente recusado");
@@ -64,6 +68,22 @@ export class SimuladorCobranca implements GatewayCobranca {
     return okProvedor({ status: a.removida ? "inativa" : "ativa", removida: a.removida });
   }
 
+  async buscarCobranca(
+    id: string,
+  ): Promise<ResultadoProvedor<{ readonly idAssinaturaExterna: string; readonly cobranca: CobrancaDoEvento } | null>> {
+    const c = this.cobrancas.get(id);
+    if (!c) return falhaProvedor("permanente", "http_404", "simulador: cobrança não encontrada");
+    return okProvedor({
+      idAssinaturaExterna: c.idAssinatura,
+      cobranca: { idExterno: id, vencimento: c.vencimento, valorCentavos: c.valorCentavos, status: c.status },
+    });
+  }
+
+  /** O simulador não recebe webhook: nenhum cabeçalho autentica. */
+  autenticarWebhook(): boolean {
+    return false;
+  }
+
   interpretarWebhook(): ResultadoProvedor<EventoCobranca | null> {
     return falhaProvedor("permanente", "assinatura_invalida", "simulador: não recebe webhook");
   }
@@ -74,7 +94,12 @@ export class SimuladorCobranca implements GatewayCobranca {
     if (!a || a.removida) return null;
     const idCobranca = `pay_sim_${randomUUID()}`;
     const data = vencimento ?? a.primeiroVencimento;
-    this.cobrancas.set(idCobranca, { idAssinatura, vencimento: data, valorCentavos: a.valorCentavos });
+    this.cobrancas.set(idCobranca, {
+      idAssinatura,
+      vencimento: data,
+      valorCentavos: a.valorCentavos,
+      status: "pendente",
+    });
     return this.evento("PAYMENT_CREATED", idCobranca, "pendente");
   }
 
@@ -101,6 +126,7 @@ export class SimuladorCobranca implements GatewayCobranca {
   private evento(tipo: string, idCobranca: string, status: StatusCobranca): EventoCobranca | null {
     const c = this.cobrancas.get(idCobranca);
     if (!c) return null;
+    c.status = status;
     return {
       idEvento: `evt_sim_${randomUUID()}`,
       tipo,
