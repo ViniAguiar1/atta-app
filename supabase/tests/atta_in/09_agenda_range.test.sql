@@ -1,6 +1,6 @@
 -- MIG-11: visões Todos e Concluídos da Agenda (api.agenda_range). Horários fixos no dia da clínica: passa a qualquer hora.
 begin;
-select plan(14);
+select plan(17);
 
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-00000000000a', 'Clínica Fictícia A'), ('00000000-0000-4000-8000-00000000000b', 'Clínica Fictícia B');
@@ -113,8 +113,16 @@ select is((select pg_temp.ids(api.agenda_range('todos', d - 1, d + 2, p_status =
           'b007', 'Todos com filtro de estado');
 select throws_ok($$ select api.agenda_range('todos', current_date, current_date, p_status => array['concluido']) $$,
                  'P0001', 'ATTA-IN-0001', 'Todos não filtra por Concluído');
-select throws_ok($$ select api.agenda_range('todos', current_date, null) $$, 'P0001', 'ATTA-IN-0001',
-                 'Todos sem o fim do intervalo: recusado');
+select ok((select (r ->> 'from')::date = d and (r ->> 'to')::date = d + 91
+                  and pg_temp.ids(r) = 'b002,b007,b004,b005'
+           from hoje_local, api.agenda_range('todos') r),
+          'Todos sem período: hoje no fuso da clínica e os 91 dias seguintes (padrão no banco)');
+select ok((select (r ->> 'to')::date = d - 1 + 91 from hoje_local, api.agenda_range('todos', d - 1) r),
+          'Todos só com o início: até início + 91');
+select ok((select (r ->> 'to')::date - (r ->> 'from')::date = 91
+           from hoje_local, api.agenda_range('todos', d, d + 91) r), 'Todos com exatamente 92 dias: aceito');
+select throws_ok($$ select api.agenda_range('todos', current_date + 1, current_date) $$, 'P0001', 'ATTA-IN-0001',
+                 'Todos com fim antes do início: recusado');
 select throws_ok($$ select api.agenda_range('todos', current_date, current_date + 92) $$, 'P0001', 'ATTA-IN-0001',
                  'Todos com mais de 92 dias: recusado');
 
