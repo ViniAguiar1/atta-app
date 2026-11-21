@@ -87,3 +87,6 @@ export function mascararTelefone(valor: string): string {
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
 }
+
+/** E-mail com estrutura válida (PDD §16.6): algo@domínio.tld, sem espaço. Quem confere de fato é o banco. */
+export const emailValido = (valor: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor.trim());

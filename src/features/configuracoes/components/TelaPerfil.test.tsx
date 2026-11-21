@@ -83,6 +83,15 @@ describe("Perfil da Clínica (MIG-42, captura 42)", () => {
     expect(await screen.findByText("Confira este campo: o valor não foi aceito.")).toBeInTheDocument();
   });
 
+  it("e-mail sem estrutura válida não vai ao servidor e marca o campo (§16.6; achado do QA no #281)", async () => {
+    render(<TelaPerfil resultado={ok(PERFIL)} />);
+    const email = screen.getByLabelText("E-mail comercial");
+    await userEvent.type(email, "nao-e-email{Enter}");
+    expect(salvar).not.toHaveBeenCalled();
+    expect(screen.getByText("Confira o e-mail: falta o @ ou o domínio.")).toBeInTheDocument();
+    expect(email).toHaveAttribute("aria-invalid", "true");
+  });
+
   it("a UF salva logo ao escolher", async () => {
     salvar.mockResolvedValue(ok({ salvoEm: "2026-11-21T14:05:00Z" }));
     render(<TelaPerfil resultado={ok(PERFIL)} />);

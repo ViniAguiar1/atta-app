@@ -38,3 +38,11 @@ describe("CNPJ, CEP e telefone fixo (Perfil da Clínica)", async () => {
     expect(mascararTelefone("11999998888")).toBe("(11) 99999-8888");
   });
 });
+
+describe("e-mail (Perfil da Clínica, §16.6)", async () => {
+  const { emailValido } = await import("./documentos");
+  it("estrutura válida", () => {
+    expect(emailValido("contato@exemplo.test")).toBe(true);
+    for (const e of ["nao-e-email", "a@b", "a @b.com", "@exemplo.test"]) expect(emailValido(e), e).toBe(false);
+  });
+});

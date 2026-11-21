@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
-import { cnpjValido, mascararCep, mascararCnpj, mascararTelefone, soDigitos } from "@/lib/brasil/documentos";
+import { cnpjValido, emailValido, mascararCep, mascararCnpj, mascararTelefone, soDigitos } from "@/lib/brasil/documentos";
 import type { Erro } from "@/lib/errors";
 import type { CampoDaEmpresa } from "@/server/perfil/porta";
 import { salvarCampoDoPerfil } from "../actions";
@@ -9,7 +9,8 @@ import { textos } from "../textos";
 
 // Um campo do Perfil da Clínica, salvo sozinho (PDD §10.4.1: salvamento automático, campo a campo, sem botão): ao sair do
 // campo ou no Enter; a UF logo depois de escolher. CNPJ, CEP e telefones aparecem com máscara e vão só com os dígitos.
-// Quem decide formato e obrigatório é o banco; a tela só confere o dígito do CNPJ antes, para responder na hora.
+// Quem decide formato e obrigatório é o banco; a tela só confere antes o dígito do CNPJ e a estrutura do e-mail (§16.6),
+// para responder na hora.
 const t = textos.perfil;
 const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"] as const;
 
@@ -55,6 +56,7 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
     const normal = SO_DIGITOS.has(campo) ? soDigitos(texto) : texto.trim();
     if (normal === salvoAte) return setErro(null);
     if (campo === "cnpj" && normal && !cnpjValido(normal)) return setErro(t.erros.cnpj);
+    if (campo === "commercial_email" && normal && !emailValido(normal)) return setErro(t.erros.email);
     setSalvoEm(null);
     executar(async () => {
       const r = await salvarCampoDoPerfil({ campo, valor: normal || null });
