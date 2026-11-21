@@ -6,6 +6,8 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
     environment: "jsdom",
+    // Mac compartilhado pelos agentes: fora do CI, 2 workers (VITEST_MAX_WORKERS manda, se definido); no CI, o padrão
+    maxWorkers: process.env.CI ? undefined : (process.env.VITEST_MAX_WORKERS ?? 2),
     setupFiles: ["./vitest.setup.ts"],
     // tests/conformance: os vetores congelados do atta-core (ATTA Sign) ficam em tests/vectors, fora do src;
     // scripts: o gerador dos modelos de e-mail do Auth (scripts/modelos-email)

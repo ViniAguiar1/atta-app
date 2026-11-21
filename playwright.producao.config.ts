@@ -10,6 +10,7 @@ export default defineConfig({
   testDir: "./e2e/producao",
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  workers: process.env.CI ? undefined : 1, // Mac compartilhado pelos agentes: um navegador por vez fora do CI
   reporter: process.env.CI ? "github" : "list",
   use: { baseURL: `http://127.0.0.1:${porta}`, trace: "retain-on-failure" },
   projects: [{ name: "producao", use: { ...devices["Desktop Chrome"] } }],

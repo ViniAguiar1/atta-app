@@ -49,6 +49,7 @@ cmd="${1:-status}"
 [ "$#" -gt 0 ] && shift
 case "$cmd" in
   start)
+    sh "$(dirname "$0")/carga-ok.sh" # máquina cheia: não sobe mais um Supabase (no CI, sempre passa)
     if [ "${ATTA_SUPABASE_COMPLETO:-}" = 1 ]; then supabase start "$@"; else supabase start -x "$leve" "$@"; fi
     echo "instância $id: API http://127.0.0.1:$SUPABASE_API_PORT · banco 127.0.0.1:$SUPABASE_DB_PORT · app na porta $((3000 + slot))"
     ;;
