@@ -84,6 +84,13 @@ describe("Configurações › Notificações (PDD §10.4.6, captura 45)", () => 
     await waitFor(() => expect(screen.getByText(/Número cadastrado: \(48\) ·····-0001/)).toBeInTheDocument());
   });
 
+  it("recusa de endereço com o canal desligado (ATTA-IN-0003:estado) aparece no campo", async () => {
+    acoes.alterarCanal.mockResolvedValue({ ok: false, error: { code: "CONFLITO", message: "x", reason: "ATTA-IN-0003:estado" } });
+    abrir();
+    await userEvent.type(screen.getByLabelText("E-mail que recebe os alertas"), "nova@clinica-exemplo.test{enter}");
+    await waitFor(() => expect(screen.getAllByText("Ligue o canal para trocar o destino.").length).toBeGreaterThan(0));
+  });
+
   it("não há violação do axe", async () => {
     const { container } = abrir();
     expect(await violacoesDoAxe(container)).toEqual([]);
