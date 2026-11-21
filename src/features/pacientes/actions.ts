@@ -102,3 +102,12 @@ export async function reportarDivergenciaDaRede(entrada: unknown): Promise<Resul
   logger.info("pacientes.reporte_enviado", { ok: resultado.ok, code: resultado.ok ? undefined : resultado.error.code });
   return resultado;
 }
+
+/** "Arquivar paciente" da Pasta (PLANO, decisão do dono de 20/11): só o gestor; o banco confere o papel e os agendamentos. */
+export async function arquivarPaciente(entrada: unknown): Promise<Resultado<{ arquivado: boolean }>> {
+  const dados = z.object({ id: z.uuid(), arquivar: z.boolean() }).strict().safeParse(entrada);
+  if (!dados.success) return falhaDeValidacao(dados.error.issues);
+  const resultado = await portaPacientes.arquivar(dados.data.id, dados.data.arquivar);
+  logger.info("pacientes.arquivo", { ok: resultado.ok, arquivar: dados.data.arquivar, code: resultado.ok ? undefined : resultado.error.code });
+  return resultado;
+}

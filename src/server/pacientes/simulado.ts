@@ -141,6 +141,7 @@ export function criarPortaSimulada(pacientes: readonly Simulado[] = PACIENTES_SI
         contato: p.contato,
         selo: p.ficha.selo,
         seloExpirouEm: null,
+        arquivadoEm: null,
         origem: p.ficha.origem,
         vinculadoEm: "2026-11-01T12:00:00Z",
         acessoARede: p.ficha.acessoARede,
@@ -177,6 +178,10 @@ export function criarPortaSimulada(pacientes: readonly Simulado[] = PACIENTES_SI
       const normal = normalizeCpf(cpf);
       if (!normal || !isValidCpf(normal)) return falha("VALIDACAO", "CPF inválido.", [{ campo: "cpf", code: "VALIDACAO" }]);
       return ok({ recebido: true as const });
+    },
+    async arquivar(id, arquivado) {
+      if (!existe(id)) return falha("NAO_ENCONTRADO", "Paciente não encontrado.");
+      return ok({ arquivado });
     },
     async reportarDivergencia(id) {
       if (!existe(id)) return falha("NAO_ENCONTRADO", "Paciente não encontrado.");
