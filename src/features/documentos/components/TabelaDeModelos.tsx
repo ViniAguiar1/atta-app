@@ -1,6 +1,7 @@
 import type { ModeloDeDocumento } from "@/server/documentos/porta";
 import { data, frequencia, mesAno, numero } from "../formatos";
 import { NOMES_DOS_TIPOS, textos } from "../textos";
+import { MenuDoModelo } from "./MenuDoModelo";
 
 // Tabela de Meus modelos (PDD §10.3.1; simulador, captura 39): Modelo · Procedimentos · Frequência · Recusa impede? ·
 // Versão · Assinados, com as larguras medidas na captura 39 (tabela fixa: a coluna não muda com o conteúdo). O menu ⋮ (editar, vincular, publicar, inativar, vindos do servidor) entra com as telas de cada
@@ -22,6 +23,9 @@ export function TabelaDeModelos({ modelos }: { modelos: ModeloDeDocumento[] }) {
                 {coluna}
               </th>
             ))}
+            <th scope="col" className="px-4 py-3">
+              <span className="sr-only">{textos.colunaAcoes}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -42,6 +46,9 @@ export function TabelaDeModelos({ modelos }: { modelos: ModeloDeDocumento[] }) {
                 <Versao modelo={m} />
               </td>
               <td className="px-4 py-3 text-text-primary">{numero(m.assinados)}</td>
+              <td className="px-3 py-3">
+                <MenuDoModelo modelo={m} />
+              </td>
             </tr>
           ))}
         </tbody>
@@ -51,8 +58,8 @@ export function TabelaDeModelos({ modelos }: { modelos: ModeloDeDocumento[] }) {
 }
 
 // Posições das colunas medidas na captura 39 (tabela de 1436 px): Modelo 404, Procedimentos 280, Frequência 178,
-// Recusa impede? 207, Versão 181; Assinados fica com o resto, onde o ⋮ entra com a sua coluna no PR das ações.
-const LARGURAS = ["28.1%", "19.5%", "12.4%", "14.4%", "12.6%", "13%"] as const;
+// Recusa impede? 207, Versão 181, Assinados 116 e o ⋮ com o resto.
+const LARGURAS = ["28.1%", "19.5%", "12.4%", "14.4%", "12.6%", "8.1%", "4.9%"] as const;
 
 const chip = "inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface-card px-3 py-0.5 text-xs text-text-primary";
 

@@ -44,3 +44,7 @@ export type ResumoDosModelos = {
 
 export type MeusModelos = { modelos: ModeloDeDocumento[]; resumo: ResumoDosModelos };
 
+
+/** Serviço da clínica para o "vincular procedimentos" (§10.4.7). Inativo aparece marcado: o vínculo aceita qualquer
+ * Serviço não excluído (#69). */
+export type ServicoParaVincular = { id: string; nome: string; ativo: boolean };
