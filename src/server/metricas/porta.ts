@@ -8,6 +8,9 @@ import { portaMetricasVazia } from "./vazia";
 // prontos e agregados do banco, no fuso da clínica (PDD §10.5: contagens e tempos, nunca conteúdo clínico); a tela só
 // formata. A real chama o api.* do MIG-16 com a sessão do usuário (cliente de servidor, nunca a secret key) e passa a
 // resposta pelo painelDeMetricasSchema; os nomes dos campos fecham com o Backend 4 quando o MIG-16 abrir.
+// Condição da Segurança (#201) para a real: a guarda do layout não basta (o layout não roda a cada navegação e a página
+// renderiza em paralelo); a função em api confere has_permission('metrics', 'view') e responde 42501 a quem não tem,
+// com teste pgTAP do Colaborador sem a permissão.
 export type PortaMetricas = {
   /** Cards e blocos do Painel (§10.5.1 e §10.5.2). Só o ADMIN chega aqui (a rota devolve os outros ao painel). */
   painel(): Promise<Resultado<PainelDeMetricas>>;
