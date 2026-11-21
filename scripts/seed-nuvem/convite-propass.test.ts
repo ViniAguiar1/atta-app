@@ -39,6 +39,9 @@ describe("convite de PROpass fictício da nuvem", () => {
     expect(sql).toContain("private.propass_issue");
     expect(sql).toContain(AURORA);
     expect(sql).not.toMatch(/api\.professional_invite|delivery|enqueue/);   // nenhum e-mail sai
+    // validade de 24 h no máximo, sem estender a da política (TL no #255)
+    expect(sql).toContain("v_grant := private.propass_issue(");
+    expect(sql).toContain("expires_at = least(g.expires_at, now() + interval '24 hours') where g.id = v_grant");
   });
 
   it("o e-mail do convite abre pela convenção do app (ADR 0001 §1) e o HMAC é o emailHmac", async () => {

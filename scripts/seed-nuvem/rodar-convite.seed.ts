@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { chmodSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CI_TEST_KEK_FINGERPRINT } from "@/server/cofre";
@@ -41,8 +41,11 @@ describe.runIf(process.env.ATTA_SEED_CONVITE === "1")("convite de PROpass fictí
         segredo: gerarSegredo(),
         baseUrl: env("ATTA_SEED_BASE_URL"),
       });
+      // o mode do writeFileSync só vale na criação: o chmod garante 600 também quando o arquivo já existia (TL no #255)
       writeFileSync(saida, sql, { mode: 0o600 });
-      writeFileSync(arquivoDoLink, `# Convite de PROpass de teste (fictício; apagar depois do envio de ponta a ponta)\n\n${link}\n`, { mode: 0o600 });
+      chmodSync(saida, 0o600);
+      writeFileSync(arquivoDoLink, `# Convite de PROpass de teste (fictício; vale 24 h; apagar depois do envio de ponta a ponta)\n\n${link}\n`, { mode: 0o600 });
+      chmodSync(arquivoDoLink, 0o600);
     } finally {
       pepperCpf.fill(0);
     }
