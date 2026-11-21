@@ -116,7 +116,6 @@ export function termoPronto(termo: string): boolean {
   return (t.match(/\p{L}/gu) ?? []).length >= 2;
 }
 
-/** Cards do topo (§10.2.2). Sempre contam o dia de hoje, menos a Confirmação (agendamentos futuros). */
 /** Lista de uma visão por período (Todos, Concluídos): como o dia, sem a data pedida (cada linha traz a sua). */
 export const listaSchema = z.object({
   hojeLocal: dataLocalSchema,
@@ -147,6 +146,7 @@ export const filtroDosConcluidosSchema = z.object({
 });
 export type FiltroDosConcluidos = z.infer<typeof filtroDosConcluidosSchema>;
 
+/** Cards do topo (§10.2.2). Sempre contam o dia de hoje, menos a Confirmação (agendamentos futuros). */
 /** Total do card: número do banco, ou null quando ainda não existe (porta vazia): a tela mostra "—". */
 const total = z.number().int().nonnegative().nullable();
 export const resumoSchema = z.object({

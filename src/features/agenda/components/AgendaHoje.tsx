@@ -185,7 +185,7 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
             value={busca}
             aria-describedby={pronto ? undefined : idDaDica}
             onChange={(evento) => mudarBusca(evento.target.value)}
-            className="min-h-8 w-full rounded-full border border-border-functional bg-surface-raised pr-4 pl-10 text-[0.8125rem]"
+            className="min-h-11 w-full rounded-full border border-border-functional bg-surface-raised pr-4 pl-10 text-corpo medium:min-h-8"
           />
         </div>
         {!pronto && (
@@ -214,7 +214,7 @@ export function AgendaHoje({ inicial, resumoInicial, buscar, buscarPeriodo, busc
           />
         )}
         {dia && visao !== "hoje" && dia.linhas.length > 0 && (
-          <p className="text-right text-[0.8125rem] text-text-secondary">
+          <p className="text-right text-corpo text-text-secondary">
             {visao === "todos" ? textos.rodape.todos(dia.linhas.length) : textos.rodape.concluidos(dia.linhas.length)}
           </p>
         )}
@@ -275,7 +275,7 @@ function Segmento<T extends string>({
             type="button"
             aria-pressed={pressionado}
             onClick={() => aoMudar(item.valor)}
-            className={`min-h-8 rounded-full px-3.5 text-[0.8125rem] ${
+            className={`min-h-11 rounded-full px-3.5 text-corpo medium:min-h-8 ${
               pressionado ? "bg-surface-raised font-medium text-text-primary shadow-sm" : "text-text-secondary"
             }`}
           >

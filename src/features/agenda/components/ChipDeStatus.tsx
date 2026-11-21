@@ -14,7 +14,7 @@ const ESTILO: Record<Status, { chip: string; ponto: string }> = {
   cancelado: { chip: "border border-border-functional text-text-secondary", ponto: "bg-text-tertiary" },
 };
 
-const chip = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.8125rem] whitespace-nowrap";
+const chip = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-corpo whitespace-nowrap";
 
 /** `rotulo` troca só o texto (Ausente → "Não realizado" na visão Concluídos); a cor segue o estado. */
 export function ChipDeStatus({ status, rotulo }: { status: Status; rotulo?: string }) {
