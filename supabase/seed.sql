@@ -9,6 +9,7 @@
 --   convidado.ficticio@exemplo.test    sem clínica (cai em /sem-clinica)
 --   gestora.beta.ficticia@exemplo.test ADMIN da 2ª clínica (isolamento entre clínicas)
 --   recupera.ficticia@exemplo.test     COLABORADOR do e2e do "Esqueci a senha" (a senha dela muda no teste)
+--   semagenda.ficticia@exemplo.test    COLABORADOR sem Agendamentos (S2 da QA, 21/11: a casca segue a matriz por módulo)
 -- Nomes de clínica e de pessoa sem termo de ambiente: aparecem na tela, como na produção.
 -- Os ids começam em eeee para não cruzar com os dos testes pgTAP.
 -- ---------------------------------------------------------------------------------------------------------------
@@ -24,7 +25,8 @@ with pessoa (id, email, nome) as (
     ('eeee0000-0000-4000-8000-0000000000c1'::uuid, 'colaboradora.ficticia@exemplo.test', 'Rafaela Moura'),
     ('eeee0000-0000-4000-8000-0000000000f5'::uuid, 'convidado.ficticio@exemplo.test', 'Caio Brandão'),
     ('eeee0000-0000-4000-8000-0000000000b1'::uuid, 'gestora.beta.ficticia@exemplo.test', 'Lívia Castro'),
-    ('eeee0000-0000-4000-8000-0000000000c2'::uuid, 'recupera.ficticia@exemplo.test', 'Marta Siqueira')
+    ('eeee0000-0000-4000-8000-0000000000c2'::uuid, 'recupera.ficticia@exemplo.test', 'Marta Siqueira'),
+    ('eeee0000-0000-4000-8000-0000000000c3'::uuid, 'semagenda.ficticia@exemplo.test', 'Bruna Teles')
 ), usuario as (
   -- os campos de token vazios (e não nulos) são o que o Auth espera de um usuário criado fora da API
   insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -49,7 +51,14 @@ insert into platform.membership (tenant_id, user_id, app_role, is_owner) values
   ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000a2', 'ADMIN', false),
   ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c1', 'COLABORADOR', false),
   ('eeee0000-0000-4000-8000-000000000002', 'eeee0000-0000-4000-8000-0000000000b1', 'ADMIN', true),
-  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c2', 'COLABORADOR', false);
+  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c2', 'COLABORADOR', false),
+  ('eeee0000-0000-4000-8000-000000000001', 'eeee0000-0000-4000-8000-0000000000c3', 'COLABORADOR', false);
+
+-- c3 sem Agendamentos (PDD §10.4.3: o gestor libera módulo a módulo): o padrão do convite entra pelo trigger do MIG-06, e
+-- aqui sai o módulo appointments inteiro, num comando só (o "criar e editar exigem visualizar" é conferido no fim dele).
+delete from platform.membership_permission p
+ using platform.membership m
+ where p.membership_id = m.id and m.user_id = 'eeee0000-0000-4000-8000-0000000000c3' and p.module = 'appointments';
 
 -- TOTP da gestora, já verificado. Segredo fictício e público (base32), igual ao de e2e/totp.ts.
 insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at, secret)
