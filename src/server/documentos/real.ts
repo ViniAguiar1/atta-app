@@ -3,7 +3,8 @@ import { z } from "zod";
 import { falha, falhaDoBanco, ok } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { ACOES_DE_MODELO, ESTADOS_DE_MODELO, type ModeloDeDocumento, type PortaDocumentos, TIPOS_DE_MODELO } from "./porta";
+import type { PortaDocumentos } from "./porta";
+import { ACOES_DE_MODELO, ESTADOS_DE_MODELO, type ModeloDeDocumento, type ResumoDosModelos, TIPOS_DE_MODELO } from "./tipos";
 
 // Porta real de Termos & Docs sobre o api.atta_in_template_list (#69, Backend 6). A resposta passa pelo Zod antes de
 // virar linha de tela; o erro do banco vira Resultado por falhaDoBanco. Ação desconhecida (o banco ganhou uma nova antes
@@ -33,10 +34,29 @@ export const paraModelo = (r: z.infer<typeof linhaSchema>): ModeloDeDocumento =>
   frequencia: r.frequency,
   validadeMeses: r.validity_months,
   obrigatorio: r.required,
-  servicos: r.clinic_service_ids ?? [],
+  procedimentos: (r.clinic_service_ids ?? []).map((id) => ({ id, nome: null })), // nomes: pedido ao Backend 6
+  publicadoEm: null, // current_version_published_at: pedido ao Backend 6
+  assinados: null, // contagem por modelo: pedido ao Backend 6
   atualizadoEm: r.updated_at,
   acoes: r.allowed_actions.flatMap((a) => (conhecida(a.action) ? [{ acao: a.action, motivoDesabilitado: a.disabled_reason ?? null }] : [])),
 });
+
+/**
+ * Termos ativos, obrigatórios e opcionais saem da própria lista, no servidor. Vencendo, vencidos, assinados e o
+ * percentual com ATTA Sign não têm fonte ainda (pedido ao Backend 6): vêm null, nunca 0 inventado.
+ */
+export function resumoDe(modelos: ModeloDeDocumento[]): ResumoDosModelos {
+  const ativos = modelos.filter((m) => m.estado === "ativo");
+  return {
+    ativos: ativos.length,
+    obrigatorios: ativos.filter((m) => m.obrigatorio === true).length,
+    opcionais: ativos.filter((m) => m.obrigatorio === false).length,
+    vencendo: null,
+    vencidos: null,
+    assinados: null,
+    percentualAttaSign: null,
+  };
+}
 
 export const portaDocumentosReal: PortaDocumentos = {
   async listar() {
@@ -48,6 +68,7 @@ export const portaDocumentosReal: PortaDocumentos = {
       logger.error("documentos.lista_fora_do_formato", { code: "INTERNO" }); // sem a resposta
       return falha("INTERNO", "Resposta fora do formato.");
     }
-    return ok(lido.data.map(paraModelo));
+    const modelos = lido.data.map(paraModelo);
+    return ok({ modelos, resumo: resumoDe(modelos) });
   },
 };
