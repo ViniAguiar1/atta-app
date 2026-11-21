@@ -136,7 +136,7 @@ test.describe("Novo paciente", () => {
     await expect(dialogo).toContainText("Otávio Ramos");
     await expect(dialogo).toContainText("(31) ·····-6655");
     expect(await page.content()).not.toContain("98877-6655");
-    expect((await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+    expect((await new AxeBuilder({ page }).include("dialog").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
 
     const novo = cpfGerado(); // CPF gerado a cada execução: a nova tentativa do CI não encontra o da anterior
     await cpf.fill(novo);
