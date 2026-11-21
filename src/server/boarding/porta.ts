@@ -1,6 +1,7 @@
 import "server-only";
 import type { Resultado } from "@/lib/errors";
 import { portaBoardingSimulada } from "./simulado";
+// A porta real (./real.ts, MIG-23 parte 3) entra no lugar desta no PR seguinte, junto do seed do CI e dos e2e.
 
 // Contrato entre as telas do Boarding Check (MIG-53, Frontend 6) e o domínio (MIG-23, Backend 3; transições do
 // Backend 2). PDD v206 §10.2.3, RN-FIC-07 e §13.4; ADR 0004 §3. O profissional não tem login: o link do WhatsApp
@@ -21,7 +22,7 @@ export type ConferenciaDoPin =
  * comparecimento). Campos provisórios: o Backend 3 fecha a forma com a tabela de saúde e a agenda na main. */
 export type ResumoDoAtendimento = {
   clinica: string;
-  paciente: { nome: string; idade: number };
+  paciente: { nome: string; idade: number | null }; // sem data de nascimento no cadastro: nula
   horario: string; // "HH:MM", já no fuso da clínica (calculado no servidor)
   tipoDeAtendimento: string;
   comparecimento: { atendimentos: number; ausencias: number };
