@@ -47,16 +47,32 @@ export SUPABASE_AUTH_SITE_URL="http://127.0.0.1:$((3000 + slot))"
 leve="studio,logflare,vector,edge-runtime,imgproxy"
 cmd="${1:-status}"
 [ "$#" -gt 0 ] && shift
+# no máximo ATTA_SUPABASE_MAX (padrão 6) Supabase do atta-app ligados no Mac compartilhado (pedido do CTO, 21/11)
+limite_de_instancias() {
+  [ -z "${CI:-}" ] || return 0
+  ligadas="$(docker ps --filter label=com.supabase.cli.project --format '{{.Label "com.supabase.cli.project"}}' 2>/dev/null |
+    grep -E '^atta-app(-[a-z0-9]+)?$' | sort -u || true)"
+  printf '%s\n' "$ligadas" | grep -q -x "$id" && return 0 # a sua já está ligada: o start não sobe outra
+  n="$(printf '%s\n' "$ligadas" | grep -c . || true)"
+  max="${ATTA_SUPABASE_MAX:-6}"
+  if [ "$n" -ge "$max" ]; then
+    quem="$(printf '%s\n' "$ligadas" | sed -E 's/^atta-app-?//; s/^$/(CI)/' | tr 'a-z' 'A-Z' | paste -s -d ',' - | sed 's/,/, /g')"
+    echo "já há $n Supabase locais ligados ($quem); o máximo é $max. Veja com 'pnpm maquina', peça a quem está parado ou use o CI." >&2
+    exit 1
+  fi
+}
+
 case "$cmd" in
   start)
     sh "$(dirname "$0")/carga-ok.sh" # máquina cheia: não sobe mais um Supabase (no CI, sempre passa)
+    limite_de_instancias
     if [ "${ATTA_SUPABASE_COMPLETO:-}" = 1 ]; then supabase start "$@"; else supabase start -x "$leve" "$@"; fi
     echo "instância $id: API http://127.0.0.1:$SUPABASE_API_PORT · banco 127.0.0.1:$SUPABASE_DB_PORT · app na porta $((3000 + slot))"
     ;;
   stop) supabase stop "$@" ;;
   status) supabase status "$@" ;;
-  reset) supabase db reset "$@" ;;
-  test) supabase test db "$@" ;;
+  reset) sh "$(dirname "$0")/carga-ok.sh"; supabase db reset "$@" ;;
+  test) sh "$(dirname "$0")/carga-ok.sh"; supabase test db "$@" ;;
   types) supabase gen types typescript --local --schema platform,documents,atta_in,api "$@" ;;
   env)
     # as linhas do .env.local desta instância (chaves locais do CLI, nunca as da nuvem), sem aspas: servem também ao
