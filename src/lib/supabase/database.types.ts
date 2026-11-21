@@ -149,6 +149,11 @@ export type Database = {
 "professional_resend_invite":
 { Args: { "p_invite_email_enc"?: string,"p_invite_email_hmac"?: string,"p_link_id": string,"p_propass_secret_hash": string }; Returns: undefined
                            },
+"propass_authorization_context":
+{ Args: { "p_secret_hash": string }; Returns: {
+              "body": string,"body_normalization": string,"body_sha256": string,"cnpj": string,"legal_name": string,"template_id": string,"trade_name": string,"version": number
+            }[]
+                           },
 "propass_resolve":
 { Args: { "p_secret_hash": string }; Returns: {
               "expires_at": string,"invite_dek_wrapped": string,"invite_email_enc": string,"invite_envelope_id": string,"invite_kek_version": number,"invited_at": string,"link_id": string,"step": string,"tenant_id": string,"tenant_name": string
