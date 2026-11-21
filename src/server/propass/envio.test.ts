@@ -161,6 +161,15 @@ describe("enviarPropass (envio final do PROpass)", () => {
     expect(chamadas.map((c) => c.fn)).not.toContain("propass_submit");
   });
 
+  it("repassa a versão do Aviso de Privacidade confirmada (nula enquanto o passo estiver desligado, P2b)", async () => {
+    const um = banco();
+    await enviarPropass(HASH, entrada(), deps(um.rpc).d);
+    expect(um.chamadas.at(-1)!.args).toMatchObject({ p_privacy_notice_version: null });
+    const dois = banco();
+    await enviarPropass(HASH, { ...entrada(), avisoDePrivacidade: "2026-11" }, deps(dois.rpc).d);
+    expect(dois.chamadas.at(-1)!.args).toMatchObject({ p_privacy_notice_version: "2026-11" });
+  });
+
   it("recusa de identidade no submit volta como 'recusado'", async () => {
     const { rpc } = banco({ propass_submit: { data: "recusado", error: null } });
     expect(await enviarPropass(HASH, entrada(), deps(rpc).d)).toEqual({ ok: true, data: { status: "recusado" } });
