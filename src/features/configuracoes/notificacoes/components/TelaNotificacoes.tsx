@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { CartaoDeSecao } from "@/components/ui/CartaoDeSecao";
 import { DataState } from "@/components/ui/DataState";
 import type { Erro, Resultado } from "@/lib/errors";
@@ -15,9 +15,9 @@ import { textos as t } from "../textos";
 // mascarados (dado pessoal): o campo começa vazio e serve para trocar o destino, que vai numa ação própria.
 type Props = { resultado: Resultado<AlertasDaEquipe | null> | null };
 
-// a regra vem no reason (ADR 0001 §5): ATTA-IN-0001:destino (formato) e ATTA-IN-0003:estado (canal desligado)
+// a regra vem no reason (ADR 0001 §5): ATTA-IN-0001 (formato) e ATTA-IN-0003:address (ligar canal sem destino)
 function mensagem(erro: Erro, campo?: "email" | "whatsapp"): string {
-  if (erro.reason === "ATTA-IN-0003:estado") return t.erros.canalDesligado;
+  if (erro.reason === "ATTA-IN-0003:address") return t.erros.semDestino;
   if (erro.code === "VALIDACAO" && campo) return campo === "email" ? t.erros.email : t.erros.numero;
   return erro.code === "SEM_PERMISSAO" ? t.erros.SEM_PERMISSAO : t.erros.outro;
 }
@@ -113,11 +113,24 @@ function CartaoDoCanal({ canal, dados, gravar, erroEm }: Parte & { canal: Canal 
   const ativo = dados[canal].ativo;
   const cadastrado = dados[canal].destinoMascarado;
   const [rascunho, setRascunho] = useState("");
+  // ligar um canal sem destino: a caixa fica marcada só na tela e o campo abre; o destino e o "ligado" vão juntos
+  // (o banco não liga canal sem destino, ATTA-IN-0003:address). Saiu sem preencher: a caixa volta a desligada.
+  const [ligando, setLigando] = useState(false);
+  const campo = useRef<HTMLInputElement>(null);
+  const editavel = ativo || ligando;
   const erro = erroEm(`destino-${canal}`);
   const salvarDestino = () => {
     const valor = rascunho.trim();
-    if (!valor) return;
-    gravar(`destino-${canal}`, () => alterarCanal({ canal, destino: valor }), canal);
+    if (!valor) return setLigando(false);
+    gravar(`destino-${canal}`, () => alterarCanal({ canal, destino: valor, ...(ligando ? { ativar: true } : {}) }), canal);
+  };
+  const mudarLigado = (marcado: boolean) => {
+    if (marcado && !cadastrado) {
+      setLigando(true);
+      return setTimeout(() => campo.current?.focus(), 0);
+    }
+    setLigando(false);
+    gravar(`canal-${canal}`, () => ligarCanal({ canal, ativo: marcado }));
   };
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-app p-3.5">
@@ -127,21 +140,22 @@ function CartaoDoCanal({ canal, dados, gravar, erroEm }: Parte & { canal: Canal 
           <input
             type="checkbox"
             className={caixa}
-            checked={ativo}
+            checked={editavel}
             aria-label={t.canais.ligarFalado(textoDoCanal.nome)}
-            onChange={(e) => gravar(`canal-${canal}`, () => ligarCanal({ canal, ativo: e.target.checked }))}
+            onChange={(e) => mudarLigado(e.target.checked)}
           />
-          <span aria-hidden="true">{ativo ? t.canais.ativo : t.canais.desligado}</span>
+          <span aria-hidden="true">{editavel ? t.canais.ativo : t.canais.desligado}</span>
         </label>
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor={id}>{textoDoCanal.campo}</label>
         <input
           id={id}
+          ref={campo}
           type={canal === "email" ? "email" : "tel"}
           autoComplete={canal === "email" ? "email" : "tel"}
           inputMode={canal === "email" ? "email" : "tel"}
-          disabled={!ativo}
+          disabled={!editavel}
           value={rascunho}
           onChange={(e) => setRascunho(e.target.value)}
           onBlur={salvarDestino}
@@ -152,7 +166,11 @@ function CartaoDoCanal({ canal, dados, gravar, erroEm }: Parte & { canal: Canal 
         />
         <p id={`${id}-ajuda`} className={`text-xs ${erro ? "text-status-negative" : "text-text-secondary"}`}>
           {erro ??
-            [cadastrado ? textoDoCanal.cadastrado(cadastrado) : null, canal === "whatsapp" && !ativo ? t.canais.whatsapp.ajuda : null]
+            [
+              ligando ? t.erros.semDestino : null,
+              cadastrado ? textoDoCanal.cadastrado(cadastrado) : null,
+              canal === "whatsapp" && !editavel ? t.canais.whatsapp.ajuda : null,
+            ]
               .filter(Boolean)
               .join(" ")}
         </p>
