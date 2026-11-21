@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ABAS, abaAtiva, abasDoPapel, MODULOS_PRONTOS, moduloDisponivel } from "./abas";
+import { ABAS, abaAtiva, abasDoPapel, MODULOS_PRONTOS, moduloDisponivel, podeAbrirAba } from "./abas";
 
 
 // MIG-40: as abas da casca por papel (PDD v206 §10.4.3) e a aba ativa pela rota.
@@ -15,11 +15,19 @@ describe("abas da casca", () => {
     ]);
   });
 
-  it("Colaborador e quem está sem papel não veem Configurações nem Métricas (Métricas liberável no MIG-06)", () => {
+  it("Colaborador sem metrics.view e quem está sem papel não veem Configurações nem Métricas", () => {
     for (const papel of ["COLABORADOR", null] as const) {
-      const rotulos = abasDoPapel(papel).map((a) => a.rotulo);
+      const rotulos = abasDoPapel(papel, ["appointments.view", "atta.view"]).map((a) => a.rotulo);
       expect(rotulos).toEqual(["Agendamentos", "Pacientes", "Termos & Docs", "ATTA"]);
     }
+  });
+
+  it("Colaborador com metrics.view na própria matriz vê Métricas, nunca Configurações (PDD §10.4.3)", () => {
+    expect(abasDoPapel("COLABORADOR", ["metrics.view"]).map((a) => a.rotulo)).toEqual(["Agendamentos", "Pacientes", "Termos & Docs", "ATTA", "Métricas"]);
+    expect(podeAbrirAba("/painel/metricas", "COLABORADOR", ["metrics.view"])).toBe(true);
+    expect(podeAbrirAba("/painel/configuracoes", "COLABORADOR", ["metrics.view"])).toBe(false);
+    // sem papel, a permissão sozinha não abre nada de gestão
+    expect(podeAbrirAba("/painel/metricas", null, ["metrics.view"])).toBe(false);
   });
 
   it("as abas do painel não dependem da lista de módulos prontos (decisão do dono, 20/11)", () => {

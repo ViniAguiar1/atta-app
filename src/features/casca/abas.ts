@@ -1,18 +1,21 @@
 // Abas da barra de módulos do painel, na ordem do Simulador ATTA-in (captura 01): Agendamentos, Pacientes,
 // Termos & Docs, ATTA | Métricas, Configurações. Rotas sob /painel (contrato do Tech Lead, ADR 0001 §4); quando o
 // src/lib/auth/rotas.ts do MIG-03b existir, os caminhos passam a vir de lá.
-// Métricas é do gestor e pode ser liberada ao Colaborador (PDD v206 §10.4.3 e §10.5); Configurações é sempre exclusiva
-// do ADMIN (§10.4.3). A matriz fina por módulo entra no MIG-06. Quem autoriza de fato é a RLS: a aba só esconde.
+// Métricas é do gestor e pode ser liberada ao Colaborador (PDD v206 §10.4.3, "Métricas liberável ao Colaborador: decisão
+// da PO"): o ADMIN vê sempre, e o Colaborador vê com metrics.view na própria matriz (platform.membership_permission, MIG-06).
+// Configurações é sempre exclusiva do ADMIN (§10.4.3). Quem autoriza de fato é a RLS e o has_permission: a aba só esconde.
 export type Papel = "ADMIN" | "COLABORADOR";
 // marca: a palavra ATTA vai sempre na fonte de marca (Guia de Design §2).
-export type Aba = { rotulo: string; href: string; grupo: "operacao" | "gestao"; somenteAdmin?: boolean; marca?: boolean };
+// permissao: a linha da matriz que libera a aba ao Colaborador ("módulo.ação", como em platform.membership_permission).
+export type Permissao = "metrics.view";
+export type Aba = { rotulo: string; href: string; grupo: "operacao" | "gestao"; somenteAdmin?: boolean; permissao?: Permissao; marca?: boolean };
 
 export const ABAS: Aba[] = [
   { rotulo: "Agendamentos", href: "/painel/agenda", grupo: "operacao" },
   { rotulo: "Pacientes", href: "/painel/pacientes", grupo: "operacao" },
   { rotulo: "Termos & Docs", href: "/painel/documentos", grupo: "operacao" },
   { rotulo: "ATTA", href: "/painel/atta", grupo: "operacao", marca: true },
-  { rotulo: "Métricas", href: "/painel/metricas", grupo: "gestao", somenteAdmin: true },
+  { rotulo: "Métricas", href: "/painel/metricas", grupo: "gestao", permissao: "metrics.view" },
   { rotulo: "Configurações", href: "/painel/configuracoes", grupo: "gestao", somenteAdmin: true },
 ];
 
@@ -34,8 +37,16 @@ export const emProducao = () => process.env.VERCEL_ENV === "production";
 export const moduloDisponivel = (href: string, prontos: readonly string[] = MODULOS_PRONTOS) =>
   prontos.includes(href) || !emProducao();
 
-/** As abas que o papel vê: todas, menos Métricas e Configurações para quem não é ADMIN (§10.4.3). */
-export const abasDoPapel = (papel: Papel | null) => ABAS.filter((aba) => !aba.somenteAdmin || papel === "ADMIN");
+/**
+ * As abas que a sessão vê (§10.4.3): o ADMIN vê todas; o Colaborador não vê Configurações e só vê Métricas com metrics.view
+ * na própria matriz. Sem papel, só as de operação.
+ */
+export const abasDoPapel = (papel: Papel | null, permissoes: readonly string[] = []) =>
+  ABAS.filter((aba) => papel === "ADMIN" || (!aba.somenteAdmin && (!aba.permissao || (papel === "COLABORADOR" && permissoes.includes(aba.permissao)))));
+
+/** Se a sessão pode abrir a rota da aba: a mesma regra que mostra ou esconde a aba (a guarda das rotas usa esta). */
+export const podeAbrirAba = (href: string, papel: Papel | null, permissoes: readonly string[] = []) =>
+  abasDoPapel(papel, permissoes).some((aba) => aba.href === href);
 
 /** A aba ativa é a do segundo segmento da rota (/painel/configuracoes/agendamentos → Configurações). */
 export const abaAtiva = (caminho: string) => ABAS.find((aba) => caminho === aba.href || caminho.startsWith(`${aba.href}/`));
