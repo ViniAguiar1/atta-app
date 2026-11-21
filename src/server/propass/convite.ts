@@ -4,6 +4,7 @@ import { getCofre, type Cofre, type CofreContext } from "@/server/cofre";
 import { cpfHmac, isValidCpf, maskCpf, normalizeCpf } from "@/server/crypto/cpf";
 import { emailHmac, normalizeEmail } from "@/server/crypto/email";
 import { columnAad, open, seal } from "@/server/crypto/envelope";
+import { celularValido, soDigitos } from "@/lib/brasil/documentos";
 import { deBytea, paraBytea } from "@/server/pacientes/contato";
 
 // Envelopes do profissional (ADR 0001 §1 e ADR 0002 §6), num lugar só, para quem convida (Equipe & Permissões), quem
@@ -118,7 +119,9 @@ export async function selarProfissional(
   if (!cpf || !isValidCpf(cpf)) throw new RangeError("CPF inválido");
   const email = normalizeEmail(entrada.email);
   if (!email) throw new RangeError("e-mail fora da forma");
-  if (!/^[0-9]{10,13}$/.test(entrada.celular)) throw new RangeError("celular fora da forma");
+  // o mesmo celular do paciente (PDD §16.6): DDD válido e 9 dígitos, guardado só com os 11 dígitos
+  const celular = soDigitos(entrada.celular);
+  if (!celularValido(celular)) throw new RangeError("celular fora da forma");
   const id = entrada.professionalId ?? randomUUID();
   const cofre = deps.cofre ?? getCofre("network");
   const { plaintext: dek, wrapped } = await cofre.generateDataKey(dekDoProfissional(id));
@@ -130,7 +133,7 @@ export async function selarProfissional(
       cpf_hmac: paraBytea((deps.hmacDoCpf ?? cpfHmac)(cpf)),
       cpf_masked: maskCpf(cpf),
       cpf_enc: selar(cpf, "cpf_enc"),
-      phone_enc: selar(entrada.celular, "phone_enc"),
+      phone_enc: selar(celular, "phone_enc"),
       email_hmac: paraBytea((deps.hmacDoEmail ?? emailHmac)(email)),
       email_enc: selar(email, "email_enc"),
       dek_wrapped: paraBytea(wrapped.blob),
