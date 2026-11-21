@@ -6,7 +6,7 @@ import { textos as t } from "../textos";
 // borda é a casca do painel (CascaDoPainel, pelo data-subabas do Subabas), igual em todos os módulos; sem recuo aqui.
 export function SubabasDoAtta({ ativa }: { ativa: string }) {
   return (
-    <div className="mb-4 text-[0.8125rem]">
+    <div className="mb-4 text-corpo">
       <h1 className="sr-only">{t.titulo}</h1>
       <Subabas rotulo={t.subabas.rotulo} itens={SUBABAS_ATTA} ativa={ativa} />
     </div>

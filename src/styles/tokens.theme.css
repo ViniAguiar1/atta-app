@@ -89,6 +89,15 @@
   --text-destaque--line-height: 1;
   --text-numero-menor: 1.375rem;
   --text-numero-menor--line-height: 1;
+  /* título dos cartões de seção e dos cartões de categoria (15 px) e a palavra de marca do card de produto (28 px),
+     medidos nas capturas 19 a 23, e o horário da Agenda (17 px) (Tech Lead Frontend, 21/11) */
+  --text-titulo: 0.9375rem;
+  --text-titulo--line-height: 1.25rem;
+  --text-marca: 1.75rem;
+  --text-marca--line-height: 1;
+  /* horário da tabela da Agenda (17 px), captura 01 */
+  --text-horario: 1.0625rem;
+  --text-horario--line-height: 1.25rem;
 
   --radius-*: initial;
   --radius-sm: 6px;

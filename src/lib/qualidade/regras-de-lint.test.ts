@@ -53,7 +53,7 @@ describe("regras do tema no ESLint", { timeout: 60_000 }, () => {
       expect(aviso?.severity, classe).toBe(1);
       expect(aviso?.message).toMatch(/text-corpo \(13 px\).*text-destaque \(36 px\)/);
     }
-    expect(await avisos(tela("text-corpo text-rotulo text-numero text-numero-menor text-destaque text-xs text-sm"))).toEqual([]);
+    expect(await avisos(tela("text-corpo text-rotulo text-numero text-numero-menor text-destaque text-titulo text-marca text-horario text-xs text-sm"))).toEqual([]);
     expect(await avisos(tela("text-[0.8125rem]"), "src/features/exemplo/Tela.test.tsx")).toEqual([]);
   });
 

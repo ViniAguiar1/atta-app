@@ -13,8 +13,8 @@ export function TelaAjuda() {
         <ul className="grid grid-cols-2 gap-2.5 medium:grid-cols-3 expanded:grid-cols-4 large:grid-cols-7">
           {t.guias.itens.map((g) => (
             <li key={g.titulo} className="flex min-h-36 flex-col gap-3 rounded-md border border-border p-4.5">
-              <h3 className="font-title text-[1.25rem] leading-tight">{g.titulo}</h3>
-              <p className="text-[0.8125rem] text-text-secondary">{g.texto}</p>
+              <h3 className="font-title text-xl leading-tight">{g.titulo}</h3>
+              <p className="text-corpo text-text-secondary">{g.texto}</p>
             </li>
           ))}
         </ul>
@@ -24,7 +24,7 @@ export function TelaAjuda() {
           {t.faq.itens.map((item) => (
             <li key={item.p} className="border-b border-border last:border-b-0">
               <details className="group">
-                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-[0.8125rem] font-medium [&::-webkit-details-marker]:hidden">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-corpo font-medium [&::-webkit-details-marker]:hidden">
                   <span>{item.p}</span>
                   <svg
                     viewBox="0 0 24 24"
@@ -39,7 +39,7 @@ export function TelaAjuda() {
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                 </summary>
-                <p className="px-4 pb-4 text-[0.8125rem] text-text-secondary">{item.r}</p>
+                <p className="px-4 pb-4 text-corpo text-text-secondary">{item.r}</p>
               </details>
             </li>
           ))}
