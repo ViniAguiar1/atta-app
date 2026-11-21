@@ -39,7 +39,7 @@ export function TelaAjuda({ planilha = null }: { planilha?: { url: string } | nu
           {t.faq.itens.map((item) => (
             <li key={item.p} className="border-b border-border last:border-b-0">
               <details className="group">
-                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-corpo font-medium [&::-webkit-details-marker]:hidden">
+                <summary className="flex min-h-12 list-none items-center justify-between gap-4 px-4 py-3 text-corpo font-medium [&::-webkit-details-marker]:hidden">
                   <span>{item.p}</span>
                   <svg
                     viewBox="0 0 24 24"

@@ -89,7 +89,7 @@ export function TelaAssinaturas({ resultado, modelos = null }: Props) {
                               value={m}
                               checked={marcado}
                               onChange={() => escolher(m)}
-                              className="mt-0.5 size-5 shrink-0 cursor-pointer accent-brand"
+                              className="mt-0.5 size-5 shrink-0 accent-brand"
                             />
                           </span>
                           {o.selos.length > 0 && (

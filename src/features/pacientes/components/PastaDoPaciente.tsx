@@ -106,7 +106,7 @@ function Vinculos({ ficha }: { ficha: FichaDoPaciente }) {
         </Linha>
       </dl>
       <details className="text-xs">
-        <summary className="flex min-h-11 cursor-pointer items-center font-semibold medium:min-h-8">{v.conflito}</summary>
+        <summary className="flex min-h-11 items-center font-semibold medium:min-h-8">{v.conflito}</summary>
         <p className="text-text-secondary">{v.conflitoTexto}</p>
       </details>
     </CartaoDeSecao>
