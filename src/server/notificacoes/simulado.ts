@@ -47,12 +47,13 @@ export const portaNotificacoesSimulada: PortaNotificacoes = {
           },
         ],
         canais: {
-          email: { ativo: true, endereco: "recepcao@clinica.exemplo" },
+          email: { ativo: true, endereco: "recepcao@exemplo.test" },
           whatsapp: { ativo: false },
           pausaNoturna: { ativa: true },
           resumo: "tempo_real",
           eventos: { total: 36, comEmail: 4, comWhatsapp: 0 },
         },
+        fuso: "America/Sao_Paulo",
       }),
     );
   },

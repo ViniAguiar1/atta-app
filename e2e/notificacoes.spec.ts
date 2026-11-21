@@ -20,7 +20,9 @@ test.describe("sino da gestora", () => {
     await expect(main.getByText("Não lida").first()).toBeVisible();
     await expect(main.getByRole("complementary", { name: "Como as notificações chegam" })).toContainText("Sempre ativo");
     await main.getByRole("searchbox", { name: "Buscar notificações" }).fill("convite");
-    await expect(main.getByRole("listitem")).toHaveCount(1);
+    // só a lista da caixa: a coluna dos canais e as subabas também têm itens de lista
+    await expect(main.getByRole("region", { name: /^Hoje/ }).getByRole("listitem")).toHaveCount(1);
+    await expect(main.getByRole("region", { name: /^Ontem/ })).toHaveCount(0);
     expect(await page.locator("body").innerText()).not.toMatch(PROIBIDO);
     expect((await axe(page)).violations).toEqual([]);
   });
