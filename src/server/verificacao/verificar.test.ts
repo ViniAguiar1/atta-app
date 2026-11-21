@@ -1,6 +1,8 @@
 // Verificação pública do Código ATTA (MIG-24). Banco trocado por cliente falso; IPs e códigos fictícios.
+import { createHash, generateKeyPairSync } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { type ClienteDaVerificacao, NAO_ENCONTRADO, verificarCodigo } from "./verificar";
+import { signEvidence } from "@/server/atta-sign/seal";
+import { type ClienteDaVerificacao, conferirIntegridade, type MaterialDaIntegridade, NAO_ENCONTRADO, verificarCodigo } from "./verificar";
 
 beforeAll(() => {
   process.env.ATTA_CPF_PEPPER = "07".repeat(32);
@@ -15,11 +17,30 @@ const ENCONTRADO = {
   status: "pre_assinado",
   evidence_sha256: "a".repeat(64),
   level: "atta_sign",
+  tenant_cnpj: "00.000.000/0001-91",
+};
+
+// material fictício com chave Ed25519 gerada aqui: o selo assina o sha256 dos bytes do payload
+const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+const PEM = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
+const PAYLOAD = Buffer.from('{"atta_sign_version":"1","signature":{"signed_at":"2026-11-20T14:05:09.412Z"}}', "utf8");
+const SHA = createHash("sha256").update(PAYLOAD).digest("hex");
+const CHAVE = {
+  kid: "staging-seal-teste", alg: "Ed25519" as const,
+  public_key_spki_b64: publicKey.export({ format: "der", type: "spki" }).toString("base64"),
+  valid_from: "2026-11-01T00:00:00.000Z", valid_until: null,
+};
+const MATERIAL: MaterialDaIntegridade = {
+  payload_canonical_b64: PAYLOAD.toString("base64"),
+  evidence_sha256: SHA,
+  signed_at: "2026-11-20T14:05:09.412Z",
+  seals: [{ kid: CHAVE.kid, sig_b64: signEvidence(SHA, CHAVE.kid, PEM).sig_b64 }],
+  seal_keys: [CHAVE],
 };
 
 type Chamada = { fn: string; args: Record<string, unknown> };
 
-function cliente(opcoes: { limite?: boolean; teto?: boolean; linha?: unknown; erro?: { code: string; message: string } } = {}) {
+function cliente(opcoes: { limite?: boolean; teto?: boolean; linha?: unknown; material?: unknown; erro?: { code: string; message: string } } = {}) {
   const chamadas: Chamada[] = [];
   const c = {
     schema: () => ({
@@ -30,7 +51,9 @@ function cliente(opcoes: { limite?: boolean; teto?: boolean; linha?: unknown; er
           return Promise.resolve({ data: ok, error: null });
         }
         if (opcoes.erro) return Promise.resolve({ data: null, error: opcoes.erro });
-        return Promise.resolve({ data: [opcoes.linha ?? NAO_ENCONTRADO], error: null });
+        if (fn === "atta_code_material") return Promise.resolve({ data: [opcoes.material ?? MATERIAL], error: null });
+        const { integrity: _sem, ...linhaDoBanco } = (opcoes.linha ?? NAO_ENCONTRADO) as Record<string, unknown>;
+        return Promise.resolve({ data: [linhaDoBanco], error: null });
       },
     }),
   } as unknown as ClienteDaVerificacao;
@@ -40,12 +63,23 @@ function cliente(opcoes: { limite?: boolean; teto?: boolean; linha?: unknown; er
 const comIp = new Headers({ "x-forwarded-for": "203.0.113.7, 10.0.0.1" });
 
 describe("verificarCodigo", () => {
-  it("normaliza o que a pessoa digitou e devolve as 8 chaves", async () => {
+  it("normaliza o que a pessoa digitou e devolve as 10 chaves, com a integridade conferida", async () => {
     const { c, chamadas } = cliente({ linha: ENCONTRADO });
     const r = await verificarCodigo(" atta 7k3m 9qpx 2b4d ", comIp, c);
-    expect(r).toEqual({ ok: true, data: ENCONTRADO });
-    expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit", "rate_limit_hit", "atta_code_verify"]);
+    expect(r).toEqual({ ok: true, data: { ...ENCONTRADO, integrity: "confere" } });
+    expect(chamadas.map((x) => x.fn)).toEqual(["rate_limit_hit", "rate_limit_hit", "atta_code_verify", "atta_code_material"]);
     expect(chamadas[2]!.args).toEqual({ p_code: "ATTA-7K3M-9QPX-2B4D" });
+    expect(r.ok && Object.keys(r.data).sort()).toEqual([
+      "document_type", "evidence_sha256", "exists", "integrity", "level", "signed_at", "status", "template_version",
+      "tenant_cnpj", "tenant_trade_name",
+    ]);
+    expect(JSON.stringify(r)).not.toContain(MATERIAL.payload_canonical_b64); // o payload nunca sai na resposta
+  });
+
+  it("não encontrado não busca o material da integridade", async () => {
+    const { c, chamadas } = cliente();
+    expect(await verificarCodigo("ATTA-0000-0000-0000", comIp, c)).toEqual({ ok: true, data: NAO_ENCONTRADO });
+    expect(chamadas.map((x) => x.fn)).not.toContain("atta_code_material");
   });
 
   it("o limite é contado primeiro, com o IP do x-forwarded-for, e o IP não vai ao banco em claro", async () => {
@@ -99,5 +133,34 @@ describe("verificarCodigo", () => {
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.error.code).toBe("INTERNO");
     }
+  });
+});
+describe("conferirIntegridade (ADR 0007 §1)", () => {
+  it("hash recalculado igual e selo válido: confere", () => {
+    expect(conferirIntegridade(MATERIAL)).toBe("confere");
+  });
+  it("sem selo gravado: null", () => {
+    expect(conferirIntegridade({ ...MATERIAL, seals: [] })).toBeNull();
+  });
+  it("payload adulterado (hash recalculado diferente do guardado): não confere", () => {
+    const outro = Buffer.from('{"atta_sign_version":"1","adulterado":true}', "utf8").toString("base64");
+    expect(conferirIntegridade({ ...MATERIAL, payload_canonical_b64: outro })).toBe("nao_confere");
+  });
+  it("assinatura trocada, kid fora do manifesto ou chave fora da janela: não confere", () => {
+    const sig = Buffer.from(MATERIAL.seals[0]!.sig_b64, "base64");
+    sig[0]! ^= 1;
+    expect(conferirIntegridade({ ...MATERIAL, seals: [{ kid: CHAVE.kid, sig_b64: sig.toString("base64") }] })).toBe("nao_confere");
+    expect(conferirIntegridade({ ...MATERIAL, seal_keys: [] })).toBe("nao_confere");
+    expect(conferirIntegridade({ ...MATERIAL, seal_keys: [{ ...CHAVE, valid_from: "2026-12-01T00:00:00.000Z" }] })).toBe("nao_confere");
+  });
+  it("basta um selo válido entre vários", () => {
+    const ruim = { kid: "staging-seal-velha", sig_b64: Buffer.alloc(64).toString("base64") };
+    expect(conferirIntegridade({ ...MATERIAL, seals: [ruim, ...MATERIAL.seals] })).toBe("confere");
+  });
+  it("verificarCodigo devolve nao_confere quando o selo não passa, e null sem selo", async () => {
+    const semSelo = await verificarCodigo("ATTA-7K3M-9QPX-2B4D", comIp, cliente({ linha: ENCONTRADO, material: { ...MATERIAL, seals: [] } }).c);
+    expect(semSelo.ok && semSelo.data.integrity).toBeNull();
+    const errado = await verificarCodigo("ATTA-7K3M-9QPX-2B4D", comIp, cliente({ linha: ENCONTRADO, material: { ...MATERIAL, seal_keys: [] } }).c);
+    expect(errado.ok && errado.data.integrity).toBe("nao_confere");
   });
 });
