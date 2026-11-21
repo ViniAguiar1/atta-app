@@ -22,6 +22,20 @@ const SO_SERVIDOR = {
 // desconhecida não as cobra. Classe nova de CSS próprio entra aqui, com o arquivo que a define.
 const CLASSES_PROPRIAS = ["^sobre-marca$", "^cartao-do-site$"];
 
+// RN-FSA-01 (Gestor e Colaborador nunca leem o Formulário de Saúde; condição da Segurança no #274): o painel da clínica
+// não importa a porta nem o componente de leitura da saúde. O lib/saude (só a forma das perguntas) fica livre, porque o
+// Banco de Perguntas da clínica é definição, não resposta.
+const SAUDE_FORA_DO_PAINEL = {
+  group: ["@/server/saude", "@/server/saude/*", "**/server/saude/**", "@/components/saude", "@/components/saude/*", "**/components/saude/**"],
+  message: "O painel da clínica não chega ao Formulário de Saúde (PDD RN-FSA-01): Gestor e Colaborador nunca leem as respostas.",
+};
+const PAINEL = [
+  "src/app/(clinica)/**",
+  ...["agenda", "atta", "casca", "configuracoes", "documentos", "entrar", "equipe", "metricas", "notificacoes", "pacientes", "servicos"].map(
+    (m) => `src/features/${m}/**`,
+  ),
+];
+
 // HTML cru (ADR 0004 §3b): reaproveitado nos dois blocos de no-restricted-syntax abaixo.
 const HTML_CRU = [
   {
@@ -83,6 +97,13 @@ export default defineConfig([
   {
     files: ["src/server/**", "**/actions.ts", "src/app/**/route.ts", "src/lib/supabase/admin.ts"],
     rules: { "no-restricted-imports": "off" },
+  },
+  // Painel da clínica: a regra da secret key e a da saúde juntas (um bloco só por arquivo: o último no-restricted-imports
+  // vence). Nas actions e rotas do painel, a secret key fica liberada (bloco acima), e a saúde continua proibida.
+  { files: PAINEL, rules: { "no-restricted-imports": ["error", { patterns: [...SO_SERVIDOR.patterns, SAUDE_FORA_DO_PAINEL] }] } },
+  {
+    files: PAINEL.map((g) => g.replace(/\*\*$/, "**/actions.ts")).concat(PAINEL.map((g) => g.replace(/\*\*$/, "**/route.ts"))),
+    rules: { "no-restricted-imports": ["error", { patterns: [SAUDE_FORA_DO_PAINEL] }] },
   },
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "src/lib/supabase/database.types.ts"]),
 ]);

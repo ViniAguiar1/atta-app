@@ -75,4 +75,24 @@ describe("regras do tema no ESLint", { timeout: 60_000 }, () => {
   it("nos testes, cor e breakpoint não são cobrados", async () => {
     expect(await mensagens(tela("bg-[#fff] md:flex"), "src/features/exemplo/Tela.test.tsx")).toEqual([]);
   });
+
+  it("o painel da clínica não importa a saúde (RN-FSA-01; condição da Segurança no #274); o paciente e o Boarding importam", async () => {
+    const importacoes = async (codigo: string, arquivo: string) => {
+      const [resultado] = await eslint.lintText(codigo, { filePath: join(RAIZ, arquivo) });
+      return (resultado?.messages ?? []).filter((m) => m.ruleId === "no-restricted-imports").map((m) => m.message);
+    };
+    const porta = 'import { portaSaude } from "@/server/saude/porta";\nexport const x = portaSaude;\n';
+    const tela = 'import { RespostasDoFormulario } from "@/components/saude/RespostasDoFormulario";\nexport const x = RespostasDoFormulario;\n';
+    for (const arquivo of ["src/app/(clinica)/painel/pacientes/page.tsx", "src/features/pacientes/actions.ts", "src/features/agenda/components/X.tsx"]) {
+      expect((await importacoes(porta, arquivo)).join(" "), arquivo).toMatch(/RN-FSA-01/);
+      expect((await importacoes(tela, arquivo)).join(" "), arquivo).toMatch(/RN-FSA-01/);
+    }
+    for (const arquivo of ["src/features/boarding/components/X.tsx", "src/features/checkin/actions.ts", "src/server/boarding/porta.ts"]) {
+      expect(await importacoes(porta, arquivo), arquivo).toEqual([]);
+    }
+    // a secret key continua barrada no painel fora das actions
+    const admin = 'import { criarClienteAdmin } from "@/lib/supabase/admin";\nexport const x = criarClienteAdmin;\n';
+    expect((await importacoes(admin, "src/features/pacientes/components/X.tsx")).join(" ")).toMatch(/Secret key/);
+    expect(await importacoes(admin, "src/features/pacientes/actions.ts")).toEqual([]);
+  });
 });
