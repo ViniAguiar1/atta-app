@@ -10,10 +10,10 @@ import { type AlertasDaEquipe, CANAIS, EVENTOS, FREQUENCIAS } from "@/server/ale
 // final é o banco; aqui só a forma. O e-mail e o número vão só no corpo e nunca no log (log com o canal e o desfecho).
 const chaves = EVENTOS.map((e) => e.chave) as [string, ...string[]];
 
-const ligarSchema = z.object({ canal: z.enum(CANAIS), ativo: z.boolean() });
-const destinoSchema = z.object({ canal: z.enum(CANAIS), destino: z.string().min(1).max(120), ativar: z.boolean().optional() });
-const eventoSchema = z.object({ chave: z.enum(chaves), canal: z.enum(CANAIS), marcado: z.boolean() });
-const filtrosSchema = z.object({ pausaNoturna: z.boolean(), frequenciaDoResumo: z.enum(FREQUENCIAS) });
+const ligarSchema = z.object({ canal: z.enum(CANAIS), ativo: z.boolean() }).strict();
+const destinoSchema = z.object({ canal: z.enum(CANAIS), destino: z.string().min(1).max(120), ativar: z.boolean().optional() }).strict();
+const eventoSchema = z.object({ chave: z.enum(chaves), canal: z.enum(CANAIS), marcado: z.boolean() }).strict();
+const filtrosSchema = z.object({ pausaNoturna: z.boolean(), frequenciaDoResumo: z.enum(FREQUENCIAS) }).strict();
 
 const registrar = (evento: string, r: Resultado<unknown>, extra: Record<string, string> = {}) =>
   logger.info(evento, { ...extra, ok: r.ok, code: r.ok ? undefined : r.error.code });

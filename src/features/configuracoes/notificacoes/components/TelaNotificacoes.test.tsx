@@ -59,7 +59,7 @@ describe("Configurações › Notificações (PDD §10.4.6, captura 45)", () => 
   });
 
   it("o e-mail chega só mascarado; o campo troca o destino pela ação própria e mostra a recusa no campo", async () => {
-    acoes.alterarCanal.mockResolvedValue({ ok: false, error: { code: "VALIDACAO", message: "x", reason: "ATTA-IN-0001:destino" } });
+    acoes.alterarCanal.mockResolvedValue({ ok: false, error: { code: "VALIDACAO", message: "x", reason: "ATTA-IN-0001:address" } });
     abrir();
     expect(screen.getByText("E-mail cadastrado: al·····@clinica-exemplo.test")).toBeInTheDocument();
     const campo = screen.getByLabelText("E-mail que recebe os alertas");
