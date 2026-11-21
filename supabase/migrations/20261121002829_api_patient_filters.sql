@@ -235,3 +235,52 @@ $$;
 revoke all on function atta_in.appointment_patient_not_archived() from public, anon, authenticated;
 create trigger appointment_patient_not_archived before insert on atta_in.appointment
   for each row execute function atta_in.appointment_patient_not_archived();
+
+-- patient_get (Pasta do Paciente): devolve archived_at, para a Pasta mostrar "Arquivar" ou "Desarquivar" e o aviso de que
+-- o arquivado não é agendado (Backend 4, revisão do #158); e o selo com a mesma regra da lista (vencido com is_verified
+-- falso; em pending, nada da rede). Assinatura nova: drop e recreate, com os mesmos grants.
+drop function api.patient_get(uuid);
+create function api.patient_get(p_person_id uuid)
+returns table (person_id uuid, full_name text, social_name text, birth_date date, cpf_masked text,
+               foreign_doc_type text, foreign_doc_masked text, phone_enc bytea, email_enc bytea, dek_wrapped bytea,
+               kek_version smallint, is_incomplete boolean, is_verified boolean, verified_until timestamptz,
+               linked_at timestamptz, origin text, network_access text,
+               envelope_id uuid, archived_at timestamptz)
+language plpgsql volatile security definer set search_path = ''
+as $$
+#variable_conflict use_column
+declare
+  v_tenant uuid := (select private.current_tenant_id());
+begin
+  if v_tenant is null or not coalesce((select private.has_permission('patients', 'view')), false) then
+    raise exception using errcode = '42501', message = 'ATTA-AUTH-0004';
+  end if;
+  return query
+  select p.id, n.full_name, n.social_name, n.birth_date, p.cpf_masked, p.foreign_doc_type, p.foreign_doc_masked,
+         n.phone_enc, n.email_enc, n.dek_wrapped, n.kek_version, p.is_incomplete,
+         coalesce(v.expires_at > now(), false), v.expires_at, l.linked_at, l.origin, l.network_access, n.envelope_id,
+         l.archived_at
+  from network.person_tenant_link l
+  join network.person p on p.id = l.person_id
+  cross join lateral (select l.network_access = 'pending') a (pending)
+  cross join lateral (select case when a.pending then l.local_full_name else p.full_name end,
+                             case when a.pending then l.local_social_name else p.social_name end,
+                             case when a.pending then l.local_birth_date else p.birth_date end,
+                             case when a.pending then l.local_phone_enc else p.phone_enc end,
+                             case when a.pending then l.local_email_enc else p.email_enc end,
+                             case when a.pending then l.local_dek_wrapped else p.dek_wrapped end,
+                             case when a.pending then l.local_kek_version else p.kek_version end,
+                             case when a.pending then l.local_envelope_id else p.id end
+                     ) n (full_name, social_name, birth_date, phone_enc, email_enc, dek_wrapped, kek_version, envelope_id)
+  left join lateral (select iv.expires_at from network.identity_verification iv
+                     where not a.pending and iv.person_id = p.id and iv.result = 'aprovada'
+                     order by iv.expires_at desc limit 1) v on true
+  where l.tenant_id = v_tenant and l.person_id = p_person_id and p.deleted_at is null;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'ATTA-CORE-0005', detail = 'person_id';
+  end if;
+  perform audit.record_event('patient.read', 'network.person', p_person_id, '{}');
+end;
+$$;
+revoke all on function api.patient_get(uuid) from public, anon;
+grant execute on function api.patient_get(uuid) to authenticated;
