@@ -64,7 +64,7 @@ test.describe("gestora da Clínica Alfa", () => {
   test("o nome abre a Pasta do Paciente (captura 12): contato inteiro só aqui, CPF mascarado, nada de outra clínica", async ({ page }) => {
     await page.goto("/painel/pacientes");
     await page.getByRole("link", { name: "Abrir a pasta de Juliana Prates" }).click();
-    await expect(page).toHaveURL(/\/painel\/pacientes\/pasta\?paciente=[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/painel\/pacientes\/pasta\/[0-9a-f-]{36}$/);
     await expect(page.getByRole("navigation", { name: "Seções de Pacientes" }).getByRole("link", { name: "Pasta do Paciente" })).toHaveAttribute("aria-current", "page");
     const dados = page.getByRole("region", { name: "Dados cadastrais" });
     await expect(dados).toContainText("Juliana Prates");
@@ -82,10 +82,14 @@ test.describe("gestora da Clínica Alfa", () => {
     expect(page.url()).not.toMatch(/juliana|529/i);
 
     // paciente só da Clínica Beta (seed): o mesmo "não encontrado" de um id qualquer, sem dizer se existe na rede
-    await page.goto("/painel/pacientes/pasta?paciente=eeee0000-0000-4000-8000-000000000106");
+    await page.goto("/painel/pacientes/pasta/eeee0000-0000-4000-8000-000000000106");
     await expect(page.getByText("Este paciente não foi encontrado nesta clínica.")).toBeVisible();
     await expect(page.getByText("Otávio Ramos")).toHaveCount(0);
-    await page.goto("/painel/pacientes/pasta?paciente=nao-e-um-id");
+    // o endereço antigo (?paciente=<id>) leva à rota nova
+    await page.goto("/painel/pacientes/pasta?paciente=eeee0000-0000-4000-8000-000000000101");
+    await expect(page).toHaveURL(/\/painel\/pacientes\/pasta\/eeee0000-0000-4000-8000-000000000101$/);
+    await expect(page.getByRole("region", { name: "Dados cadastrais" })).toContainText("Juliana Prates");
+    await page.goto("/painel/pacientes/pasta/nao-e-um-id");
     await expect(page.getByText("Este paciente não foi encontrado nesta clínica.")).toBeVisible();
   });
 
