@@ -1,7 +1,17 @@
 -- MIG-21c (parte 1): Termo de Autorização do profissional, modelo de sistema e gravação assinada. PDD v206 §10.4.3;
 -- decisões do CTO de 21/11; ADR 0001 §1. Só dado fictício.
 begin;
-select plan(27);
+select plan(29);
+
+create function pg_temp.detalhe(p_sql text) returns text language plpgsql as $$
+declare d text;
+begin
+  execute p_sql;
+  return null;
+exception when others then
+  get stacked diagnostics d = pg_exception_detail;
+  return d;
+end $$;
 
 -- Código ATTA pelos vetores do atta-core (tests/vectors/atta_sign_v1)
 select is(private.atta_code_from_sha256('95d0d4842a89fbc60bfac2d3e5a8fe3a9c592f69f392debf9c506187087ae3e8'),
@@ -29,6 +39,14 @@ select ok((select v.body like '%{{clinica.razao_social}}%' and v.body like '%pra
 select private.seed_authorization_template('00000000-0000-4000-8000-0000000005a1');
 select is((select count(*)::int from documents.template where tenant_id = '00000000-0000-4000-8000-0000000005a1'), 1,
           'o seed é idempotente');
+-- clínica criada numa sessão com usuário (onboarding, backoffice): o seed passa pela trava do #188 pela marca de sistema
+select set_config('request.jwt.claims', json_build_object('sub', gen_random_uuid(), 'role', 'authenticated')::text, true);
+insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-0000000005c0', 'Clínica Fictícia Criada com Token');
+select ok(private.authorization_template_ready('00000000-0000-4000-8000-0000000005c0'),
+          'clínica criada com usuário no token também nasce com o termo de sistema');
+select is(pg_temp.detalhe($$ update documents.template set title = 'Outro' where tenant_id = '00000000-0000-4000-8000-0000000005c0' $$),
+          'kind', 'fora do seed, com usuário no token, a trava continua recusando (a marca não sobra na transação)');
+select set_config('request.jwt.claims', '', true);
 
 -- montagem fictícia: profissional, vínculo, chave do selo, payload ---------------------------------------------------
 insert into platform.professional (id, display_name, council, council_uf, council_number, cpf_hmac, cpf_masked, cpf_enc,
@@ -71,15 +89,6 @@ create function pg_temp.gravar(p_doc uuid, p_payload bytea, p_code text default 
     coalesce(p_code, private.atta_code_from_sha256(encode(sha256(p_payload), 'hex'))), p_kid,
     sha512('selo-ficticio'::bytea), pg_temp.traco(p_doc))
 $$;
-create function pg_temp.detalhe(p_sql text) returns text language plpgsql as $$
-declare d text;
-begin
-  execute p_sql;
-  return null;
-exception when others then
-  get stacked diagnostics d = pg_exception_detail;
-  return d;
-end $$;
 
 -- permissões ---------------------------------------------------------------------------------------------------------
 select ok(not has_function_privilege('authenticated', 'private.document_insert_signed_authorization(uuid, uuid, uuid, bytea, text, text, bytea, jsonb)', 'EXECUTE')
