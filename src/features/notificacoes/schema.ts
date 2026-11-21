@@ -33,7 +33,8 @@ export const canaisSchema = z.object({
 });
 export type Canais = z.infer<typeof canaisSchema>;
 
-export const caixaSchema = z.object({ itens: z.array(notificacaoSchema), canais: canaisSchema });
+/** fuso: o da clínica (platform.tenant.timezone), para o grupo e o "quando" (regra do Tech Lead: nunca o do navegador) */
+export const caixaSchema = z.object({ itens: z.array(notificacaoSchema), canais: canaisSchema, fuso: z.string().min(1) });
 export type CaixaDeNotificacoes = z.infer<typeof caixaSchema>;
 
 export const CANAIS_VAZIOS: Canais = { email: null, whatsapp: null, pausaNoturna: null, resumo: null, eventos: null };

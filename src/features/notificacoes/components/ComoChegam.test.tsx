@@ -5,7 +5,7 @@ import { CANAIS_VAZIOS, type Canais } from "../schema";
 import { ComoChegam } from "./ComoChegam";
 
 const CANAIS: Canais = {
-  email: { ativo: true, endereco: "recepcao@clinica.exemplo" },
+  email: { ativo: true, endereco: "recepcao@exemplo.test" },
   whatsapp: { ativo: false },
   pausaNoturna: { ativa: true },
   resumo: "tempo_real",
@@ -14,9 +14,9 @@ const CANAIS: Canais = {
 
 describe("Como as notificações chegam (MIG-45)", () => {
   it("o sino sempre ativo, o estado de cada canal e a privacidade sem código de regra", async () => {
-    const { container } = render(<ComoChegam canais={CANAIS} admin />);
+    const { container } = render(<ComoChegam canais={CANAIS} configurar="/painel/configuracoes/notificacoes" />);
     expect(screen.getByText("Sempre ativo")).toBeInTheDocument();
-    expect(screen.getByText("recepcao@clinica.exemplo")).toBeInTheDocument();
+    expect(screen.getByText("recepcao@exemplo.test")).toBeInTheDocument();
     expect(screen.getByText("Desativado")).toBeInTheDocument();
     expect(screen.getByText("Tempo real")).toBeInTheDocument();
     expect(screen.getByText("4 de 36 eventos com e-mail · 0 com WhatsApp. O sino recebe todos.")).toBeInTheDocument();
@@ -26,8 +26,8 @@ describe("Como as notificações chegam (MIG-45)", () => {
     expect(await violacoesDoAxe(container)).toEqual([]);
   });
 
-  it("sem configuração lida, '—' nos canais; o Colaborador não recebe o atalho para Configurações", () => {
-    render(<ComoChegam canais={CANAIS_VAZIOS} admin={false} />);
+  it("sem configuração lida, '—' nos canais; sem link pronto (Colaborador ou seção sem tela), não há atalho para Configurações", () => {
+    render(<ComoChegam canais={CANAIS_VAZIOS} configurar={null} />);
     expect(screen.getAllByText("—")).toHaveLength(4);
     expect(screen.getByText("Sempre ativo")).toBeInTheDocument();
     expect(screen.getByText("O sino recebe todos os eventos.")).toBeInTheDocument();

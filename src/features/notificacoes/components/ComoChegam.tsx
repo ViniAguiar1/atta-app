@@ -4,7 +4,7 @@ import { textos } from "../textos";
 
 // "Como as notificações chegam" (Simulador ATTA-in, captura 41; PDD v206 §10.4.6): o sino, sempre ativo e não
 // configurável, e o estado dos canais externos e filtros, como estão em Configurações › Notificações. Sem configuração
-// lida, "—". O atalho para Configurações só aparece para o ADMIN, o único que abre Configurações (§10.4.3).
+// lida, "—". O atalho para Configurações vem pronto da página: só para o ADMIN (§10.4.3) e só quando a seção tem tela.
 const c = textos.canais;
 
 function Linha({ titulo, detalhe, estado }: { titulo: string; detalhe?: string | null; estado: string }) {
@@ -22,7 +22,7 @@ function Linha({ titulo, detalhe, estado }: { titulo: string; detalhe?: string |
   );
 }
 
-export function ComoChegam({ canais, admin }: { canais: Canais; admin: boolean }) {
+export function ComoChegam({ canais, configurar }: { canais: Canais; configurar: string | null }) {
   const sem = c.semConfiguracao;
   return (
     <aside aria-labelledby="como-chegam" className="flex flex-col gap-3 rounded-md border border-border bg-surface-app p-4 text-[0.8125rem]">
@@ -39,8 +39,8 @@ export function ComoChegam({ canais, admin }: { canais: Canais; admin: boolean }
       <p className="text-text-secondary">
         {canais.eventos ? c.eventos(canais.eventos.comEmail, canais.eventos.total, canais.eventos.comWhatsapp) : c.sinoRecebeTodos}
       </p>
-      {admin && (
-        <Link href="/painel/configuracoes/notificacoes" className="inline-flex min-h-11 w-fit items-center font-semibold underline underline-offset-2 medium:min-h-0">
+      {configurar && (
+        <Link href={configurar} className="inline-flex min-h-11 w-fit items-center font-semibold underline underline-offset-2 medium:min-h-0">
           {c.configurar}
         </Link>
       )}
