@@ -40,6 +40,8 @@ export type EnvioDoPropass = {
   /** "Leia até o fim": quando o termo apareceu e quando a leitura terminou (vão no pacote do ATTA Sign). */
   leitura: { abertoEm: Date; rolagemCompletaEm: Date };
   origem: Origem;
+  /** Versão do Aviso de Privacidade do Profissional que ele confirmou ter lido; null enquanto o aviso está desligado (P2b). */
+  avisoDePrivacidade: string | null;
 };
 
 export type Origem = { ip: string | null; userAgent: string | null };
@@ -49,7 +51,7 @@ export type Identidade = "pedir_pin" | "usar_pin_existente";
 
 /** `api.propass_submit`: 'ok' consome o link; 'recusado' é genérico (identidade), e a 5ª recusa revoga o link. A falta
  * do modelo do termo é guarda do banco e não deve acontecer (a ATTA publica o modelo por seed, CTO P2c): vira erro. */
-export type DesfechoDoEnvio = { status: "ok" } | { status: "recusado" };
+export type DesfechoDoEnvio = { status: "ok"; codigoAtta: string } | { status: "recusado" };
 
 export type PortaPropass = {
   /** NAO_ENCONTRADO: link desconhecido, vencido (7 dias), revogado ou de vínculo excluído (a mesma resposta). */

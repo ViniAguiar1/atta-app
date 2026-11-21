@@ -143,15 +143,17 @@ describe("portaPropassReal: identidade e envio pelo servidor do Backend 4 (#247)
     expect(envio.conferirIdentidade).toHaveBeenCalledWith(HASH, registro, ORIGEM);
   });
 
-  it("enviar repassa dados, PNG, PIN, leitura e origem ao enviarPropass e devolve o status", async () => {
-    envio.enviarPropass.mockResolvedValue({ ok: true, data: { status: "ok" } });
+  it("enviar repassa dados, PNG, PIN, leitura, origem e o Aviso ao enviarPropass e devolve o status e o Código ATTA", async () => {
+    envio.enviarPropass.mockResolvedValue({ ok: true, data: { status: "ok", codigoAtta: "ATTA-7K3M-Q9PX-2HDV" } });
     const pedido = {
       dados: { nome: "Bruna Reis", cpf: "52998224725", whatsapp: "11987654321", conselho: "crm" as const, numero: "990001", uf: "SP" },
       assinaturaPng: Buffer.from([137, 80, 78, 71]), pin: null,
-      leitura: { abertoEm: new Date("2026-11-21T10:00:00Z"), rolagemCompletaEm: new Date("2026-11-21T10:01:00Z") }, origem: ORIGEM,
+      leitura: { abertoEm: new Date("2026-11-21T10:00:00Z"), rolagemCompletaEm: new Date("2026-11-21T10:01:00Z") }, origem: ORIGEM, avisoDePrivacidade: null,
     };
-    expect(await porta.enviar(HASH, pedido)).toEqual({ ok: true, data: { status: "ok" } });
+    expect(await porta.enviar(HASH, pedido)).toEqual({ ok: true, data: { status: "ok", codigoAtta: "ATTA-7K3M-Q9PX-2HDV" } });
     expect(envio.enviarPropass).toHaveBeenCalledWith(HASH, pedido);
+    envio.enviarPropass.mockResolvedValue({ ok: true, data: { status: "recusado" } });
+    expect(await porta.enviar(HASH, pedido)).toEqual({ ok: true, data: { status: "recusado" } }); // recusa sem código
     envio.enviarPropass.mockResolvedValue({ ok: false, error: { code: "LIMITE", message: "x" } });
     expect(await porta.enviar(HASH, pedido)).toMatchObject({ ok: false, error: { code: "LIMITE" } });
   });

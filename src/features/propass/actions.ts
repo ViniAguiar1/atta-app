@@ -71,6 +71,7 @@ export async function enviarPropass(entrada: unknown): Promise<Resultado<Desfech
     pin: envio.data.pin,
     leitura: { abertoEm: new Date(abertoEm), rolagemCompletaEm: new Date(rolagemCompletaEm) },
     origem: await origemDoPedido(),
+    avisoDePrivacidade: envio.data.avisoDePrivacidade,
   });
   logger.info("propass.enviado", { ok: r.ok, status: r.ok ? r.data.status : r.error.code });
   if (r.ok) return ok(r.data);
