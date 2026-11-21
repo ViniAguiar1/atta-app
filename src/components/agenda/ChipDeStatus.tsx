@@ -18,12 +18,17 @@ const ESTILO: Record<Status, { chip: string; ponto: string }> = {
 };
 
 const chip = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-corpo whitespace-nowrap";
+/** escala compacta da Pasta do Paciente (captura 13): 11 px semibold */
+const chipCompacto = "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-rotulo font-semibold whitespace-nowrap";
 
-/** `rotulo` troca só o texto (Ausente → "Não realizado" na visão Concluídos); a cor segue o estado. */
-export function ChipDeStatus({ status, rotulo }: { status: Status; rotulo?: string }) {
+/**
+ * `rotulo` troca só o texto (Ausente → "Não realizado" na visão Concluídos); a cor segue o estado. `compacto`: a escala
+ * menor da Pasta do Paciente (captura 13).
+ */
+export function ChipDeStatus({ status, rotulo, compacto = false }: { status: Status; rotulo?: string; compacto?: boolean }) {
   const { chip: cor, ponto } = ESTILO[status];
   return (
-    <span data-status={status} className={`${chip} ${cor}`}>
+    <span data-status={status} className={`${compacto ? chipCompacto : chip} ${cor}`}>
       <span aria-hidden="true" className={`size-1.5 rounded-full ${ponto}`} />
       {rotulo ?? textos.status[status]}
     </span>
@@ -31,9 +36,9 @@ export function ChipDeStatus({ status, rotulo }: { status: Status; rotulo?: stri
 }
 
 /** Selo Atrasado, em vinho, ao lado do status: não é um estado (PDD §10.2.2). */
-export function SeloAtrasado() {
+export function SeloAtrasado({ compacto = false }: { compacto?: boolean }) {
   return (
-    <span data-selo="atrasado" className={`${chip} bg-status-negative/10 text-status-negative`}>
+    <span data-selo="atrasado" className={`${compacto ? chipCompacto : chip} bg-status-negative/10 text-status-negative`}>
       <span aria-hidden="true" className="size-1.5 rounded-full bg-status-negative" />
       {textos.atrasado}
     </span>

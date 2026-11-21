@@ -72,9 +72,17 @@ describe("Agendamentos e documentos da Pasta (capturas 13 e 14)", () => {
     expect(painel).toHaveTextContent("Termo não assinado");
     expect(painel).toHaveTextContent("Peeling químico médio · 19/11/2026 às 11:30 · Dr. Caio Andrade");
     expect(painel).toHaveTextContent("Ninguém assina pelo paciente.");
+    // os dois painéis ficam no DOM: o inativo com hidden, para o aria-controls apontar para ele
+    expect(document.getElementById(screen.getByRole("tab", { name: "Agendamentos (2)" }).getAttribute("aria-controls")!)).toHaveAttribute("hidden");
   });
 
-  it("Carregar mais pede a página seguinte pelo cursor e junta as linhas; erro mostra o tentar de novo", async () => {
+  it("na aba Pendências o Carregar mais também aparece: o número é do banco, a lista é das páginas carregadas", async () => {
+    render(<AgendamentosDaPasta id={PESSOA} inicial={pagina({ proximo: "c|" + uid(2) })} mais={vi.fn()} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Pendências (1)" }));
+    expect(screen.getByRole("button", { name: "Carregar mais agendamentos" })).toBeInTheDocument();
+  });
+
+  it("Carregar mais pede a página seguinte pelo cursor e junta as linhas; o tentar de novo repete o pedido", async () => {
     const mais = vi
       .fn()
       .mockResolvedValueOnce(falha("INDISPONIVEL", "fora"))
@@ -83,7 +91,8 @@ describe("Agendamentos e documentos da Pasta (capturas 13 e 14)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Carregar mais agendamentos" }));
     expect(mais).toHaveBeenCalledWith({ id: PESSOA, cursor: "2026-11-19T14:30:00.000000Z|" + uid(2) });
     expect(await screen.findByText("INDISPONIVEL")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Carregar mais agendamentos" }));
+    await userEvent.click(screen.getByRole("button", { name: "Tentar de novo" })); // repete o carregar mais, sem refresh
+    expect(mais).toHaveBeenCalledTimes(2);
     expect(await within(screen.getByRole("tabpanel")).findAllByRole("listitem")).toHaveLength(3);
     expect(screen.queryByRole("button", { name: "Carregar mais agendamentos" })).toBeNull();
   });
