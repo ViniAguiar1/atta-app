@@ -93,6 +93,21 @@ test.describe("gestora da Clínica Alfa", () => {
     await expect(page.getByText("Este paciente não foi encontrado nesta clínica.")).toBeVisible();
   });
 
+  test("filtros da captura 11: com atendimento hoje, arquivados sem resultado e o Limpar filtros", async ({ page }) => {
+    await page.goto("/painel/pacientes");
+    const filtros = page.getByRole("button", { name: "Filtros", exact: true });
+    await filtros.click();
+    await expect(page.getByRole("list", { name: "Filtrar pacientes" }).getByRole("button")).toHaveCount(3);
+    expect((await axe(page)).violations).toEqual([]);
+    await page.getByRole("button", { name: /Com atendimento hoje/ }).click();
+    await expect(page.getByRole("rowheader").filter({ hasText: "Juliana Prates" })).toBeVisible(); // agendada hoje no seed
+    await filtros.click();
+    await page.getByRole("button", { name: /Arquivados/ }).click();
+    await expect(page.getByText("Nenhum resultado para os filtros aplicados")).toBeVisible();
+    await page.getByRole("button", { name: "Limpar filtros" }).first().click();
+    await expect(page.getByRole("rowheader")).toHaveCount(DA_ALFA.length);
+  });
+
   for (const largura of [1280, 390]) {
     test(`em ${largura} px passa no axe, sem texto de ambiente e sem rolagem lateral da página`, async ({ page }) => {
       await page.setViewportSize({ width: largura, height: 800 });

@@ -60,8 +60,20 @@ export type LinhaDePaciente = {
 /** Cursor da lista, em ordem de nome (keyset do api.patient_list). Opaco para a tela. */
 export type Cursor = { nome: string; id: string };
 
-/** `total`: pacientes ativos da clínica, para o rodapé "n de n ativo(s)"; null enquanto a API não devolver. */
-export type PaginaDePacientes = { itens: LinhaDePaciente[]; proxima: Cursor | null; total: number | null };
+/** Filtros da lista (simulador, captura 11; api.patient_list e patient_search, #158). Sem filtro: os ativos. */
+export const FILTROS_DA_LISTA = ["outra_clinica", "atendimento_hoje", "arquivados"] as const;
+export type FiltroDaLista = (typeof FILTROS_DA_LISTA)[number];
+
+/**
+ * `total`: pacientes ativos da clínica, para o rodapé "n de n ativo(s)"; null enquanto a API não devolver.
+ * `contadores`: quantos há em cada filtro, contados antes do filtro (o menu da captura 11); null sem linha na página.
+ */
+export type PaginaDePacientes = {
+  itens: LinhaDePaciente[];
+  proxima: Cursor | null;
+  total: number | null;
+  contadores: Record<FiltroDaLista, number> | null;
+};
 
 export type OrigemDoCadastro = "recepcao" | "atta_me" | "importacao";
 
@@ -158,12 +170,12 @@ export type AgendamentosDaPasta = {
 
 export type PortaPacientes = {
   /** Pacientes vinculados à clínica da sessão, em ordem de nome, 50 por página. */
-  listar(apos?: Cursor): Promise<Resultado<PaginaDePacientes>>;
+  listar(apos?: Cursor, filtro?: FiltroDaLista): Promise<Resultado<PaginaDePacientes>>;
   /**
    * Busca entre os pacientes da clínica: CPF/RNE completo (pelo HMAC, nunca em claro no banco) ou parte do nome
    * (2+ letras). Até 20 linhas. VALIDACAO: termo curto. Nunca acha quem é só da rede (sem oráculo, ADR 0021 A-24).
    */
-  buscar(termo: string): Promise<Resultado<LinhaDePaciente[]>>;
+  buscar(termo: string, filtro?: FiltroDaLista): Promise<Resultado<LinhaDePaciente[]>>;
   /** NAO_ENCONTRADO: inexistente ou sem vínculo com esta clínica (a mesma resposta, de propósito). */
   obter(id: string): Promise<Resultado<FichaDoPaciente>>;
   /**

@@ -1,3 +1,4 @@
+import type { FiltroDaLista } from "@/server/pacientes/porta";
 import { z } from "zod";
 
 // Bordas da lista de Pacientes (MIG-43). O termo da busca (nome ou CPF) só trafega no corpo da server action, nunca em
@@ -5,7 +6,13 @@ import { z } from "zod";
 
 export const cursorSchema = z.object({ nome: z.string().min(1).max(200), id: z.uuid() }).strict();
 
-export const buscaSchema = z.object({ termo: z.string().trim().min(2).max(100) }).strict();
+/**
+ * Filtro da lista (captura 11): a lista fechada da porta, repetida aqui porque este arquivo vai ao cliente (que não
+ * importa valor de src/server); o `satisfies` e o teste garantem que as duas não se separam.
+ */
+export const FILTROS = ["outra_clinica", "atendimento_hoje", "arquivados"] as const satisfies readonly FiltroDaLista[];
+export const filtroDaListaSchema = z.enum(FILTROS);
+export const buscaSchema = z.object({ termo: z.string().trim().min(2).max(100), filtro: filtroDaListaSchema.optional() }).strict();
 
 /** A tela só busca com 2+ letras do nome ou um CPF/RNE inteiro; menos que isso volta para a lista. */
 export const termoPronto = (termo: string) => {

@@ -133,7 +133,9 @@ export function criarPortaSimulada(pacientes: readonly Simulado[] = PACIENTES_SI
   const ordenados = [...pacientes].sort(porNome);
   const existe = (id: string) => ordenados.some((p) => p.id === id);
   return {
-    async listar(apos) {
+    async listar(apos, filtro) {
+      // a simulada não guarda arquivados nem agenda: com filtro, a lista fica vazia
+      if (filtro) return ok({ itens: [], proxima: null, total: ordenados.length, contadores: null });
       const inicio = apos ? ordenados.findIndex((p) => p.id === apos.id) + 1 : 0;
       const pagina = ordenados.slice(inicio, inicio + porPagina);
       const ultimo = pagina.at(-1);
@@ -142,6 +144,7 @@ export function criarPortaSimulada(pacientes: readonly Simulado[] = PACIENTES_SI
         itens: pagina.map(publico),
         proxima: temMais && ultimo ? { nome: ultimo.nome, id: ultimo.id } : null,
         total: ordenados.length,
+        contadores: { outra_clinica: 0, atendimento_hoje: 0, arquivados: 0 },
       });
     },
     async buscar(termo) {
