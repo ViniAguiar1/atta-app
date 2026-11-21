@@ -5,7 +5,9 @@
 -- api.atta_in_template_list ganha:
 --   clinic_services              [{id, name}] dos Serviços vivos vinculados, pelo nome (os chips da coluna Procedimentos);
 --   current_version_published_at quando a versão atual foi publicada (coluna Versão, "desde dd/mm/aaaa");
---   signed_count                 documentos assinados do modelo, em qualquer versão: os que têm evidência do ATTA Sign.
+--   signed_count                 documentos assinados do modelo, em qualquer versão: com evidência do ATTA Sign e em
+--                                Assinado definitivo ou Substituído (§10.2.3, §17.6). O Pré-assinado de atendimento aberto
+--                                e o cancelado não contam (revisão do Backend 3 no #148).
 -- api.atta_in_template_summary: os cartões do topo. "Vencendo" e "vencidos para reassinar" vêm nulos: o início da
 -- validade do "Única" e o "perto de vencer" (RN-V-05) estão com a PO (R17); a tela mostra "—".
 -- Sempre para a frente: a lista muda de forma (colunas novas no fim), então sai e volta com o mesmo nome e grants.
@@ -52,7 +54,8 @@ begin
           from documents.template_version v
           join documents.document d on d.tenant_id = v.tenant_id and d.template_version_id = v.id
           join documents.evidence e on e.tenant_id = d.tenant_id and e.document_id = d.id
-          where v.tenant_id = t.tenant_id and v.template_id = t.id)
+          where v.tenant_id = t.tenant_id and v.template_id = t.id
+            and d.status in ('assinado_definitivo', 'substituido'))
   from documents.template t
   cross join lateral (
     select coalesce(array_agg(l.clinic_service_id order by l.clinic_service_id) filter (where c.deleted_at is null), '{}') as ids,
@@ -71,7 +74,9 @@ revoke all on function api.atta_in_template_list() from public, anon, service_ro
 grant execute on function api.atta_in_template_list() to authenticated;
 
 -- Cartões do topo de Meus modelos. Termos ativos e a divisão obrigatório/opcional pela versão vigente (RN-DOC-04 vale
--- pela versão publicada). Assinados: documentos da clínica com evidência; "com ATTA Sign": os de nível atta_sign.
+-- pela versão publicada). Assinados: documentos da clínica com evidência em Assinado definitivo ou Substituído; "com
+-- ATTA Sign": os de nível atta_sign. Ler o nível do JSON é aceito no volume de hoje; quando crescer, vira coluna da
+-- evidência (nota do Tech Lead, da Segurança e do Backend 3 no #148).
 create function api.atta_in_template_summary()
 returns table (active_count integer, active_required_count integer, active_optional_count integer,
                expiring_count integer, expired_count integer, signed_count integer, signed_atta_sign_count integer)
@@ -94,9 +99,12 @@ begin
      where t.tenant_id = v_tenant and t.status = 'ativo' and not v.required),
     null::integer,
     null::integer,
-    (select count(*)::integer from documents.evidence e where e.tenant_id = v_tenant),
     (select count(*)::integer from documents.evidence e
-     where e.tenant_id = v_tenant
+     join documents.document d on d.tenant_id = e.tenant_id and d.id = e.document_id
+     where e.tenant_id = v_tenant and d.status in ('assinado_definitivo', 'substituido')),
+    (select count(*)::integer from documents.evidence e
+     join documents.document d on d.tenant_id = e.tenant_id and d.id = e.document_id
+     where e.tenant_id = v_tenant and d.status in ('assinado_definitivo', 'substituido')
        and pg_catalog.convert_from(e.payload_canonical, 'UTF8')::jsonb #>> '{signature,level}' = 'atta_sign');
 end;
 $$;
