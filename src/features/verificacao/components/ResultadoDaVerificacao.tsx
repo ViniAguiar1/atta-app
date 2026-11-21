@@ -8,7 +8,7 @@ import { ESTADOS, TIPOS, textos } from "../textos";
 // estabelecimento mostra só o nome (o CNPJ não vem na resposta; ADR 0006 §6, em aberto com o Tech Lead e o CTO).
 type Props = { resultado: Resultado<RespostaVerificacao> };
 
-const chip = "inline-flex items-center gap-2 rounded-full bg-surface-card px-3 py-0.5 text-xs font-medium text-text-primary";
+const chip = "inline-flex items-center gap-2 rounded-full bg-surface-card px-3 py-0.5 text-xs font-semibold text-text-primary";
 
 export function ResultadoDaVerificacao({ resultado }: Props) {
   if (!resultado.ok) {
@@ -21,10 +21,11 @@ export function ResultadoDaVerificacao({ resultado }: Props) {
   const r = resultado.data;
   if (!r.exists) {
     return (
-      <div role="status" className="flex gap-3 rounded-md border border-status-negative/40 bg-status-negative/5 px-4 py-3 text-corpo">
-        <span aria-hidden="true" className="text-status-negative">
-          ⚠
-        </span>
+      <div role="status" className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-surface-card px-4 py-3 text-corpo">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-status-negative">
+          <path d="M12 4 2.5 20h19z" />
+          <path d="M12 10v4M12 17h.01" />
+        </svg>
         <p>
           <strong>{textos.naoEncontrado}</strong> {textos.naoEncontradoAjuda}
         </p>
@@ -32,7 +33,7 @@ export function ResultadoDaVerificacao({ resultado }: Props) {
     );
   }
   const linha = (rotulo: string, valor: React.ReactNode) => (
-    <div className="grid grid-cols-1 border-b border-border last:border-b-0 medium:grid-cols-[11rem_1fr]">
+    <div className="grid grid-cols-1 border-b border-border last:border-b-0 medium:grid-cols-[11.25rem_1fr]">
       <dt className="bg-surface-card px-4 py-3 text-corpo font-medium text-text-primary">{rotulo}</dt>
       <dd className="px-4 py-3 text-corpo text-text-primary">{valor}</dd>
     </div>
@@ -43,9 +44,9 @@ export function ResultadoDaVerificacao({ resultado }: Props) {
     <section aria-label={textos.rotuloResultado}>
       {/* o resultado chega depois do envio: o resumo é anunciado, como o "não encontrado" (WCAG 4.1.3; nota do FE2) */}
       <p role="status" className="sr-only">
-        {textos.resumo(documento, estado)}
+        {textos.resumo(documento || textos.existe, estado || "—")}
       </p>
-      <dl className="overflow-hidden rounded-xl border border-border bg-surface-raised">
+      <dl className="overflow-hidden rounded-md border border-border bg-surface-raised">
         {linha(
           textos.linhas.documento,
           <span className="flex flex-wrap items-center gap-2">
