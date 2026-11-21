@@ -82,7 +82,7 @@ export function MenuDeAcoes({ itens, paciente, aoEscolher, ocupado = false }: Pr
       {aberto && (
         <div
           id={idDoMenu}
-          className="absolute top-full right-0 z-10 mt-1 w-64 rounded-md border border-border bg-surface-raised py-2 shadow-lg"
+          className="absolute top-full right-0 z-10 mt-1 w-58 rounded-md border border-border bg-surface-raised py-2 shadow-lg"
         >
           <ul className="flex flex-col">
             {comuns.map((item) => (
@@ -131,8 +131,9 @@ function ItemDaLista({
       >
         {textos.acoes[item.acao]}
       </button>
+      {/* o motivo aparece na tela também, não só para o leitor (nota do FE3 no #277), fora do nome do botão */}
       {desabilitada && (
-        <span id={idDoMotivo} className="sr-only">
+        <span id={idDoMotivo} className="-mt-1 block px-4 pb-1 text-xs text-text-tertiary">
           {motivo(item.desabilitadaPor ?? "")}
         </span>
       )}

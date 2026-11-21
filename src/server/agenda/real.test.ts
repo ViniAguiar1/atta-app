@@ -234,6 +234,36 @@ describe("porta real da agenda: ações", () => {
     expect(rpc).toHaveBeenLastCalledWith("transition_appointment", { p_id: id(2), p_to: "ausente" });
   });
 
+  it("cancelar e concluir pela recepção vão ao transition com o motivo (e a justificativa)", async () => {
+    const schema = vi.fn();
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    schema.mockReturnValue({ rpc });
+    const porta = criarPortaAgendaReal(async () => ({ schema }) as unknown as ClienteDaAgenda);
+    await porta.acao({ acao: "cancelar", id: id(3), motivo: "agendado_por_engano" });
+    expect(rpc).toHaveBeenLastCalledWith("transition_appointment", { p_id: id(3), p_to: "cancelado", p_reason: "agendado_por_engano" });
+    const justificativa = "O profissional não consegue abrir o Boarding Check e o paciente já foi atendido.";
+    await porta.acao({ acao: "concluir_pela_recepcao", id: id(4), motivo: "falha_tecnica_no_acesso", justificativa });
+    expect(rpc).toHaveBeenLastCalledWith("transition_appointment", {
+      p_id: id(4),
+      p_to: "concluido",
+      p_reason: "falha_tecnica_no_acesso",
+      p_justification: justificativa,
+    });
+  });
+
+  it("justificativa curta, motivo fora da lista ou campo a mais são recusados antes do banco", async () => {
+    const { rpc, porta } = clienteFalso({ data: null, error: null });
+    for (const ruim of [
+      { acao: "concluir_pela_recepcao", id: id(1), motivo: "emergencia_clinica", justificativa: "curta" },
+      { acao: "cancelar", id: id(1), motivo: "porque_sim" },
+      { acao: "cancelar", id: id(1), motivo: "agendado_por_engano", observacao: "texto livre" },
+    ]) {
+      // @ts-expect-error entradas fora do contrato
+      expect(await porta.acao(ruim)).toMatchObject({ ok: false, error: { code: "VALIDACAO" } });
+    }
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it("recusa do banco sai por falhaDoBanco com o reason; entrada fora do contrato nem chega ao banco", async () => {
     const { porta } = clienteFalso({ data: null, error: { code: "P0001", message: "ATTA-IN-0003", details: "status", hint: null } });
     expect(await porta.acao({ acao: "marcar_ausente", id: id(1) })).toMatchObject({
