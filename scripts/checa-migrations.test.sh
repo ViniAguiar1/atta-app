@@ -10,11 +10,11 @@ falhas=0
 
 git_() { git -C "$tmp" -c user.name=teste -c user.email=teste@atta-app.invalid -c commit.gpgsign=false "$@"; }
 
-# caso <nome> <saída esperada 0|1> <texto esperado ou -> <arquivos da migration do "PR"...>
+# caso <nome> <saída esperada 0|1> <texto esperado ou -> <arquivos da migration do "PR"...>; CONTEUDO troca o SQL
 caso() {
   nome="$1" espera="$2" texto="$3"; shift 3
   git_ checkout -q -B pr main
-  for f in "$@"; do echo "select 1;" > "$tmp/supabase/migrations/$f"; done
+  for f in "$@"; do printf '%s\n' "${CONTEUDO:-select 1;}" > "$tmp/supabase/migrations/$f"; done
   git_ add -A && git_ commit -q -m pr
   set +e
   saida="$(cd "$tmp" && ATTA_PR="${PR:-60}" ATTA_AGORA=20261120170000 sh "$script" main pr 2>&1)"; rc=$?
@@ -39,6 +39,13 @@ caso "mês 13 é recusado" 1 "não é uma hora UTC válida" 20261320000000_mes_1
 caso "versão válida maior que a última passa" 0 "migrations ok" 20261120174600_certa.sql
 caso "versão menor que a última é recusada" 1 "não é maior que a última da main (20261120174500)" 20261120090000_velha.sql
 caso "versão repetida é recusada" 1 "versão de migration repetida: 20261120174500" 20261120174500_repetida.sql
+CONTEUDO="do \$\$ begin raise exception using errcode = '54000', message = 'ATTA-IN-0003'; end \$\$;" \
+  caso "errcode 54000 (limite) passa: o src/lib/errors devolve LIMITE" 0 "migrations ok" 20261120174600_limite.sql
+CONTEUDO="do \$\$ begin raise exception using errcode = '53400', message = 'ATTA-IN-0003'; end \$\$;" \
+  caso "errcode 53400 (limite) passa" 0 "migrations ok" 20261120174600_limite_53400.sql
+CONTEUDO="do \$\$ begin raise exception using errcode = '22001', message = 'ATTA-IN-0001'; end \$\$;" \
+  caso "errcode fora da lista do src/lib/errors é recusado" 1 "errcode '22001' fora da lista" 20261120174600_fora.sql
+
 PR="60; rm -rf /" caso "ATTA_PR que não é número cai na explicação, sem conta" 1 \
   "e 20261120174500 + o número do seu PR em segundos" 20261120090000_velha.sql
 
