@@ -22,7 +22,7 @@ export function ModelosDeDocumento({ resultado }: { resultado: Resultado<MeusMod
       : ({ tipo: "pronto" } as const);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-3">
       <SubabasDeDocumentos ativa="/painel/documentos" />
       {resultado.ok && <CardsDosModelos resumo={resultado.data.resumo} />}
       <DataState estado={estado} rotulo={textos.carregando} esqueleto={{ linhas: 4, alturaRem: 4 }} vazio={textos.vazio}>
