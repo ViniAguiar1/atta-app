@@ -10,7 +10,7 @@ configure({ asyncUtilTimeout: 4000 });
 // O jsdom não desenha: o canvas é simulado, e a "assinatura" é um PNG fictício.
 beforeAll(() => {
   HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
-    scale: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), clearRect: vi.fn(),
+    scale: vi.fn(), setTransform: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), clearRect: vi.fn(),
   })) as never;
   HTMLCanvasElement.prototype.toDataURL = vi.fn(() => "data:image/png;base64,iVBORw0KGgo=");
   HTMLElement.prototype.setPointerCapture = vi.fn();
@@ -26,7 +26,7 @@ async function ateOTermo() {
   await userEvent.type(screen.getByLabelText("CPF"), "52998224725");
   await userEvent.type(screen.getByLabelText("WhatsApp de contato"), "11987654321");
   await userEvent.selectOptions(screen.getByLabelText("Conselho"), "crm");
-  await userEvent.type(screen.getByLabelText("Número de registro"), "201577");
+  await userEvent.type(screen.getByLabelText("Número de registro"), "990001");
   await userEvent.selectOptions(screen.getByLabelText("UF"), "SP");
   await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
   await userEvent.click(await screen.findByRole("button", { name: "Continuar" }));
@@ -34,7 +34,8 @@ async function ateOTermo() {
 }
 
 const desenhar = () => {
-  const quadro = screen.getByRole("img", { name: "Desenhe sua assinatura com o mouse ou o dedo" });
+  expect(screen.getByText("Desenhe sua assinatura com o mouse ou o dedo")).toBeInTheDocument(); // a instrução é lida
+  const quadro = document.querySelector("canvas")!;
   fireEvent.pointerDown(quadro, { clientX: 10, clientY: 10, pointerId: 1 });
   fireEvent.pointerMove(quadro, { clientX: 40, clientY: 20, pointerId: 1 });
   fireEvent.pointerUp(quadro, { pointerId: 1 });
@@ -92,6 +93,6 @@ describe("PROpass: termo, senha e envio", () => {
     await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
     await userEvent.click(await screen.findByRole("button", { name: "Continuar" }));
     expect(await screen.findByRole("heading", { name: /ainda não publicou o Termo/ })).toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: /Desenhe sua assinatura/ })).toBeNull();
+    expect(document.querySelector("canvas")).toBeNull();
   });
 });

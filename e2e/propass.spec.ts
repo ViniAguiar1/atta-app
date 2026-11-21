@@ -28,7 +28,7 @@ test("do convite ao conselho regularizado, sem dado pessoal na URL", async ({ pa
   await page.getByLabel("CPF").fill("52998224725");
   await page.getByLabel("WhatsApp de contato").fill("11987654321");
   await page.getByLabel("Conselho").selectOption("crm");
-  await page.getByLabel("Número de registro").fill("201577");
+  await page.getByLabel("Número de registro").fill("990001");
   await page.getByLabel("UF").selectOption("SP");
   await page.getByRole("button", { name: "Continuar" }).click();
 
@@ -48,7 +48,8 @@ test("do convite ao conselho regularizado, sem dado pessoal na URL", async ({ pa
     el.scrollTop = el.scrollHeight;
     el.dispatchEvent(new Event("scroll"));
   });
-  const quadro = page.getByRole("img", { name: "Desenhe sua assinatura com o mouse ou o dedo" });
+  await expect(page.getByText("Desenhe sua assinatura com o mouse ou o dedo")).toBeVisible();
+  const quadro = page.locator("canvas");
   await quadro.scrollIntoViewIfNeeded();
   const caixa = (await quadro.boundingBox())!;
   await page.mouse.move(caixa.x + 20, caixa.y + 60);
@@ -89,7 +90,7 @@ test("clínica sem o Termo de Autorização publicado: aviso, sem quadro de assi
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { level: 1, name: /ainda não publicou o Termo/ })).toBeVisible();
-  await expect(page.getByRole("img", { name: /Desenhe sua assinatura/ })).toHaveCount(0);
+  await expect(page.locator("canvas")).toHaveCount(0);
   expect(await axe(page)).toEqual([]);
 });
 
