@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataState } from "@/components/ui/DataState";
-import { buscarConcluidos, buscarNoDia, buscarNoPeriodo, resumirDia } from "@/features/agenda/actions";
+import { buscarConcluidos, buscarNoDia, buscarNoPeriodo, executarAcao, resumirDia } from "@/features/agenda/actions";
 import { AgendaHoje } from "@/features/agenda/components/AgendaHoje";
 import { ALTURA_DA_LINHA_REM } from "@/features/agenda/components/TabelaDoDia";
 import { textos } from "@/features/agenda/textos";
@@ -32,6 +32,7 @@ async function Hoje() {
       buscarPeriodo={buscarNoPeriodo}
       buscarConcluidos={buscarConcluidos}
       resumir={resumirDia}
+      executar={executarAcao}
     />
   );
 }

@@ -1,4 +1,6 @@
-import type { LinhaDaAgenda } from "../schema";
+import { MenuDeAcoes } from "@/components/agenda/MenuDeAcoes";
+import type { Acao } from "@/lib/agenda/linha";
+import { ACOES_COM_DESTINO, type LinhaDaAgenda } from "../schema";
 import { dataCurta, finalDoCpf, horario } from "../formatos";
 import { textos } from "../textos";
 import { ChipDeStatus, SeloAtrasado } from "@/components/agenda/ChipDeStatus";
@@ -23,7 +25,16 @@ type Props = {
   ausenteComoNaoRealizado?: boolean;
   /** ordem das linhas, que vem do servidor: crescente (Hoje, Todos) ou decrescente (Concluídos) */
   ordem?: "ascending" | "descending";
+  /** ação escolhida no menu ⋮ de uma linha; sem ela, a coluna Ações não aparece */
+  aoAcionar?: (linha: LinhaDaAgenda, acao: Acao) => void;
+  /** a linha cuja ação está gravando (o ⋮ fica ocupado) */
+  acionando?: string | null;
 };
+
+// Larguras da visão Hoje medidas na captura 01 (tabela de 1436 px): Horário 94, Paciente 272, Procedimento 226,
+// Profissional 155, Documentos 322, Status 273 e Ações 94.
+const LARGURAS_DO_HOJE = ["6.5%", "18.9%", "15.7%", "10.8%", "22.4%", "19%", "6.5%"] as const;
+const comDestino = (acao: Acao) => (ACOES_COM_DESTINO as readonly Acao[]).includes(acao);
 
 export function TabelaDoDia({
   linhas,
@@ -33,6 +44,8 @@ export function TabelaDoDia({
   hojeLocal,
   ausenteComoNaoRealizado = false,
   ordem = "ascending",
+  aoAcionar,
+  acionando = null,
 }: Props) {
   const c = textos.colunas;
   const seta = <span aria-hidden="true">{ordem === "ascending" ? "↑" : "↓"}</span>;
@@ -47,6 +60,13 @@ export function TabelaDoDia({
       className="relative overflow-x-auto rounded-md border border-border bg-surface-raised"
     >
       <table className="w-full min-w-[56rem] border-collapse text-left text-corpo">
+        {!comData && aoAcionar && (
+          <colgroup>
+            {LARGURAS_DO_HOJE.map((largura, i) => (
+              <col key={i} style={{ width: largura }} />
+            ))}
+          </colgroup>
+        )}
         <thead>
           <tr className="border-b border-border">
             {comData && (
@@ -66,6 +86,11 @@ export function TabelaDoDia({
                 {coluna}
               </th>
             ))}
+            {aoAcionar && (
+              <th scope="col" className="px-4 py-3">
+                <span className="sr-only">{c.acoes}</span>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -76,6 +101,8 @@ export function TabelaDoDia({
               fuso={fuso}
               data={comData ? dataCurta(linha.inicio, fuso, hojeLocal) : null}
               ausenteComoNaoRealizado={ausenteComoNaoRealizado}
+              aoAcionar={aoAcionar}
+              ocupada={acionando === linha.id}
             />
           ))}
         </tbody>
@@ -89,11 +116,15 @@ function Linha({
   fuso,
   data,
   ausenteComoNaoRealizado,
+  aoAcionar,
+  ocupada,
 }: {
   linha: LinhaDaAgenda;
   fuso: string;
   data: string | null;
   ausenteComoNaoRealizado: boolean;
+  aoAcionar?: (linha: LinhaDaAgenda, acao: Acao) => void;
+  ocupada: boolean;
 }) {
   const { paciente } = linha;
   return (
@@ -126,6 +157,17 @@ function Linha({
       <td className="px-4 py-3">
         <Status linha={linha} fuso={fuso} ausenteComoNaoRealizado={ausenteComoNaoRealizado} />
       </td>
+      {aoAcionar && (
+        <td className="px-4 py-3 text-right">
+          {/* só as ações do allowed_actions que já têm destino viram botão (PDD §10.2.2; TLF) */}
+          <MenuDeAcoes
+            itens={linha.acoes.filter((a) => comDestino(a.acao))}
+            paciente={paciente.nomeExibicao}
+            aoEscolher={(acao) => aoAcionar(linha, acao)}
+            ocupado={ocupada}
+          />
+        </td>
+      )}
     </tr>
   );
 }
