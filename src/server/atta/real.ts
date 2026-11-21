@@ -24,8 +24,8 @@ export const portaAttaReal: PortaAtta = {
         .then(({ data, error }) => (error || !data ? null : data.length)),
       supabase
         .schema("api")
-        .rpc("patient_list", { p_limit: 1 })
-        .then(({ data, error }) => (error || !data ? null : (data[0]?.total_active ?? 0))),
+        .rpc("patient_count")
+        .then(({ data, error }) => (error || typeof data !== "number" ? null : data)),
     ]);
     return {
       membros,
