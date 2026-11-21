@@ -125,6 +125,7 @@ export const textos = {
       protegido: "Este dado já foi informado. Para trocar, peça ao suporte ATTA.", // provisório
       VALIDACAO: "Confira este campo: o valor não foi aceito.", // provisório
       cnpj: "Confira o CNPJ: os dígitos não conferem.", // provisório
+      email: "Confira o e-mail: falta o @ ou o domínio.", // provisório (PDD §16.6: estrutura válida)
       SEM_PERMISSAO: "Só o gestor da clínica muda o Perfil.", // provisório
       INDISPONIVEL: "Não conseguimos salvar agora. Tente de novo em instantes.", // provisório
     },
