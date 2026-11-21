@@ -38,6 +38,30 @@ describe("CartaoDeSecao", () => {
     expect(container.querySelector("table")?.parentElement?.className).toBe("");
   });
 
+  it("compacto (cartão dentro de modal): título em 13 px, subtítulo em 11 px e cabeçalho e corpo mais justos; o padrão não muda", () => {
+    const padrao = render(
+      <CartaoDeSecao titulo="Padrão" subtitulo="Sub" icone="🪪">
+        <p>Corpo</p>
+      </CartaoDeSecao>,
+    );
+    expect(padrao.getByRole("heading", { name: "Padrão" }).className).toContain("text-[0.9375rem]");
+    expect(padrao.getByText("Sub").className).toContain("text-[0.8125rem]");
+    expect(padrao.container.querySelector("header")?.className).toContain("py-3.5");
+    expect(padrao.getByText("Corpo").parentElement?.className).toBe("flex flex-col gap-4 p-4");
+    padrao.unmount();
+
+    const compacto = render(
+      <CartaoDeSecao titulo="Compacto" subtitulo="Sub" icone="🪪" compacto>
+        <p>Corpo</p>
+      </CartaoDeSecao>,
+    );
+    expect(compacto.getByRole("heading", { name: "Compacto" }).className).toContain("text-[0.8125rem]");
+    expect(compacto.getByText("Sub").className).toContain("text-[0.6875rem]");
+    expect(compacto.container.querySelector("header")?.className).toMatch(/\bpy-2\.5\b.*|.*\bpx-3\.5\b/);
+    expect(compacto.container.querySelector("header > span")?.className).toContain("size-7");
+    expect(compacto.getByText("Corpo").parentElement?.className).toBe("flex flex-col gap-3 p-3.5");
+  });
+
   it("não há violação do axe", async () => {
     const { container } = render(
       <CartaoDeSecao titulo="Transparência de dados armazenados" subtitulo="Quatro categorias." icone="🔍" acao={<button type="button">Ação</button>}>
