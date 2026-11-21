@@ -27,7 +27,7 @@ export const GRUPOS: Grupo[] = [
   {
     titulo: "Documentos", // simulador
     secoes: [
-      { caminho: "assinaturas", titulo: "Assinaturas & Validade", exibir: "nunca" }, // PDD §10.4.2
+      { caminho: "assinaturas", titulo: "Assinaturas & Validade", exibir: "sempre" }, // PDD §10.4.2 (porta vazia na produção até o backend do Backend 6)
       { caminho: "termos", titulo: "Termos & Políticas", exibir: "nunca" }, // simulador
     ],
   },
