@@ -8,7 +8,7 @@ describe("dadosSchema", () => {
     expect(dadosSchema.parse(BASE)).toEqual({ ...BASE, cpf: "52998224725", whatsapp: "11987654321", numero: "990001" });
   });
   it("recusa conselho fora da lista, UF inexistente, CPF inválido e nome de um termo", () => {
-    for (const ruim of [{ conselho: "oab" }, { uf: "XX" }, { cpf: "52998224724" }, { nome: "Bruna" }, { numero: "" }]) {
+    for (const ruim of [{ conselho: "oab" }, { uf: "XX" }, { cpf: "52998224724" }, { nome: "Bruna" }, { numero: "" }, { nome: "Bruna {{Reis}}" }, { nome: "Bruna Reis }}" }]) {
       expect(dadosSchema.safeParse({ ...BASE, ...ruim }).success).toBe(false);
     }
   });
