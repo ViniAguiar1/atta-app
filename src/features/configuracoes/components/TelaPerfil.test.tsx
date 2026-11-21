@@ -7,7 +7,8 @@ import type { PerfilDaClinica } from "@/server/perfil/porta";
 
 const salvar = vi.fn();
 vi.mock("../actions", () => ({ salvarCampoDoPerfil: (e: unknown) => salvar(e) }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+const refresh = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 const { TelaPerfil } = await import("./TelaPerfil");
 
 // o jsdom não tem o <dialog> modal: o mínimo para abrir e fechar (o foco preso e o fundo inerte são do navegador)
@@ -43,7 +44,10 @@ const PERFIL: PerfilDaClinica = {
   faltando: ["legal_name", "address", "technical_lead"],
 };
 
-beforeEach(() => salvar.mockReset());
+beforeEach(() => {
+  salvar.mockReset();
+  refresh.mockReset();
+});
 
 describe("Perfil da Clínica (MIG-42, captura 42)", () => {
   it("faixa do salvamento automático, último salvamento no fuso, aviso do que falta e os campos com máscara", async () => {
@@ -69,6 +73,18 @@ describe("Perfil da Clínica (MIG-42, captura 42)", () => {
     expect(salvar).toHaveBeenCalledWith({ campo: "tax_registration", valor: "123456" });
     expect(await screen.findByText("Salvo às 11:05.")).toBeInTheDocument();
     expect(screen.getByText("Último salvamento às 11:05.")).toBeInTheDocument();
+    // relê no servidor, para o aviso do que falta (missing_required) acompanhar (nota do Frontend 2)
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("Enter seguido de blur antes da resposta manda o valor uma vez só", async () => {
+    let responder: (v: unknown) => void = () => {};
+    salvar.mockReturnValue(new Promise((r) => (responder = r)));
+    render(<TelaPerfil resultado={ok(PERFIL)} />);
+    await userEvent.type(screen.getByLabelText("Inscrição estadual/municipal (opcional)"), "123456{Enter}");
+    await userEvent.tab();
+    expect(salvar).toHaveBeenCalledTimes(1);
+    responder(ok({ salvoEm: "2026-11-21T14:05:00Z" }));
   });
 
   it("1º preenchimento da Razão social pede confirmação mostrando o valor (R43); confirmar salva e trava o campo", async () => {
@@ -78,6 +94,8 @@ describe("Perfil da Clínica (MIG-42, captura 42)", () => {
     expect(salvar).not.toHaveBeenCalled();
     const dialogo = screen.getByRole("dialog", { name: "Confirmar Razão social?" });
     expect(dialogo).toHaveTextContent("Clínica Fictícia Ltda.");
+    // o leitor de tela ouve o valor e o aviso de que trava (nota do Frontend 2)
+    expect(dialogo).toHaveAccessibleDescription(/Clínica Fictícia Ltda\..*só muda pelo suporte ATTA/);
     await userEvent.click(screen.getByRole("button", { name: "Confirmar e salvar" }));
     expect(salvar).toHaveBeenCalledWith({ campo: "legal_name", valor: "Clínica Fictícia Ltda." });
     expect(await screen.findByText("Salvo às 11:05.")).toBeInTheDocument();
