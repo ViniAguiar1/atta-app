@@ -4,8 +4,10 @@ import { textosAjuda as t } from "../textos-ajuda";
 
 // Central de Ajuda (PDD v206 §10.6.1) no layout da captura 19. Os guias são cartões de leitura: o artigo de cada um
 // entra com o conteúdo da PO (sem link até lá: botão ou link sem destino não entra). O FAQ abre e fecha pelo
-// <details> nativo, que já é acessível pelo teclado e pelo leitor de tela.
-export function TelaAjuda() {
+// <details> nativo, que já é acessível pelo teclado e pelo leitor de tela. A planilha modelo de pacientes (PDD §10.1:
+// "a clínica baixa a planilha modelo no módulo ATTA") só aparece quando a porta da importação devolve a URL; sem ela
+// (produção antes do MIG-34, ou sem permissão), o cartão some: link sem destino não entra.
+export function TelaAjuda({ planilha = null }: { planilha?: { url: string } | null }) {
   return (
     <div className="flex flex-col gap-3">
       <FaixaInformativa destaque={t.faixa.destaque}>{t.faixa.texto}</FaixaInformativa>
@@ -19,6 +21,19 @@ export function TelaAjuda() {
           ))}
         </ul>
       </CartaoDeSecao>
+      {planilha && (
+        <CartaoDeSecao titulo={t.planilha.titulo} subtitulo={t.planilha.subtitulo} icone="📥" texto={t.planilha.texto}>
+          <p>
+            <a
+              href={planilha.url}
+              download
+              className="inline-flex min-h-11 items-center rounded-md border border-border-functional bg-surface-raised px-4 font-semibold medium:min-h-9"
+            >
+              {t.planilha.baixar}
+            </a>
+          </p>
+        </CartaoDeSecao>
+      )}
       <CartaoDeSecao titulo={t.faq.titulo} subtitulo={t.faq.subtitulo} icone="💬" semPreenchimento>
         <ul>
           {t.faq.itens.map((item) => (
