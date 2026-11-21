@@ -6,8 +6,9 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import { cpfHmac, isValidCpf, isValidRne, maskCpf, maskRne, normalizeCpf, normalizeRne, rneHmac } from "@/server/crypto/cpf";
 import { normalizeEmail } from "@/server/crypto/email";
+import { linhaDoBancoBase, linhaDaTela, umIdDoPaciente } from "@/server/agenda/linha";
 import { abrirContato, paraBytea, selarColunas } from "./contato";
-import type { Identificacao, LinhaDePaciente, PortaPacientes } from "./porta";
+import type { AgendamentoDaPasta, Identificacao, LinhaDePaciente, PortaPacientes } from "./porta";
 
 // Porta real de Pacientes (MIG-43) sobre o api.patient_* do MIG-12 (#12, #19). Cliente de servidor com a sessão do
 // usuário, nunca a secret key: tenant, permissão (has_permission('patients', …)) e auditoria são conferidos no banco.
@@ -137,6 +138,43 @@ export function emailMascarado(valor: string | null): string | null {
   const arroba = valor.lastIndexOf("@");
   if (arroba < 1) return PONTO.repeat(3);
   return `${valor.slice(0, Math.min(2, arroba))}${PONTO.repeat(3)}${valor.slice(arroba)}`;
+}
+
+// api.patient_folder_appointments (#227): cada linha é a da Agenda (src/server/agenda/linha.ts) mais os campos da
+// Pasta: o linhaDoBancoBase estendido, com a regra dos dois ids do paciente reaplicada (#232; no Zod 4 o refine não
+// aceita extend). Linha fora do formato sai da lista, com a quantidade no log e nunca o corpo; resposta quebrada é INTERNO.
+const instante = z.iso.datetime({ offset: true });
+const contagemDoBanco = z.number().int().nonnegative();
+const linhaDaPasta = linhaDoBancoBase.extend({
+  milestones: z.object({
+    checkin_at: instante.nullable(),
+    ready_at: instante.nullable(),
+    in_service_at: instante.nullable(),
+    concluded_at: instante.nullable(),
+  }),
+  pending: z.object({ kind: z.literal("termo_nao_assinado"), required: z.boolean() }).nullable(),
+  terms_count: contagemDoBanco,
+  clinical_docs_count: contagemDoBanco,
+}).refine(umIdDoPaciente);
+const pastaDoBanco = z.object({
+  totals: z.object({ appointments: contagemDoBanco, terms_signed: contagemDoBanco, clinical_docs: contagemDoBanco, pendencies: contagemDoBanco }),
+  today: z.object({ count: contagemDoBanco, last_at: instante.nullable() }),
+  timezone: z.string().min(1),
+  data: z.array(z.unknown()),
+  page: z.object({ next_cursor: z.string().nullable() }),
+});
+
+function agendamentoDaPasta(bruta: unknown): AgendamentoDaPasta | null {
+  const lida = linhaDaPasta.safeParse(bruta);
+  if (!lida.success) return null;
+  const { milestones: m, pending, terms_count, clinical_docs_count } = lida.data;
+  return {
+    ...linhaDaTela(lida.data),
+    marcos: { checkin: m.checkin_at, pronto: m.ready_at, emAtendimento: m.in_service_at, concluido: m.concluded_at },
+    pendencia: pending ? { tipo: pending.kind, obrigatoria: pending.required } : null,
+    termos: terms_count,
+    docsClinicos: clinical_docs_count,
+  };
 }
 
 async function contexto() {
@@ -393,5 +431,24 @@ export const portaPacientesReal: PortaPacientes = {
     if (error) return falhaDoBanco(error);
     const lido = z.uuid().safeParse(data);
     return lido.success ? ok({ protocolo: lido.data }) : malFormado("pacientes.divergencia_fora_do_formato");
+  },
+
+  async agendamentosDaPasta(id, cursor) {
+    const { api } = await contexto();
+    const { data, error } = await api.rpc("patient_folder_appointments", { p_person_id: id, ...(cursor ? { p_cursor: cursor } : {}) });
+    if (error) return falhaDoBanco(error);
+    const lido = pastaDoBanco.safeParse(data);
+    if (!lido.success) return malFormado("pacientes.agendamentos_fora_do_formato");
+    const itens = lido.data.data.flatMap((bruta) => agendamentoDaPasta(bruta) ?? []);
+    const descartadas = lido.data.data.length - itens.length;
+    if (descartadas > 0) logger.error("pacientes.agendamento_fora_do_formato", { code: "INTERNO", quantidade: descartadas });
+    const { totals: t, today } = lido.data;
+    return ok({
+      itens,
+      totais: { agendamentos: t.appointments, termosAssinados: t.terms_signed, docsClinicos: t.clinical_docs, pendencias: t.pendencies },
+      hoje: { quantidade: today.count, ultimoEm: today.last_at },
+      proximo: lido.data.page.next_cursor,
+      fuso: lido.data.timezone,
+    });
   },
 };
