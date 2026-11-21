@@ -21,5 +21,10 @@ async function Destino() {
   const sessao = await sessaoDoPainel();
   const [primeira] = abasDoPapel(sessao?.papel ?? null, sessao?.permissoes ?? []);
   if (primeira) redirect(primeira.href);
-  return <SemAcesso rotulo="Painel" />;
+  return (
+    <>
+      <h1 className="sr-only">Painel</h1>
+      <SemAcesso rotulo="Painel" />
+    </>
+  );
 }
