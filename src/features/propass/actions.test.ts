@@ -6,7 +6,7 @@ vi.mock("@/server/propass/porta", () => ({ portaPropass: { conferirConselho: moc
 
 import { carregarTermo, conferirDados, enviarPropass } from "./actions";
 
-const DADOS = { nome: "Bruna Reis", cpf: "529.982.247-25", whatsapp: "(11) 98765-4321", conselho: "crm", numero: "201577", uf: "SP" };
+const DADOS = { nome: "Bruna Reis", cpf: "529.982.247-25", whatsapp: "(11) 98765-4321", conselho: "crm", numero: "990001", uf: "SP" };
 const HASH = Buffer.alloc(32, 3);
 
 describe("conferirDados (action)", () => {
@@ -24,7 +24,7 @@ describe("conferirDados (action)", () => {
   it("passa à porta só o hash e o registro no conselho, sem CPF nem WhatsApp", async () => {
     mocks.conferirConselho.mockResolvedValue({ ok: true, data: { situacao: "regularizado", consultadoEm: "2026-11-20T19:24:00.000Z" } });
     expect(await conferirDados(DADOS)).toEqual({ ok: true, data: { situacao: "regularizado", consultadoEm: "2026-11-20T19:24:00.000Z" } });
-    expect(mocks.conferirConselho).toHaveBeenCalledWith(HASH, { conselho: "crm", numero: "201577", uf: "SP", nome: "Bruna Reis" });
+    expect(mocks.conferirConselho).toHaveBeenCalledWith(HASH, { conselho: "crm", numero: "990001", uf: "SP", nome: "Bruna Reis" });
   });
 
   it("sem cookie, ou link recusado pelo backend, responde como convite vencido", async () => {
@@ -53,7 +53,7 @@ describe("carregarTermo e enviarPropass (actions)", () => {
   it("o termo vem pronto do servidor; sem modelo ativo é sem_termo", async () => {
     mocks.termo.mockResolvedValue({ ok: true, data: { titulo: "T", paragrafos: ["p"] } });
     expect(await carregarTermo(DADOS)).toEqual({ ok: true, data: { situacao: "pronto", termo: { titulo: "T", paragrafos: ["p"] } } });
-    expect(mocks.termo).toHaveBeenCalledWith(HASH, { conselho: "crm", numero: "201577", uf: "SP", nome: "Bruna Reis" });
+    expect(mocks.termo).toHaveBeenCalledWith(HASH, { conselho: "crm", numero: "990001", uf: "SP", nome: "Bruna Reis" });
     mocks.termo.mockResolvedValue({ ok: false, error: { code: "CONFLITO", message: "x", reason: "ATTA-IN-0003:authorization_template" } });
     expect(await carregarTermo(DADOS)).toEqual({ ok: true, data: { situacao: "sem_termo" } });
   });
