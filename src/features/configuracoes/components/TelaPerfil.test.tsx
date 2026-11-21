@@ -64,10 +64,15 @@ describe("Perfil da Clínica (MIG-42, captura 42)", () => {
     expect(screen.getByText("Último salvamento às 11:05.")).toBeInTheDocument();
   });
 
+  it("CNPJ e Razão social já informados ficam só para leitura, com o caminho da troca (PDD §10.4.3)", () => {
+    render(<TelaPerfil resultado={ok({ ...PERFIL, campos: { ...PERFIL.campos, legal_name: "Clínica Fictícia Ltda." } })} />);
+    for (const rotulo of ["CNPJ", "Razão social"]) expect(screen.getByLabelText(rotulo)).toHaveAttribute("readonly");
+    expect(screen.getAllByText("Para trocar, peça ao suporte ATTA: a alteração passa por conferência.")).toHaveLength(2);
+  });
+
   it("CNPJ com dígito errado não vai ao servidor; recusa do banco aparece no campo", async () => {
-    render(<TelaPerfil resultado={ok(PERFIL)} />);
+    render(<TelaPerfil resultado={ok({ ...PERFIL, campos: { ...PERFIL.campos, cnpj: null } })} />);
     const cnpj = screen.getByLabelText("CNPJ");
-    await userEvent.clear(cnpj);
     await userEvent.type(cnpj, "11222333000182");
     await userEvent.tab();
     expect(salvar).not.toHaveBeenCalled();

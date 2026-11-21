@@ -20,6 +20,8 @@ const MASCARA: Partial<Record<CampoDaEmpresa, (v: string) => string>> = {
   clinic_whatsapp: mascararTelefone,
 };
 const SO_DIGITOS = new Set<CampoDaEmpresa>(["cnpj", "address_cep", "phone", "clinic_whatsapp"]);
+// só o 1º preenchimento; depois, só leitura (PDD §10.4.3: a alteração do CNPJ é ação protegida; contrato do TL, ADR 0001)
+const PROTEGIDOS = new Set<CampoDaEmpresa>(["cnpj", "legal_name"]);
 
 type Props = {
   campo: CampoDaEmpresa;
@@ -32,6 +34,7 @@ type Props = {
 const hora = (iso: string, fuso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: fuso, hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
 function mensagem(erro: Erro, campo: CampoDaEmpresa): string {
+  if (erro.code === "CONFLITO" && erro.reason?.endsWith("protected_field")) return t.erros.protegido;
   if (erro.code === "VALIDACAO") return campo === "cnpj" ? t.erros.cnpj : t.erros.VALIDACAO;
   if (erro.code === "SEM_PERMISSAO") return t.erros.SEM_PERMISSAO;
   return t.erros.INDISPONIVEL;
@@ -46,6 +49,7 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
   const [salvoEm, setSalvoEm] = useState<string | null>(null);
   const [salvando, executar] = useTransition();
   const { rotulo, ajuda } = t.campos[campo] as { rotulo: string; ajuda?: string };
+  const somenteLeitura = PROTEGIDOS.has(campo) && Boolean(salvoAte);
 
   function salvar(texto: string) {
     const normal = SO_DIGITOS.has(campo) ? soDigitos(texto) : texto.trim();
@@ -91,6 +95,8 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
             </option>
           ))}
         </select>
+      ) : somenteLeitura ? (
+        <input {...comum} type="text" readOnly value={rascunho} className={`${comum.className} bg-surface-app text-text-secondary`} />
       ) : (
         <input
           {...comum}
@@ -106,7 +112,7 @@ export function CampoDoPerfil({ campo, valor, obrigatorio = false, fuso, aoSalva
         />
       )}
       <p id={`${id}-situacao`} aria-live="polite" className={`text-xs ${erro ? "text-status-negative" : "text-text-secondary"}`}>
-        {erro ?? (salvando ? textos.salvando : salvoEm ? t.salvoAs(hora(salvoEm, fuso)) : (ajuda ?? ""))}
+        {erro ?? (salvando ? textos.salvando : salvoEm ? t.salvoAs(hora(salvoEm, fuso)) : somenteLeitura ? t.protegido : (ajuda ?? ""))}
       </p>
     </div>
   );
