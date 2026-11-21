@@ -1,7 +1,7 @@
 -- MIG-23 (parte 2): sessão do Boarding Check, abrir e concluir (PDD §10.2.3, §13.4; ADR 0004 §3). Só dado fictício:
 -- nomes inventados, hashes de texto inventado. Horários fixos no dia da clínica, para passar a qualquer hora.
 begin;
-select plan(26);
+select plan(28);
 
 insert into platform.tenant (id, name) values ('00000000-0000-4000-8000-0000000024a0', 'Clínica Fictícia Sessão');
 insert into network.person (id, full_name, social_name, birth_date, cpf_hmac, cpf_masked, cpf_enc, dek_wrapped, kek_version)
@@ -18,6 +18,15 @@ insert into platform.professional_tenant_link (id, tenant_id, professional_id, i
                                                envelope_id, dek_wrapped, kek_version, propass_completed_at)
 values ('00000000-0000-4000-8000-0000000024d1', '00000000-0000-4000-8000-0000000024a0', '00000000-0000-4000-8000-0000000024f1',
         sha256('dra-sessao@a.test'::bytea), '\x01', gen_random_uuid(), '\x01', 1, now());
+-- o segundo profissional, para o caso de troca no atendimento (S2 da Segurança no #304)
+insert into platform.professional (id, display_name, council, council_uf, council_number, cpf_hmac, cpf_masked, cpf_enc,
+                                   email_enc, dek_wrapped, kek_version, council_status, council_verified_at)
+values ('00000000-0000-4000-8000-0000000024f2', 'Dr. Fictício Substituto', 'cro', 'SP', '24002', sha256('cpf-24f2'::bytea),
+        '···.···.000-02', '\x01', '\x01', '\x01', 1, 'regularizado', now());
+insert into platform.professional_tenant_link (id, tenant_id, professional_id, invite_email_hmac, invite_email_enc,
+                                               envelope_id, dek_wrapped, kek_version, propass_completed_at)
+values ('00000000-0000-4000-8000-0000000024d2', '00000000-0000-4000-8000-0000000024a0', '00000000-0000-4000-8000-0000000024f2',
+        sha256('dr-substituto@a.test'::bytea), '\x01', gen_random_uuid(), '\x01', 1, now());
 
 create function pg_temp.hora(p_dias int, p_hora int) returns timestamptz language sql as $$
   select (date_trunc('day', now() at time zone 'America/Sao_Paulo') + make_interval(days => p_dias, hours => p_hora))
@@ -63,6 +72,13 @@ select pg_temp.sessao('sessao-1', '00000000-0000-4000-8000-000000002410');
 select pg_temp.sessao('link-1', '00000000-0000-4000-8000-000000002410', false);
 select pg_temp.sessao('sessao-agendado', '00000000-0000-4000-8000-000000002411');
 select pg_temp.sessao('sessao-vencida', '00000000-0000-4000-8000-000000002410', p_enviado => interval '8 hours 1 minute');
+-- troca de profissional: o link é da Dra. Fictícia; o atendimento passa ao Dr. Fictício ainda em Agendado e depois fica
+-- Pronto. O link da anterior não pode abrir
+select pg_temp.atendimento('00000000-0000-4000-8000-000000002412', pg_temp.hora(0, 12), 'agendado');
+select pg_temp.sessao('sessao-anterior', '00000000-0000-4000-8000-000000002412');
+update atta_in.appointment set professional_link_id = '00000000-0000-4000-8000-0000000024d2'
+where id = '00000000-0000-4000-8000-000000002412';
+update atta_in.appointment set status = 'pronto' where id = '00000000-0000-4000-8000-000000002412';
 
 -- fechado: só o service_role
 select ok(not has_function_privilege('anon', 'api.boarding_open(bytea)', 'EXECUTE')
@@ -91,6 +107,10 @@ select throws_ok($$ select * from api.boarding_open(sha256('sessao-vencida'::byt
                  'mais de 8 h do envio não abre');
 select throws_ok($$ select * from api.boarding_open(null) $$, '42501', 'ATTA-AUTH-0004', 'sem hash não abre');
 
+select throws_ok($$ select * from api.boarding_open(sha256('sessao-anterior'::bytea)) $$, '42501', 'ATTA-AUTH-0004',
+                 'trocado o profissional, o link do anterior não abre');
+select throws_ok($$ select api.boarding_complete(sha256('sessao-anterior'::bytea)) $$, '42501', 'ATTA-AUTH-0004',
+                 'nem conclui');
 -- abrir: o resumo do topo e Pronto → Em atendimento
 select results_eq(
   $$ select clinic_name, patient_name, patient_age, starts_at_local, appointment_type, attended_count, absent_count, status
