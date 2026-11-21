@@ -18,7 +18,7 @@ export function PainelDeMetricas({ dados }: { dados: Dados }) {
     <div className="flex flex-col gap-4">
       <FaixaInformativa>{t.faixa}</FaixaInformativa>
       {dados.atendimentosValidosHoje !== null && (
-        <p className="-mt-2 text-[0.8125rem] text-text-secondary">{t.validosHoje(dados.atendimentosValidosHoje)}</p>
+        <p className="-mt-2 text-corpo text-text-secondary">{t.validosHoje(dados.atendimentosValidosHoje)}</p>
       )}
 
       <section aria-label={t.cards.rotulo} className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-4">
@@ -42,13 +42,13 @@ export function PainelDeMetricas({ dados }: { dados: Dados }) {
         <CartaoDeSecao titulo={t.preparacao.titulo} subtitulo={t.preparacao.subtitulo} icone={<IconeAlvo />}>
           {dados.preparacaoPrevia ? (
             <div className="flex flex-col gap-1 px-5 py-4">
-              <span className="font-sub text-[2.25rem] leading-none text-text-primary">
+              <span className="font-sub text-destaque text-text-primary">
                 {percentual(dados.preparacaoPrevia.prontos, dados.preparacaoPrevia.total)}
               </span>
-              <span className="text-[0.8125rem] text-text-secondary">{t.preparacao.detalhe(dados.preparacaoPrevia.prontos, dados.preparacaoPrevia.total)}</span>
+              <span className="text-corpo text-text-secondary">{t.preparacao.detalhe(dados.preparacaoPrevia.prontos, dados.preparacaoPrevia.total)}</span>
             </div>
           ) : (
-            <p className="text-[0.8125rem] text-text-secondary">{t.preparacao.vazio}</p>
+            <p className="text-corpo text-text-secondary">{t.preparacao.vazio}</p>
           )}
         </CartaoDeSecao>
 
@@ -66,10 +66,10 @@ export function PainelDeMetricas({ dados }: { dados: Dados }) {
         </CartaoDeSecao>
 
         <CartaoDeSecao titulo={t.graficos.tendencia.titulo} subtitulo={t.graficos.tendencia.subtitulo} icone={<IconeGrafico />}>
-          <p className="text-[0.8125rem] text-text-secondary">{t.graficos.vazio}</p>
+          <p className="text-corpo text-text-secondary">{t.graficos.vazio}</p>
         </CartaoDeSecao>
         <CartaoDeSecao titulo={t.graficos.extrasPorMes.titulo} subtitulo={t.graficos.extrasPorMes.subtitulo} icone={<IconeGrafico />}>
-          <p className="text-[0.8125rem] text-text-secondary">{t.graficos.vazio}</p>
+          <p className="text-corpo text-text-secondary">{t.graficos.vazio}</p>
         </CartaoDeSecao>
       </div>
     </div>
@@ -79,8 +79,8 @@ export function PainelDeMetricas({ dados }: { dados: Dados }) {
 function Tempo({ rotulo, valor, legenda, tom }: { rotulo: string; valor: string | null; legenda: string; tom: string }) {
   return (
     <div className={`flex flex-col gap-1 rounded-md p-3 ${tom}`}>
-      <dt className="text-[0.6875rem] font-medium tracking-wide text-text-secondary uppercase">{rotulo}</dt>
-      <dd className="font-sub text-[1.375rem] leading-tight text-text-primary">{valor ?? TRAVESSAO}</dd>
+      <dt className="text-rotulo font-medium tracking-wide text-text-secondary uppercase">{rotulo}</dt>
+      <dd className="font-sub text-numero-menor text-text-primary">{valor ?? TRAVESSAO}</dd>
       <dd className="text-xs text-text-secondary">{legenda}</dd>
     </div>
   );
