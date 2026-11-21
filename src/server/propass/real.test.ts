@@ -39,12 +39,24 @@ describe("portaPropassReal", () => {
     expect(r).toEqual({ ok: true, data: { clinica: "Clínica Alfa", emailDoConvite: "bruna.reis@exemplo.test", conviteEm: "2026-11-20T19:20:00+00:00", fuso: "America/Manaus" } }); // o fuso da clínica (#265), não um padrão
   });
 
-  it("fuso da clínica ausente ou que o Intl não aceita não derruba a tela", async () => {
-    const { tenant_timezone: _, ...semFuso } = await linha();
-    rpc.mockResolvedValue({ data: [semFuso], error: null });
-    expect(await porta.resolver(HASH)).toMatchObject({ ok: false, error: { code: "NAO_ENCONTRADO" } }); // linha fora do contrato
+  it("linha fora do contrato é defeito do servidor (INTERNO), não link vencido; fuso que o Intl não aceita também", async () => {
+    const semFuso: Record<string, unknown> = { ...(await linha()) };
+    delete semFuso.tenant_timezone;
+    for (const data of [[semFuso], [{ ...(await linha()), tenant_id: "não-é-uuid" }], [await linha(), await linha()]]) {
+      rpc.mockResolvedValue({ data, error: null });
+      const r = await porta.resolver(HASH);
+      expect(r).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+      expect(JSON.stringify(r)).not.toContain("exemplo.test");
+    }
     rpc.mockResolvedValue({ data: [{ ...(await linha()), tenant_timezone: "Lua/Base_Alfa" }], error: null });
     expect(await porta.resolver(HASH)).toMatchObject({ ok: false, error: { code: "INTERNO" } });
+  });
+
+  it("nenhuma linha (vazio ou nulo) continua sendo link sem validade", async () => {
+    for (const data of [[], null]) {
+      rpc.mockResolvedValue({ data, error: null });
+      expect(await porta.resolver(HASH)).toMatchObject({ ok: false, error: { code: "NAO_ENCONTRADO" } });
+    }
   });
 
   it("link sem validade (sem linha ou ATTA-AUTH-0004) dá a mesma resposta", async () => {
