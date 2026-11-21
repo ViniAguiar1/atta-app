@@ -59,7 +59,7 @@ export function TabelaDePacientes({ pacientes }: { pacientes: LinhaDePaciente[] 
                     <span>
                       {/* o nome abre a Pasta do Paciente; não há botão "Abrir pasta" separado (PDD §10, Pacientes, lista) */}
                       <Link
-                        href={`/painel/pacientes/pasta/${p.id}`}
+                        href={`/painel/pacientes/pasta?paciente=${p.id}`}
                         aria-label={textos.abrirPasta(p.nome)}
                         className="underline-offset-2 hover:underline"
                       >
