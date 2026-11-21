@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     });
   },
+  // O time abre o `next dev` em 127.0.0.1 (Playwright, retorno do login do Supabase local), e o Next 16 trata como outra
+  // origem que localhost: sem isto, ele bloqueia o websocket do HMR e os recursos de dev, e o React não hidrata no local.
+  // Só vale no `next dev`; o build de produção ignora.
+  allowedDevOrigins: ["127.0.0.1"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
