@@ -15,7 +15,8 @@ export async function Passo({ searchParams }: { searchParams: Busca }) {
   // Segunda trava (Segurança e Frontend 2, #230): fora do painel/layout.tsx, esta tela não herda a checagem de sessão da
   // casca. O proxy já leva quem não tem sessão ao login; aqui, sem usuário, o mesmo destino, sem mostrar passo nenhum.
   const { data: sessao } = await supabase.auth.getClaims();
-  if (!sessao?.claims) redirect(`${ROTA_LOGIN}?volta=${encodeURIComponent(ROTA_2FA)}`);
+  // o volta original (já passado pelo destinoSeguro) vai junto, para quem entrar seguir ao 2º fator e depois ao destino
+  if (!sessao?.claims) redirect(`${ROTA_LOGIN}?volta=${encodeURIComponent(`${ROTA_2FA}?volta=${encodeURIComponent(volta)}`)}`);
   const [{ data: nivel }, { data: fatores }] = await Promise.all([
     supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
     supabase.auth.mfa.listFactors(),
