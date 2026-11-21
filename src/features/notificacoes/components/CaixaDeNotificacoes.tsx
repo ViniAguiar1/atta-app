@@ -77,7 +77,7 @@ function Cartao({ n }: { n: ItemDaCaixa }) {
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-          <h3 className="text-[0.9375rem] font-semibold text-text-primary">{n.titulo}</h3>
+          <h3 className="text-titulo font-semibold text-text-primary">{n.titulo}</h3>
           <span className="text-xs text-text-secondary">{n.quando}</span>
         </div>
         <p className="text-text-primary">{n.corpo}</p>
