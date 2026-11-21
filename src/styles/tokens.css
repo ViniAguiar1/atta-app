@@ -39,9 +39,9 @@
   --color-on-brand: var(--ref-branco);
   /* Aba ativa da barra de módulos, no tom do simulador (print 28), com texto on-brand em 600: 7.43:1. */
   --color-brand-active: var(--ref-aba-ativa-simulador);
-  /* Oliva do ATTA-in (#6c7563): estados ativos do atendimento na Agenda (segmentos do Check-in, decisão do CTO pela
-     captura 01; bolinha do Pronto). Texto on-brand sobre ele: 4.81:1 (texto pequeno ok). Pedido do Frontend 4. */
-  --color-status-active: var(--ref-atta-in-aba-ativa);
+  /* Oliva do ATTA-in (#6c7563): segmentos do Check-in da Agenda (oliva crescente, decisão do CTO pela captura 01) e a
+     bolinha do Pronto. Texto on-brand sobre ele: 4.81:1. Nome do Tech Lead Frontend, a pedido do Frontend 4. */
+  --color-status-checkin: var(--ref-atta-in-aba-ativa);
   --color-text-primary: var(--ref-txt1);
   --color-text-secondary: var(--ref-txt2);
   /* Só texto grande (≥ 24 px, ou ≥ 18,66 px em negrito): 4.21:1 sobre o fundo (planning/05 §4.6). Em legenda pequena, use text-secondary. */
