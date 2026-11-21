@@ -50,6 +50,16 @@ export type Database = {
               "active_count": number,"active_optional_count": number,"active_required_count": number,"expired_count": number,"expiring_count": number,"signed_atta_sign_count": number,"signed_count": number
             }[]
                            },
+"audit_anchor_check":
+{ Args: { "p_anchors": Json }; Returns: {
+              "seq": number,"status": string
+            }[]
+                           },
+"audit_anchor_head":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "broken_at": number,"event_at": string,"hash": string,"seq": number
+            }[]
+                           },
 "audit_auth_event":
 { Args: { "p_action": string,"p_details"?: Json,"p_user_id"?: string }; Returns: string
                            },
