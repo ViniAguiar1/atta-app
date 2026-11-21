@@ -44,6 +44,13 @@ begin
   if v.id is null or not private.grant_is_valid(v.id, 'professional_boarding') then
     raise exception using errcode = '42501', message = 'ATTA-AUTH-0004', detail = 'grant';
   end if;
+  -- o link é do profissional que ESTÁ no atendimento: trocado o profissional, o link do anterior não abre mais (S2 da
+  -- Segurança no #304; a revogação na própria troca é do Backend 2, e a saúde repete esta conferência no MIG-22)
+  if not exists (select 1 from atta_in.appointment a
+                 where a.tenant_id = v.tenant_id and a.id = v.appointment_id
+                   and a.professional_link_id = v.professional_link_id) then
+    raise exception using errcode = '42501', message = 'ATTA-AUTH-0004', detail = 'grant';
+  end if;
   update platform.access_grant g set last_used_at = now() where g.id = v.id;
   return v;
 end;
