@@ -33,7 +33,7 @@ export function FormularioDoCodigo({ inicial = "" }: { inicial?: string }) {
           autoComplete="off"
           autoCapitalize="characters"
           spellCheck={false}
-          className="min-h-12 flex-1 rounded-md border border-border-functional bg-surface-raised px-4 text-sm tracking-wide [font-family:ui-monospace,monospace]"
+          className="min-h-12 flex-1 rounded-md border border-border-functional bg-surface-raised px-4 text-sm tracking-wide font-codigo"
         />
         <button type="submit" disabled={ocupado} className="min-h-12 rounded-md bg-brand px-6 font-medium text-on-brand disabled:opacity-60">
           {ocupado ? textos.verificando : textos.verificar}

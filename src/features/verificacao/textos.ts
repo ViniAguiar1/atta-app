@@ -9,6 +9,7 @@ export const textos = {
   verificar: "Verificar", // simulador
   verificando: "Verificando…", // provisório
   rotuloResultado: "Resultado da verificação", // provisório (leitor de tela)
+  resumo: (documento: string, estado: string) => `Documento encontrado: ${documento}. Estado: ${estado}.`, // provisório (leitor de tela)
   linhas: {
     documento: "Documento", // simulador
     estado: "Estado", // simulador
