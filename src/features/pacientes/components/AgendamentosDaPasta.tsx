@@ -47,7 +47,7 @@ function Marcos({ a, fuso }: { a: AgendamentoDaPasta; fuso: string }) {
 // captura 13: data e hora à esquerda; procedimento, profissional, chips e marcos no meio; pendência e contagens à direita
 function Agendamento({ a, fuso }: { a: AgendamentoDaPasta; fuso: string }) {
   return (
-    <li className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border border-border bg-surface-raised p-3">
+    <li className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border border-border bg-surface-raised px-3 pt-2.5 pb-3">
       {/* em 390 px a data e a hora ficam numa linha em cima; a partir do medium, empilhadas à esquerda */}
       <p className="flex w-full items-baseline gap-2 medium:w-24 medium:shrink-0 medium:flex-col medium:items-start medium:gap-0">
         <span className="text-xs text-text-secondary">{dataDe(a.inicio, fuso)}</span>
@@ -84,19 +84,19 @@ function Alerta() {
 function Pendencia({ a, fuso }: { a: AgendamentoDaPasta; fuso: string }) {
   return (
     <li className="overflow-hidden rounded-md border border-border border-l-4 border-l-status-negative bg-surface-raised">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-app px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-app px-4 py-2">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-sm border border-border bg-surface-raised text-status-pending">
           <Alerta />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-corpo">{t.termoNaoAssinado}</p>
+          <p className="text-sm">{t.termoNaoAssinado}</p>
           <p className="text-rotulo text-text-secondary">
             {a.servicos.map((s) => s.nome).join(", ")} · {dataDe(a.inicio, fuso)} às {horaDe(a.inicio, fuso)} · {a.profissional.nomeExibicao}
           </p>
         </div>
         <ChipDeStatus status={a.status} compacto />
       </div>
-      <div className="flex flex-col gap-3 p-4 text-xs">
+      <div className="flex flex-col gap-3 p-3 text-xs">
         <p className="flex items-start gap-2 rounded-md border border-border border-l-4 border-l-status-negative p-3">
           <span className="text-status-negative">
             <Alerta />
@@ -141,7 +141,7 @@ export function AgendamentosDaPasta({ id, inicial, mais }: { id: string; inicial
 
   return (
     <CartaoDeSecao titulo={t.titulo} subtitulo={t.subtitulo} icone="🗂️" compacto>
-      <div role="tablist" aria-label={t.abas} onKeyDown={teclado} className="flex gap-0.5 overflow-x-auto border-b border-border px-3">
+      <div role="tablist" aria-label={t.abas} onKeyDown={teclado} className="-mt-0.5 flex gap-0.5 overflow-x-auto border-b border-border px-3">
         {ABAS.map((a) => (
           <button
             key={a}
@@ -155,7 +155,7 @@ export function AgendamentosDaPasta({ id, inicial, mais }: { id: string; inicial
             aria-controls={`${base}-${a}-painel`}
             tabIndex={aba === a ? 0 : -1}
             onClick={() => setAba(a)}
-            className={`-mb-px min-h-11 border-b-2 px-3 text-xs whitespace-nowrap ${
+            className={`-mb-px min-h-11 border-b-2 px-3 text-xs whitespace-nowrap medium:min-h-10 ${
               aba === a ? "border-brand font-semibold text-text-primary" : "border-transparent text-text-secondary hover:text-text-primary"
             }`}
           >
